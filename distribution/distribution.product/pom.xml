@@ -35,7 +35,7 @@
 						<configuration>
 							<products>
 								<product>
-									<id>org.jboss.tools.rsp.server.product</id>
+									<id>org.jboss.tools.rsp.server.liberty.custom.product</id>
 									<rootFolder>rsp-server</rootFolder>
 								</product>
 							</products>

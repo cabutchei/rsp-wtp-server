@@ -53,7 +53,7 @@
 		<location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="slicer"
 			type="InstallableUnit" includeSource="true">
 			<repository
-				location="http://download.jboss.org/jbosstools/updates/requirements/simrel/20190301-0700-Simrel.2019-03.M3/" />
+				location="https://download.jboss.org/jbosstools/updates/requirements/simrel/20190301-0700-Simrel.2019-03.M3/" />
 
 			<!-- p2.discovery -->
 			<unit id="org.eclipse.equinox.p2.discovery" version="1.1.100.v20180822-1302" />
@@ -81,7 +81,50 @@
 
 			<!-- required for java 11 -->
 			<unit id="javax.annotation" version="1.2.0.v201602091430" />
+
+      		<unit id="org.eclipse.wst.server_core.feature.feature.group" />
+      		<unit id="org.eclipse.wst.common_core.feature.feature.group" />
+      		<unit id="org.eclipse.wst.common.core" />
+      		<unit id="org.eclipse.wst.common.fproj.feature.group" />
+      		<unit id="org.eclipse.wst.xml_core.feature.feature.group" />
+      		<unit id="org.eclipse.jst.enterprise_core.feature.feature.group" />
+      		<unit id="org.eclipse.jst.web_core.feature.feature.group" />
+      		<unit id="org.eclipse.jsf.feature.feature.group" />
+      		<unit id="org.eclipse.jpt.jpa.feature.feature.group" />
+      		<unit id="org.eclipse.emf.common.feature.group" />
+      		<unit id="org.eclipse.emf.edit.feature.group" />
+      		<unit id="org.eclipse.emf.ecore.feature.group" />
+      		<unit id="org.eclipse.jst.common.fproj.enablement.jdt.feature.group" />
+      		<unit id="org.eclipse.jst.server_core.feature.feature.group" />
+      		<unit id="org.eclipse.xsd.feature.group" />
+      		<unit id="org.eclipse.xsd.edit.feature.group" />
+      		<unit id="org.eclipse.wst.server.discovery" />
+			<!-- TODO: see if there are features with the below plugins -->
+      		<unit id="org.eclipse.jst.j2ee" />
+      		<unit id="org.eclipse.jst.j2ee.core" />
+      		<unit id="org.eclipse.wst.web" />
+      		<unit id="org.eclipse.jem" />
+      		<unit id="org.eclipse.jem.workbench" />
+      		<unit id="org.eclipse.emf.codegen" />
+      		<unit id="org.eclipse.jst.common.frameworks" />
+      		<unit id="org.eclipse.jst.common.annotations.core" />
+      		<unit id="org.eclipse.jst.common.annotations.controller" />
 		</location>
+    	
+    	<location
+      		type="InstallableUnit"
+      		includeMode="slicer"
+      		includeAllPlatforms="false"
+      		includeSource="true">
+      		<unit id="com.ibm.ws.st.liberty.tools.base.feature.group" />
+      		<unit id="com.ibm.ws.st.was.tools.common.core.feature.group" />
+      		<unit id="com.ibm.etools.webservice.discovery.core.feature.group" />
+      		<unit id="com.ibm.ws.st.jee.core" />
+      		<repository
+        		location="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/wasdev/updates/wdt/2025-03/" />
+      		<!-- <repository
+        		location="file:/Users/cabutchei/.m2/repository/p2-mirrors/public.dhe.ibm.com:ibmdl:export:pub:software:websphere:wasdev:updates:wdt:2025-03:" /> -->
+    	</location>
 
 	</locations>
 	<targetJRE

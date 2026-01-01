@@ -1,0 +1,99 @@
+{
+  "serverTypes": {
+    "org.jboss.ide.eclipse.as.server.fucking.liberty.25.0.0": {
+      "template": "liberty.template",
+      "discoveries": {
+        "payara.25.x": {
+          "discoveryType": "properties",
+          "name": "WebSphere Liberty 25.x",
+          "nameFile": "lib/versions/openliberty.properties",
+          "nameKey": "com.ibm.websphere.productId",
+          "nameRequiredPrefix": "io.openliberty",
+          "versionFile": "lib/versions/openliberty.properties",
+          "versionKey": "com.ibm.websphere.productVersion",
+          "versionRequiredPrefix": "25.0."
+        }
+      },
+      "type": {
+        "name": "WebSphere Liberty 25.0.x",
+        "description": "A server adapter capable of discovering and controlling a WebSphere Liberty 25.x runtime instance."
+      }
+    }
+  },
+  "templates": {
+    "liberty.template": {
+      "type": {
+        "launchModes": "run,debug",
+        "attributes": {
+          "required": {
+            "server.home.dir": {
+              "type": "string",
+              "description": "A filesystem path pointing to a server installation\u0027s root directory",
+              "defaultValue": "",
+              "secret": "false"
+            }
+          },
+          "staticDefaults": {
+            "server.liberty.id": {
+              "type": "string",
+              "value": "defaultServer"
+            },
+            "server.http.port": {
+              "type": "int",
+              "value": "9080"
+            },
+            "server.classpath.additions": {
+              "type": "string",
+              "value": ""
+            }
+          }
+        },
+        "behavior": {
+          "publish": {
+            "deployPath": "usr/servers/${server.liberty.id}/customDropins",
+            "approvedSuffixes": "war,ear,jar",
+            "supportsExploded": "true"
+          },
+          "startup": {
+            "launchType": "java-launch",
+            "launchProperties": {
+              "workingDirectory": "bin",
+              "mainType": "com.ibm.ws.kernel.boot.cmdline.EnvCheck",
+              "programArgs": "${server.liberty.id}",
+              "vmArgs": "-javaagent:${server.home.dir}/bin/tools/ws-javaagent.jar -Djava.awt.headless\u003dtrue -Djdk.attach.allowAttachSelf\u003dtrue",
+              "classpath": "bin/tools/ws-server.jar;lib/com.ibm.ws.kernel.boot_1.0.48.jar;${server.classpath.additions}"
+            },
+            "poller": "webPoller",
+            "pollerProperties": {
+              "url": "http://localhost:${server.http.port}"
+            },
+            "onProcessTerminated": "setServerStateStopped"
+          },
+          "shutdown": {
+            "launchType": "java-launch",
+            "launchProperties": {
+              "workingDirectory": "bin",
+              "mainType": "com.ibm.ws.kernel.boot.cmdline.EnvCheck",
+              "programArgs": "${server.liberty.id} --stop",
+              "vmArgs": "-javaagent:${server.home.dir}/bin/tools/ws-javaagent.jar -Djava.awt.headless\u003dtrue -Djdk.attach.allowAttachSelf\u003dtrue",
+              "classpath": "bin/tools/ws-server.jar;lib/com.ibm.ws.kernel.boot_1.0.48.jar;${server.classpath.additions}"
+            },
+            "poller": "webPoller",
+            "pollerProperties": {
+              "url": "http://localhost:${server.http.port}"
+            }
+          },
+          "actions": {
+            "showInBrowser": {
+              "baseUrl": "http://localhost:${server.http.port}",
+              "deploymentStrategy": "appendDeploymentNameRemoveSuffix"
+            },
+            "editServerConfiguration": {
+              "paths": "usr/servers/${server.liberty.id}/server.xml"
+            }
+          }
+        }
+      }
+    }
+  }
+}

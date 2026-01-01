@@ -1,13 +1,11 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: org.jboss.tools.rsp.server
-Bundle-SymbolicName: org.jboss.tools.rsp.server
-Automatic-Module-Name: org.jboss.tools.rsp.server
+Bundle-Name: org.jboss.tools.rsp.server.liberty
+Bundle-SymbolicName: org.jboss.tools.rsp.server.liberty
+Automatic-Module-Name: org.jboss.tools.rsp.server.liberty
 Bundle-Version: 0.26.18.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
-Bundle-Activator: org.jboss.tools.rsp.server.ServerCoreActivator
-Import-Package: com.google.gson,
- org.eclipse.equinox.app,
+Import-Package: com.google.gson;version="2.8.2",
  org.eclipse.lsp4j.jsonrpc,
  org.eclipse.lsp4j.jsonrpc.json,
  org.eclipse.lsp4j.jsonrpc.json.adapters,
@@ -23,35 +21,32 @@ Import-Package: com.google.gson,
  org.jboss.tools.rsp.eclipse.jdt.core,
  org.jboss.tools.rsp.eclipse.jdt.launching,
  org.jboss.tools.rsp.eclipse.osgi.util,
+ org.jboss.tools.rsp.foundation.core.launchers,
+ org.jboss.tools.rsp.foundation.core.tasks,
  org.jboss.tools.rsp.launching,
+ org.jboss.tools.rsp.launching.java,
  org.jboss.tools.rsp.launching.memento,
  org.jboss.tools.rsp.launching.utils,
- org.jboss.tools.rsp.logging,
- org.jboss.tools.rsp.runtime.core,
  org.jboss.tools.rsp.runtime.core.model,
- org.jboss.tools.rsp.secure.crypto,
+ org.jboss.tools.rsp.runtime.core.model.installer,
+ org.jboss.tools.rsp.runtime.core.util,
  org.jboss.tools.rsp.secure.model,
+ org.jboss.tools.rsp.server,
+ org.jboss.tools.rsp.server.discovery,
+ org.jboss.tools.rsp.server.discovery.serverbeans,
+ org.jboss.tools.rsp.server.generic,
+ org.jboss.tools.rsp.server.generic.jee,
+ org.jboss.tools.rsp.server.generic.servertype,
+ org.jboss.tools.rsp.server.model,
  org.jboss.tools.rsp.server.spi,
- org.jboss.tools.rsp.server.spi.client,
  org.jboss.tools.rsp.server.spi.discovery,
- org.jboss.tools.rsp.server.spi.filewatcher,
- org.jboss.tools.rsp.server.spi.jobs,
+ org.jboss.tools.rsp.server.spi.launchers,
  org.jboss.tools.rsp.server.spi.model,
  org.jboss.tools.rsp.server.spi.model.polling,
  org.jboss.tools.rsp.server.spi.publishing,
+ org.jboss.tools.rsp.server.spi.runtimes,
  org.jboss.tools.rsp.server.spi.servertype,
  org.jboss.tools.rsp.server.spi.util,
  org.osgi.framework,
- org.osgi.service.log,
  org.slf4j
-Export-Package: org.jboss.tools.rsp.server,
- org.jboss.tools.rsp.server.core.internal,
- org.jboss.tools.rsp.server.discovery,
- org.jboss.tools.rsp.server.discovery.serverbeans,
- org.jboss.tools.rsp.server.filewatcher,
- org.jboss.tools.rsp.server.jobs,
- org.jboss.tools.rsp.server.model,
- org.jboss.tools.rsp.server.model.internal;x-friends:="org.jboss.tools.rsp.server.test",
- org.jboss.tools.rsp.server.model.internal.publishing;x-friends:="org.jboss.tools.rsp.server.test",
- org.jboss.tools.rsp.server.persistence
-Require-Bundle: org.jboss.tools.rsp.api
+Bundle-Activator: org.jboss.tools.rsp.server.liberty.impl.Activator

@@ -11,3 +11,7 @@ target/
 /.metadata/
 /.recommenders/
 /.sonarlint/
+.DS_Store
+.sdkmanrc
+/distribution/distribution.liberty.custom
+/debug

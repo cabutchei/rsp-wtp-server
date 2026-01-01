@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         id="org.jboss.tools.rsp.server.product"
+         point="org.eclipse.core.runtime.products">
+      <product
+            application="org.jboss.tools.rsp.server.product.application"
+            name="Runtime Server Protocol Equinox Server">
+         <property
+               name="aboutText"
+               value="Runtime Server Protocol server packaged for the Equinox runtime."/>
+      </product>
+   </extension>
+   <extension
+         id="org.jboss.tools.rsp.server.product.application"
+         point="org.eclipse.core.runtime.applications">
+      <application>
+         <run class="org.jboss.tools.rsp.server.product.RSPProductApplication"/>
+      </application>
+   </extension>
+</plugin>

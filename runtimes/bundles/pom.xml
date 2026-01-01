@@ -17,5 +17,7 @@
     <module>org.jboss.tools.rsp.server.redhat.download</module>
     <module>org.jboss.tools.rsp.server.minishift</module>
     <module>org.jboss.tools.rsp.server.wildfly</module>
+    <module>org.jboss.tools.rsp.server.liberty</module>
+    <module>org.jboss.tools.rsp.server.liberty.custom</module>
   </modules>
 </project>

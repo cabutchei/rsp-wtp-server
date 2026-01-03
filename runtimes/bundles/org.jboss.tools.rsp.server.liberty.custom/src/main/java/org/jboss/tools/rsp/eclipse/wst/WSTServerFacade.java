@@ -6,14 +6,35 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
-import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IProjectDescription;
+import org.eclipse.core.resources.ResourcesPlugin;
+// import org.eclipse.core.runtime.CoreException;
+import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.wst.server.core.IRuntimeType;
 import org.eclipse.wst.server.core.IRuntimeWorkingCopy;
 import org.eclipse.wst.server.core.ServerCore;
+import org.eclipse.wst.server.core.ServerUtil;
+import org.jboss.tools.rsp.api.dao.DeployableReference;
+import org.jboss.tools.rsp.api.dao.ServerHandle;
+import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
+import org.jboss.tools.rsp.eclipse.core.runtime.Status;
+import org.jboss.tools.rsp.server.ServerCoreActivator;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
+
+import org.eclipse.wst.common.project.facet.core.IProjectFacetVersion;
+import org.eclipse.wst.common.project.facet.core.ProjectFacetsManager;
+
+import org.eclipse.wst.common.componentcore.ComponentCore;
+import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
+import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
+
+// import org.eclipse.wst.server.core.IServerWorkingCopy;
 
 
 
@@ -43,7 +64,140 @@ public class WSTServerFacade {
 		registry.clear();
 	}
 
-	public void createServer(IServerType serverType, String id, Map<String, Object> attributes) {
+	public IStatus addDeployable(DeployableReference ref, ServerHandle server) {
+		org.eclipse.core.runtime.IPath projectDescription = new org.eclipse.core.runtime.Path(ref.getPath()).append(".project");
+		try {
+			IProjectDescription desc = ResourcesPlugin.getWorkspace().loadProjectDescription(projectDescription);
+			IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(desc.getName());
+			if (!project.exists()) project.create(desc, new NullProgressMonitor());
+			project.open(new NullProgressMonitor());
+			org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
+			if (modules == null || modules.length == 0) {
+				IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
+				return status;
+			}
+			org.eclipse.wst.server.core.IServerWorkingCopy copy = this.registry.getWst(server.getId()).createWorkingCopy();
+			try {
+				copy.modifyModules(modules, null, new NullProgressMonitor());
+				copy.save(false, new NullProgressMonitor());
+			} catch (org.eclipse.core.runtime.CoreException e) {
+				e.printStackTrace();
+				IStatus status = this.adapter.toRspStatus(e.getStatus());
+				return status;
+			}
+			return Status.OK_STATUS;
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			e.printStackTrace();
+			IStatus status = this.adapter.toRspStatus(e.getStatus());
+			return status;
+		}
+	}
+
+	public IStatus canAddDeployable(DeployableReference ref, ServerHandle server) {
+		org.eclipse.core.runtime.IPath projectDescription = new org.eclipse.core.runtime.Path(ref.getPath()).append(".project");
+		try {
+			IProjectDescription desc = ResourcesPlugin.getWorkspace().loadProjectDescription(projectDescription);
+			IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(desc.getName());
+			// temporary hack to get around missing project in workspace
+			IProjectDescription webDesc = ResourcesPlugin.getWorkspace().loadProjectDescription(new org.eclipse.core.runtime.Path("/Users/cabutchei/Documents/eclipse/runtime-run-eclipse-window/SomeWebModule").append(".project"));
+			IProject web = ResourcesPlugin.getWorkspace().getRoot().getProject(webDesc.getName());
+			if (!web.exists()) web.create(webDesc, new NullProgressMonitor());
+			web.open(new NullProgressMonitor());
+			// end
+			if (!project.exists()) project.create(desc, new NullProgressMonitor());
+			project.open(new NullProgressMonitor());
+
+			//
+			IVirtualComponent earVC = ComponentCore.createComponent(project);
+			IVirtualComponent webVC = ComponentCore.createComponent(web);
+			IVirtualReference reference = ComponentCore.createReference(earVC, webVC);
+			reference.setArchiveName(webVC.getName() + ".war");
+			reference.setRuntimePath(new Path("/"));
+			// earVC.addReferences(new IVirtualReference[] {reference});
+			//
+
+			// TODO: jst.web is not getting picked up - need to figure out why
+			IProjectFacetVersion version = ProjectFacetsManager.getProjectFacet("jst.ear").getLatestVersion();
+			IProjectFacetVersion webVersion = ProjectFacetsManager.getProjectFacet("jst.web").getLatestVersion();
+			Set<IProjectFacetVersion> earFacets = ProjectFacetsManager.create(project).getProjectFacets();
+			Set<IProjectFacetVersion> webFacets = ProjectFacetsManager.create(web).getProjectFacets();
+			org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
+			if (modules == null || modules.length == 0) {
+				IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
+				return status;
+			}
+			org.eclipse.core.runtime.IStatus status = this.registry.getWst(server.getId()).canModifyModules(modules, null, new NullProgressMonitor());
+			// this.registry.getWst(server.getId()).canModifyModules(modules, null, new NullProgressMonitor())
+			org.eclipse.wst.server.core.IServerWorkingCopy copy = this.registry.getWst(server.getId()).createWorkingCopy();
+			// copy.modifyModules(modules, null, new NullProgressMonitor());
+			// copy.save(false, new NullProgressMonitor());
+			return this.adapter.toRspStatus(status);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			e.printStackTrace();
+			IStatus status = this.adapter.toRspStatus(e.getStatus());
+			return status;
+		}
+	}
+
+	public IStatus removeDeployable(DeployableReference ref, ServerHandle server) {
+		org.eclipse.core.runtime.IPath projectDescription = new org.eclipse.core.runtime.Path(ref.getPath()).append(".project");
+		try {
+			IProjectDescription desc = ResourcesPlugin.getWorkspace().loadProjectDescription(projectDescription);
+			IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(desc.getName());
+			if (!project.exists()) project.create(desc, new NullProgressMonitor());
+			project.open(new NullProgressMonitor());
+			org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
+			if (modules == null || modules.length == 0) {
+				IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
+				return status;
+			}
+			org.eclipse.wst.server.core.IServerWorkingCopy copy = this.registry.getWst(server.getId()).createWorkingCopy();
+			try {
+				copy.modifyModules(null, modules, new NullProgressMonitor());
+				copy.save(false, new NullProgressMonitor());
+			} catch (org.eclipse.core.runtime.CoreException e) {
+				e.printStackTrace();
+				IStatus status = this.adapter.toRspStatus(e.getStatus());
+				return status;
+			}
+			return Status.OK_STATUS;
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			e.printStackTrace();
+			IStatus status = this.adapter.toRspStatus(e.getStatus());
+			return status;
+		}
+	}
+
+	public IStatus canRemoveDeployable(DeployableReference ref, ServerHandle server) {
+			org.eclipse.core.runtime.IPath projectDescription = new org.eclipse.core.runtime.Path(ref.getPath()).append(".project");
+			try {
+				IProjectDescription desc = ResourcesPlugin.getWorkspace().loadProjectDescription(projectDescription);
+				IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(desc.getName());
+				if (!project.exists()) project.create(desc, new NullProgressMonitor());
+				org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
+				if (modules == null || modules.length == 0) {
+					IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
+					return status;
+				}
+				org.eclipse.core.runtime.IStatus status = this.registry.getWst(server.getId()).canModifyModules(null, modules, new NullProgressMonitor());
+				return this.adapter.toRspStatus(status);
+			} catch (org.eclipse.core.runtime.CoreException e) {
+				e.printStackTrace();
+				IStatus status = this.adapter.toRspStatus(e.getStatus());
+				return status;
+			}
+	}
+
+	public org.eclipse.wst.server.core.IServer getServer(String id) {
+		for (org.eclipse.wst.server.core.IServer server : ServerCore.getServers()) {
+			if (server.getId().equals(id)) {
+				return server;
+			}
+		}
+		return null;
+	}
+
+	public void createServer(IServerType serverType, String id, Map<String, Object> attributes) throws CoreException{
 		org.eclipse.wst.server.core.IServer wstServer = null; // Replace with actual server creation logic
 		if (serverType == null) {
 			throw new IllegalArgumentException("serverType cannot be null");
@@ -66,9 +220,9 @@ public class WSTServerFacade {
 			server.setAttribute("serverName",   "AppSrv01");
 			wstServer = server.save(false, monitor);
 			registry.register(wstServer, id);
-		} catch (CoreException e) {
-			// TODO Auto-generated catch block
+		} catch (org.eclipse.core.runtime.CoreException e) {
 			e.printStackTrace();
+			throw new CoreException(this.adapter.toRspStatus(e.getStatus()));
 		}
 
 	}

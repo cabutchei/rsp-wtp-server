@@ -13,12 +13,15 @@ import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.launching.memento.JSONMemento;
 import org.jboss.tools.rsp.server.generic.servertype.GenericServerBehavior;
+import org.jboss.tools.rsp.server.publishing.WSTServerPublishStateModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
+import org.jboss.tools.rsp.server.spi.servertype.IServerPublishModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServerWorkingCopy;
 import org.jboss.tools.rsp.server.tomcat.servertype.impl.LibertyContextRootSupport;
 
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
+import org.jboss.tools.rsp.eclipse.wst.WSTServerFacade;
 import org.jboss.tools.rsp.server.ServerCoreActivator;
 
 import java.util.List;
@@ -47,11 +50,17 @@ import org.eclipse.debug.core.IStreamListener;
 import org.eclipse.debug.core.model.IStreamMonitor;
 import org.eclipse.debug.core.ILaunch;
 
+import java.util.function.Supplier;
+
 
 public class LibertyServerDelegate extends GenericServerBehavior implements IServerDelegate {
 
-	public LibertyServerDelegate(IServer server, JSONMemento behaviorMemento) {
+	// private static final Logger LOG = LoggerFactory.getLogger(LibertyServerDelegate.class);
+	private WSTServerFacade facade;
+
+	public LibertyServerDelegate(IServer server, JSONMemento behaviorMemento, WSTServerFacade facade) {
 		super(server, behaviorMemento);
+		this.facade = facade;
 	}
 	
 	@Override
@@ -62,6 +71,22 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 	@Override
 	public String[] getDeploymentUrls(String strat, String baseUrl, String deployableOutputName, DeployableState ds) {
 		return new LibertyContextRootSupport().getDeploymentUrls(strat, baseUrl, deployableOutputName, ds); 
+	}
+
+	@Override
+	public IStatus canAddDeployable(DeployableReference ref) {
+		return this.facade.canAddDeployable(ref, getServerHandle());
+	}
+
+	@Override
+	public IStatus canRemoveDeployable(DeployableReference ref) {
+		return this.facade.canRemoveDeployable(ref, getServerHandle());
+	}
+
+	@Override
+	public IServerPublishModel createServerPublishModel() {
+		Supplier<WSTServerFacade> facadeSupplier = () -> this.facade;
+		return new WSTServerPublishStateModel(this, facadeSupplier, getFileWatcherService(), getFullPublishRequiredCallback());
 	}
 
 	// public IStatus canPublishDeployable(DeployableReference reference, int publishRequestType) {

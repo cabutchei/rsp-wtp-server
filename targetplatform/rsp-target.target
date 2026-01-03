@@ -100,12 +100,17 @@
       		<unit id="org.eclipse.xsd.edit.feature.group" />
       		<unit id="org.eclipse.wst.server.discovery" />
 			<!-- TODO: see if there are features with the below plugins -->
-      		<unit id="org.eclipse.jst.j2ee" />
-      		<unit id="org.eclipse.jst.j2ee.core" />
       		<unit id="org.eclipse.wst.web" />
       		<unit id="org.eclipse.jem" />
       		<unit id="org.eclipse.jem.workbench" />
       		<unit id="org.eclipse.emf.codegen" />
+      		<unit id="org.eclipse.emf.ecore.edit" />
+      		<unit id="org.eclipse.jst.j2ee" />
+      		<unit id="org.eclipse.jst.j2ee.core" />
+      		<unit id="org.eclipse.jst.j2ee.ejb" />
+      		<unit id="org.eclipse.jst.j2ee.web" />
+      		<unit id="org.eclipse.jst.jee" />
+      		<unit id="org.eclipse.jst.j2ee.jca" />
       		<unit id="org.eclipse.jst.common.frameworks" />
       		<unit id="org.eclipse.jst.common.annotations.core" />
       		<unit id="org.eclipse.jst.common.annotations.controller" />

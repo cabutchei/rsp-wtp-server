@@ -28,13 +28,12 @@ import org.slf4j.LoggerFactory;
 public class Activator extends GenericServerActivator {
 	public static final String BUNDLE_ID = "org.jboss.tools.rsp.server.liberty.custom";
 	private static final Logger LOG = LoggerFactory.getLogger(Activator.class);
-	private WstIntegrationService wstIntegration;
+	private static WstIntegrationService wstIntegration;
 
 	@Override
 	public void start(BundleContext context) throws Exception {
 		LOG.info("Bundle {} starting...", context.getBundle().getSymbolicName());
 		addExtensions(ServerCoreActivator.BUNDLE_ID, context);
-		// addExtensions();
 	}
 
 	@Override
@@ -89,7 +88,7 @@ public class Activator extends GenericServerActivator {
 					@Override
 					public IServerDelegate createServerDelegate(String typeId, IServer server) {
 						if (typeId != null && typeId.startsWith(ILibertyServerAttributes.LIBERTY_SERVER_TYPE_PREFIX)) {
-							return new LibertyServerDelegate(server, behaviorMemento);
+							return new LibertyServerDelegate(server, behaviorMemento, Activator.wstIntegration.getFacade());
 						}
 						return null;
 					}

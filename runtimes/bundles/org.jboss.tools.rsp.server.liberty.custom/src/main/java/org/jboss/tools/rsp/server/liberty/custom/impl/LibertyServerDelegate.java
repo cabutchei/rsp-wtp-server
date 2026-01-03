@@ -19,7 +19,7 @@ import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
 import org.jboss.tools.rsp.server.spi.servertype.IServerPublishModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServerWorkingCopy;
 import org.jboss.tools.rsp.server.tomcat.servertype.impl.LibertyContextRootSupport;
-
+import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 import org.jboss.tools.rsp.eclipse.wst.WSTServerFacade;
 import org.jboss.tools.rsp.server.ServerCoreActivator;
@@ -89,22 +89,20 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 		return new WSTServerPublishStateModel(this, facadeSupplier, getFileWatcherService(), getFullPublishRequiredCallback());
 	}
 
-	// public IStatus canPublishDeployable(DeployableReference reference, int publishRequestType) {
-	// 	return IStatus
-	// }
+	@Override
+	public IStatus canPublish() {
+		return this.facade.canPublish(getServerHandle());
+	}
 
-	// @Override
-	// protected void publishDeployable(DeployableReference reference, 
-	// 		int publishRequestType, int modulePublishState) throws org.jboss.tools.rsp.eclipse.core.runtime.CoreException {
-	// 	int syncState = getPublishController()
-	// 			.publishModule(reference, publishRequestType, modulePublishState);
-	// 	setDeployablePublishState(reference, syncState);
-		
-	// 	boolean serverStarted = getServerState().getState() == ServerManagementAPIConstants.STATE_STARTED;
-	// 	int deployState = (serverStarted ? ServerManagementAPIConstants.
-	// 			STATE_STARTED : ServerManagementAPIConstants.STATE_STOPPED);
-	// 	setDeployableState(reference, deployState);
-	// }
+	@Override
+	public void publishDeployable(DeployableReference reference, 
+			int publishRequestType, int modulePublishState) throws CoreException {
+				// TODO: use modulePublishState?
+		IStatus status = this.facade.publish(getServerHandle(), publishRequestType);
+		if (!status.isOK()) {
+			throw new CoreException(status);
+		}
+	}
 
 }
 

@@ -9,6 +9,8 @@
 package org.jboss.tools.rsp.eclipse.wst;
 
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.wst.server.core.IServer;
+import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
 import org.jboss.tools.rsp.eclipse.core.runtime.MultiStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.Status;
 
@@ -28,6 +30,36 @@ public class WstModelAdapter {
 			return new MultiStatus(pluginId, status.getCode(), children, status.getMessage(), status.getException());
 		}
 		return new Status(status.getSeverity(), pluginId, status.getCode(), status.getMessage(), status.getException());
+	}
+
+	public int toRspPublishKind(int wstPublishKind) {
+		switch (wstPublishKind) {
+			case IServer.PUBLISH_INCREMENTAL:
+				return ServerManagementAPIConstants.PUBLISH_INCREMENTAL;
+			case IServer.PUBLISH_FULL:
+				return ServerManagementAPIConstants.PUBLISH_FULL;
+			case IServer.PUBLISH_AUTO:
+				return ServerManagementAPIConstants.PUBLISH_AUTO;
+			case IServer.PUBLISH_CLEAN:
+				return ServerManagementAPIConstants.PUBLISH_CLEAN;
+			default:
+				return wstPublishKind;
+		}
+	}
+
+	public int toWstPublishKind(int rspPublishKind) {
+		switch (rspPublishKind) {
+			case ServerManagementAPIConstants.PUBLISH_INCREMENTAL:
+				return IServer.PUBLISH_INCREMENTAL;
+			case ServerManagementAPIConstants.PUBLISH_FULL:
+				return IServer.PUBLISH_FULL;
+			case ServerManagementAPIConstants.PUBLISH_AUTO:
+				return IServer.PUBLISH_AUTO;
+			case ServerManagementAPIConstants.PUBLISH_CLEAN:
+				return IServer.PUBLISH_CLEAN;
+			default:
+				return rspPublishKind;
+		}
 	}
 
 	private org.jboss.tools.rsp.eclipse.core.runtime.IStatus[] convertChildren(IStatus[] children) {

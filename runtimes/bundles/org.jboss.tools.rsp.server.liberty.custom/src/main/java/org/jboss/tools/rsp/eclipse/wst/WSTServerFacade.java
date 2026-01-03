@@ -188,6 +188,16 @@ public class WSTServerFacade {
 			}
 	}
 
+	public IStatus canPublish(ServerHandle server) {
+		return this.adapter.toRspStatus(this.registry.getWst(server.getId()).canPublish());
+	}
+
+	public IStatus publish(ServerHandle server, int rspKind) {
+			org.eclipse.core.runtime.IStatus status = this.registry.getWst(server.getId())
+			.publish(this.adapter.toWstPublishKind(rspKind), new NullProgressMonitor());
+			return this.adapter.toRspStatus(status);
+	}
+
 	public org.eclipse.wst.server.core.IServer getServer(String id) {
 		for (org.eclipse.wst.server.core.IServer server : ServerCore.getServers()) {
 			if (server.getId().equals(id)) {

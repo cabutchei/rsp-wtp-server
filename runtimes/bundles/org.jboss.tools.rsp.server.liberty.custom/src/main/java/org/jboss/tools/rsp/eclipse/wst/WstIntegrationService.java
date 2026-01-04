@@ -12,6 +12,8 @@ import java.util.Objects;
 
 import org.jboss.tools.rsp.server.spi.model.DefaultServerLifecycleStrategy;
 import org.jboss.tools.rsp.server.spi.model.IServerModel;
+import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
+import org.jboss.tools.rsp.eclipse.workspace.EclipseWorkspaceService;
 
 /**
  * Owns WST integration components and installs the lifecycle strategy.
@@ -22,6 +24,7 @@ public final class WstIntegrationService {
 	private final WSTServerFacade facade;
 	private final WstServerLifecycleStrategy lifecycleStrategy;
 	private final WstModelAdapter adapter;
+	private final IWorkspaceService workspaceService;
 
 	public WstIntegrationService() {
 		this(new ServerHandleRegistry());
@@ -32,6 +35,7 @@ public final class WstIntegrationService {
 		this.adapter = new WstModelAdapter();
 		this.facade = new WSTServerFacade(this.registry, this.adapter);
 		this.lifecycleStrategy = new WstServerLifecycleStrategy(this.facade);
+		this.workspaceService = new EclipseWorkspaceService();
 	}
 
 	public WSTServerFacade getFacade() {
@@ -44,6 +48,10 @@ public final class WstIntegrationService {
 
 	public WstModelAdapter getAdapter() {
 		return adapter;
+	}
+
+	public IWorkspaceService getWorkspaceService() {
+		return workspaceService;
 	}
 
 	public WstServerLifecycleStrategy getLifecycleStrategy() {

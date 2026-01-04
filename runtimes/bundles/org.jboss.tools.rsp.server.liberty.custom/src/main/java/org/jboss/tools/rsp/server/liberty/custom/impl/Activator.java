@@ -17,10 +17,12 @@ import org.jboss.tools.rsp.eclipse.wst.WstIntegrationService;
 import org.jboss.tools.rsp.server.generic.GenericServerActivator;
 import org.jboss.tools.rsp.server.generic.IServerBehaviorFromJSONProvider;
 import org.jboss.tools.rsp.server.generic.IServerBehaviorProvider;
+import org.jboss.tools.rsp.server.spi.model.IServerModel;
 import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
 import org.jboss.tools.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
+import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +51,13 @@ public class Activator extends GenericServerActivator {
 			wstIntegration = new WstIntegrationService();
 		}
 		IServerManagementModel model = LauncherSingleton.getDefault().getLauncher().getModel();
-		wstIntegration.install(model.getServerModel());
+		IServerModel serverModel = model.getServerModel();
+		wstIntegration.install(serverModel);
+		IStatus wsStatus = wstIntegration.getWorkspaceService()
+				.openWorkspace(wstIntegration.getWorkspaceService().getWorkspaceRoot());
+		if (wsStatus != null && !wsStatus.isOK()) {
+			LOG.warn("Workspace initialization failed: {}", wsStatus.getMessage());
+		}
 	}
 
 	@Override

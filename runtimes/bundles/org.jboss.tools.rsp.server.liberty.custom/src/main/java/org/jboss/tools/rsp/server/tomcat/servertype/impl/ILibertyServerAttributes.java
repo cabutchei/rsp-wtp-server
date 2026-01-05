@@ -12,7 +12,7 @@ import org.jboss.tools.rsp.api.DefaultServerAttributes;
 
 public interface ILibertyServerAttributes extends DefaultServerAttributes {
 	// this property defines what delegate will be bound to server object
-	public static final String LIBERTY_SERVER_TYPE_PREFIX = "org.jboss.ide.eclipse.as.server.fucking.liberty";
+	public static final String LIBERTY_SERVER_TYPE_PREFIX = "com.ibm.ws.st.server.wlp";
 	
 
 	/*

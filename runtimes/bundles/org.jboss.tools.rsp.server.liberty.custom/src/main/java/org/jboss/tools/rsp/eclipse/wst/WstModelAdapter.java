@@ -10,9 +10,11 @@ package org.jboss.tools.rsp.eclipse.wst;
 
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.wst.server.core.IServer;
+import org.eclipse.wst.server.core.IServerType;
 import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
 import org.jboss.tools.rsp.eclipse.core.runtime.MultiStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.Status;
+import org.jboss.tools.rsp.server.spi.model.IServerModel;
 
 /**
  * Adapts WST/Eclipse runtime objects to the RSP runtime equivalents.
@@ -60,6 +62,13 @@ public class WstModelAdapter {
 			default:
 				return rspPublishKind;
 		}
+	}
+
+	public org.jboss.tools.rsp.server.spi.servertype.IServerType toRspServerType(IServerType wstType, IServerModel model) {
+		if (wstType == null || model == null) {
+			return null;
+		}
+		return model.getIServerType(wstType.getId());
 	}
 
 	private org.jboss.tools.rsp.eclipse.core.runtime.IStatus[] convertChildren(IStatus[] children) {

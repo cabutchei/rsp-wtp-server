@@ -8,13 +8,21 @@
  ******************************************************************************/
 package org.jboss.tools.rsp.server.liberty.custom.impl;
 
-import org.jboss.tools.rsp.server.LauncherSingleton;
-import org.jboss.tools.rsp.server.ServerManagementServerLauncher;
-import org.jboss.tools.rsp.server.generic.GenericServerExtensionModel;
+import java.io.IOException;
+
 import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
+import org.jboss.tools.rsp.eclipse.wst.WstIntegrationService;
+import org.jboss.tools.rsp.eclipse.wst.WstServerManagementModel;
+import org.jboss.tools.rsp.server.LauncherSingleton;
+import org.jboss.tools.rsp.server.RSPFlags;
+import org.jboss.tools.rsp.server.ServerManagementServerImpl;
+import org.jboss.tools.rsp.server.ServerManagementServerLauncher;
+import org.jboss.tools.rsp.server.generic.GenericServerExtensionModel;
+import org.jboss.tools.rsp.server.persistence.DataLocationCore;
 
 
+/** We are now skipping ServerCoreActivator and using our own Launcher. This allows us to have control over the server management model instance.*/
 public class LibertyServerMain extends ServerManagementServerLauncher {
 
 	public Object start(IApplicationContext context) throws Exception {
@@ -28,14 +36,30 @@ public class LibertyServerMain extends ServerManagementServerLauncher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		LibertyServerMain instance = new LibertyServerMain(args[0]);
+		LibertyServerMain instance = new LibertyServerMain("" + RSPFlags.DEFAULT_PORT);
 		LauncherSingleton.getDefault().setLauncher(instance);
 		instance.launch();
 		instance.shutdownOnInput();
 	}
 	
-	public LibertyServerMain(String string) {
-		super(string);
+	public LibertyServerMain(String port) {
+		super(port);
+	}
+
+	@Override
+	protected ServerManagementServerImpl createImpl() {
+		DataLocationCore dlc = new DataLocationCore(this.portString);
+		if (!dlc.isInUse()) {
+			try {
+				dlc.lock();
+				WstIntegrationService integration = Activator.getWstIntegrationService();
+				return new ServerManagementServerImpl(this, new WstServerManagementModel(dlc, integration));
+			} catch (IOException ioe) {
+				throw new RuntimeException("Error locking workspace", ioe);
+			}
+		}
+		throw new RuntimeException("Workspace is locked. Please verify workspace is not in use, or, remove the .lock file at "
+				+ dlc.getDataLocation().getAbsolutePath() + "/.lock");
 	}
 	
 	@Override

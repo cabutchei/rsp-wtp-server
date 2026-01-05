@@ -9,8 +9,7 @@
 	includeLaunchers="true">
 	<configIni use="default"/>
 	<launcherArgs>
-		<programArgs>-consoleLog</programArgs>
-		<vmArgs>-Dosgi.instance.area.default=@user.home/.rsp</vmArgs>
+		<vmArgs>-Dosgi.instance.area.default=@user.home/workspace</vmArgs>
 	</launcherArgs>
 	<plugins>
 		<plugin id="org.jboss.tools.rsp.api"/>
@@ -38,7 +37,8 @@
 		<plugin id="com.ibm.ws.st.core" autoStart="true" startLevel="3"/>
 		<plugin id="org.eclipse.equinox.app"/>
 		<plugin id="org.eclipse.core.runtime" autoStart="true" startLevel="0"/>
+		<plugin id="org.eclipse.core.resources" autoStart="true" startLevel="0"/>
 		<plugin id="org.eclipse.equinox.simpleconfigurator" autoStart="true" startLevel="1"/>
-		<plugin id="org.jboss.tools.rsp.server" autoStart="true" startLevel="4"/>
+		<plugin id="org.jboss.tools.rsp.server" autoStart="false" startLevel="4"/>
 	</configurations>
 </product>

@@ -8,6 +8,9 @@
  ******************************************************************************/
 package org.jboss.tools.rsp.eclipse.workspace;
 
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -25,6 +28,7 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.ServerUtil;
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
+import org.jboss.tools.rsp.eclipse.core.runtime.MultiStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.Status;
 import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
 import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
@@ -35,7 +39,8 @@ public class EclipseWorkspaceService implements IWorkspaceService {
 
 	@Override
 	public java.nio.file.Path getWorkspaceRoot() {
-		IPath rootLocation = ResourcesPlugin.getWorkspace().getRoot().getLocation();
+		IPath rootLocation = new Path("/Users/cabutchei/workspace");
+		// IPath rootLocation = ResourcesPlugin.getWorkspace().getRoot().getLocation();
 		if (rootLocation == null) {
 			return null;
 		}
@@ -78,6 +83,44 @@ public class EclipseWorkspaceService implements IWorkspaceService {
 		} catch (CoreException ce) {
 			return errorStatus("Failed to import project at " + projectRoot, ce);
 		}
+	}
+
+	@Override
+	public IStatus importAllProjects() {
+		java.nio.file.Path workspaceRoot = getWorkspaceRoot();
+		if (workspaceRoot == null) {
+			return errorStatus("Workspace root is not available", null);
+		}
+		if (!Files.isDirectory(workspaceRoot)) {
+			return errorStatus("Workspace root is not a directory: " + workspaceRoot, null);
+		}
+		List<IStatus> failures = new ArrayList<>();
+		java.nio.file.Path rootProject = workspaceRoot.resolve(".project");
+		if (Files.isRegularFile(rootProject)) {
+			IStatus status = importProject(workspaceRoot);
+			if (!status.isOK()) {
+				failures.add(status);
+			}
+			return aggregateImportResults(failures);
+		}
+		try (DirectoryStream<java.nio.file.Path> stream = Files.newDirectoryStream(workspaceRoot)) {
+			for (java.nio.file.Path child : stream) {
+				if (!Files.isDirectory(child)) {
+					continue;
+				}
+				java.nio.file.Path projectFile = child.resolve(".project");
+				if (!Files.isRegularFile(projectFile)) {
+					continue;
+				}
+				IStatus status = importProject(child);
+				if (!status.isOK()) {
+					failures.add(status);
+				}
+			}
+		} catch (IOException e) {
+			return errorStatus("Failed to scan workspace root " + workspaceRoot, e);
+		}
+		return aggregateImportResults(failures);
 	}
 
 	@Override
@@ -148,5 +191,14 @@ public class EclipseWorkspaceService implements IWorkspaceService {
 
 	private IStatus errorStatus(String message, Throwable t) {
 		return new Status(IStatus.ERROR, BUNDLE_ID, message, t);
+	}
+
+	private IStatus aggregateImportResults(List<IStatus> failures) {
+		if (failures.isEmpty()) {
+			return Status.OK_STATUS;
+		}
+		MultiStatus status = new MultiStatus(BUNDLE_ID, IStatus.ERROR,
+				failures.toArray(new IStatus[0]), "One or more projects failed to import", null);
+		return status;
 	}
 }

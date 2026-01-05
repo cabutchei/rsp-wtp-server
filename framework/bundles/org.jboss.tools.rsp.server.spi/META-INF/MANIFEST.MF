@@ -35,4 +35,5 @@ Export-Package: org.jboss.tools.rsp.server.spi,
  org.jboss.tools.rsp.server.spi.publishing,
  org.jboss.tools.rsp.server.spi.runtimes,
  org.jboss.tools.rsp.server.spi.servertype,
- org.jboss.tools.rsp.server.spi.util
+ org.jboss.tools.rsp.server.spi.util,
+ org.jboss.tools.rsp.server.spi.workspace

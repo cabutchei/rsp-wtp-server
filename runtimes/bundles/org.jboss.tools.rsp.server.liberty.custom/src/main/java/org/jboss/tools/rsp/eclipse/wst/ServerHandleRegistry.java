@@ -1,5 +1,6 @@
 package org.jboss.tools.rsp.eclipse.wst;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -33,6 +34,10 @@ public class ServerHandleRegistry {
         rspById.put(rspId, rsp);
     }
 
+    public void register(org.jboss.tools.rsp.server.spi.servertype.IServer rsp) {
+        rspById.put(rsp.getId(), rsp);
+    }
+
     public org.eclipse.wst.server.core.IServer getWst(String id) {
         return wstById.get(id);
     }
@@ -50,6 +55,10 @@ public class ServerHandleRegistry {
         String id = wst.getId();
         wstById.put(id, wst);
         return rspById.computeIfAbsent(id, k -> factory.apply(wst));
+    }
+
+    public Map<String, org.jboss.tools.rsp.server.spi.servertype.IServer> getAllRspServers() {
+        return rspById;
     }
 
     public void unregisterById(String id) {

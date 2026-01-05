@@ -14,7 +14,7 @@ import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 
 
-
+// TODO: we are probably getting rid of this class
 public class WstServerLifecycleStrategy implements ServerLifecycleStrategy {
 
 	private final WSTServerFacade facade;
@@ -32,7 +32,7 @@ public class WstServerLifecycleStrategy implements ServerLifecycleStrategy {
 	}
 
 	public void afterLoad(IServer server) throws CoreException {
-		org.eclipse.wst.server.core.IServer wstServer = this.facade.getServer(server.getId());
+		org.eclipse.wst.server.core.IServer wstServer = this.facade.getRegistry().getWst(server.getId());
 		if (wstServer == null) {
 			IStatus s = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
 					"Unable to find WST server for RSP server with id: " + server.getId());

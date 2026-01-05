@@ -24,7 +24,10 @@ import org.jboss.tools.rsp.api.dao.ServerHandle;
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.Status;
 import org.jboss.tools.rsp.server.ServerCoreActivator;
+import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
+import org.jboss.tools.rsp.server.spi.model.IServerModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
+import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 
 import org.eclipse.wst.common.project.facet.core.IProjectFacetVersion;
@@ -33,8 +36,6 @@ import org.eclipse.wst.common.project.facet.core.ProjectFacetsManager;
 import org.eclipse.wst.common.componentcore.ComponentCore;
 import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
-
-// import org.eclipse.wst.server.core.IServerWorkingCopy;
 
 
 
@@ -58,6 +59,30 @@ public class WSTServerFacade {
 
 	public WstModelAdapter getAdapter() {
 		return adapter;
+	}
+
+	public IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer, IServerManagementModel managementModel) {
+		return createServerProxy(wstServer, managementModel, null);
+	}
+
+	public IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer,
+			IServerManagementModel managementModel, IServerDelegate delegate) {
+		Objects.requireNonNull(wstServer, "wstServer");
+		IServerModel serverModel = managementModel.getServerModel();
+		IServerType serverType = serverModel.getIServerType(wstServer.getServerType().getId());
+		WstServerProxy proxy = new WstServerProxy(wstServer, serverType, managementModel, serverModel, adapter);
+		if (delegate != null) {
+			proxy.setDelegate(delegate);
+		}
+		return proxy;
+	}
+
+	public IServer[] createServeProxies(IServerManagementModel managementModel) {
+		List<IServer> rspServers = new ArrayList<>();
+		for (org.eclipse.wst.server.core.IServer wstServer : ServerCore.getServers()) {
+			rspServers.add(createServerProxy(wstServer, managementModel));
+		}
+		return rspServers.toArray(new IServer[rspServers.size()]);
 	}
 
 	public void dispose() {
@@ -198,14 +223,14 @@ public class WSTServerFacade {
 			return this.adapter.toRspStatus(status);
 	}
 
-	public org.eclipse.wst.server.core.IServer getServer(String id) {
-		for (org.eclipse.wst.server.core.IServer server : ServerCore.getServers()) {
-			if (server.getId().equals(id)) {
-				return server;
-			}
-		}
-		return null;
-	}
+	// public org.eclipse.wst.server.core.IServer getServer(String id) {
+	// 	for (org.eclipse.wst.server.core.IServer server : ServerCore.getServers()) {
+	// 		if (server.getId().equals(id)) {
+	// 			return server;
+	// 		}
+	// 	}
+	// 	return null;
+	// }
 
 	public void createServer(IServerType serverType, String id, Map<String, Object> attributes) throws CoreException{
 		org.eclipse.wst.server.core.IServer wstServer = null; // Replace with actual server creation logic
@@ -236,4 +261,20 @@ public class WSTServerFacade {
 		}
 
 	}
+
+	public IServer getServer(String id) {
+		return this.registry.getRsp(id);
+	}
+
+	public Map<String, IServer> getServers() {
+		return this.registry.getAllRspServers();
+	}
+
+	// public IServer[] getServers() {
+	// 	List<IServer> rspServers = new ArrayList<>();
+	// 	for (org.eclipse.wst.server.core.IServer wstServer : ServerCore.getServers()) {
+	// 		rspServers.add(createServerProxy(wstServer));
+	// 	}
+	// 	return rspServers.toArray(new IServer[rspServers.size()]);
+	// }
 }

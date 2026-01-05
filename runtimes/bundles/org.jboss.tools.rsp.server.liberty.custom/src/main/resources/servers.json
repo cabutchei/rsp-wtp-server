@@ -1,6 +1,6 @@
 {
   "serverTypes": {
-    "org.jboss.ide.eclipse.as.server.fucking.liberty.25.0.0": {
+    "com.ibm.ws.st.server.wlp": {
       "template": "liberty.template",
       "discoveries": {
         "payara.25.x": {

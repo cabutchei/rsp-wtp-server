@@ -62,6 +62,19 @@ public class EclipseWorkspaceService implements IWorkspaceService {
 		return Status.OK_STATUS;
 	}
 
+	public IWorkspace getWorkspace() {
+		return ResourcesPlugin.getWorkspace();
+	}
+
+	public IWorkspaceRoot getWorkspaceRootResource() {
+		return getWorkspace().getRoot();
+	}
+
+	@Override
+	public IProject getProject(String projectName) {
+		return getWorkspaceRootResource().getProject(projectName);
+	}
+
 	@Override
 	public IStatus importProject(java.nio.file.Path projectRoot) {
 		if (projectRoot == null) {

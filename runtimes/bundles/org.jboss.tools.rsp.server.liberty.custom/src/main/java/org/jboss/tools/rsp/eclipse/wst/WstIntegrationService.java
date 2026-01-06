@@ -8,6 +8,8 @@
  ******************************************************************************/
 package org.jboss.tools.rsp.eclipse.wst;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 import org.jboss.tools.rsp.server.spi.model.DefaultServerLifecycleStrategy;
@@ -15,6 +17,8 @@ import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
 import org.jboss.tools.rsp.server.spi.model.IServerModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
+import org.eclipse.wst.server.core.ServerCore;
+import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.eclipse.workspace.EclipseWorkspaceService;
 
 /**
@@ -35,9 +39,9 @@ public final class WstIntegrationService implements IWstIntegrationService {
 	public WstIntegrationService(ServerHandleRegistry registry) {
 		this.registry = Objects.requireNonNull(registry, "registry");
 		this.adapter = new WstModelAdapter();
-		this.facade = new WSTServerFacade(this.registry, this.adapter);
-		this.lifecycleStrategy = new WstServerLifecycleStrategy(this.facade);
 		this.workspaceService = new EclipseWorkspaceService();
+		this.facade = new WSTServerFacade(this.registry, this.adapter, this.workspaceService);
+		this.lifecycleStrategy = new WstServerLifecycleStrategy(this.facade);
 	}
 
 	public void initialize(IServerManagementModel managementModel) {
@@ -92,8 +96,21 @@ public final class WstIntegrationService implements IWstIntegrationService {
 	@Override
 	public void refreshServers(IServerManagementModel managementModel) {
 		IServer[] servers = this.facade.createServeProxies(managementModel);
+		List<DeployableReference> references;
+		org.eclipse.wst.server.core.IServer wstServer;
 		for (IServer server : servers) {
-			this.registry.register(server);
+			references = new ArrayList<>();
+			wstServer = ServerCore.findServer(server.getId());
+			this.registry.register(wstServer, server);
+			for (org.eclipse.wst.server.core.IModule module : wstServer.getModules()) {
+				// this.adapter.collectDeployableReferences(module, references);
+				DeployableReference ref = new DeployableReference(
+					module.getName(), module.getProject().getName()
+				);
+				// ref.setOptions(null);
+				references.add(ref);
+			}
+			server.getDelegate().getServerPublishModel().initialize(references);
 		}
 	}
 }

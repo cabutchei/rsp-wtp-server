@@ -27,8 +27,6 @@ public class EntryPoint implements IApplication {
         // TODO: should this be here or elsewhere?
         WstIntegrationService integration = Activator.getWstIntegrationService();
         IServerManagementModel model = LauncherSingleton.getDefault().getLauncher().getModel();
-        IServerModel serverModel = model.getServerModel();
-        integration.install(serverModel);
         IStatus wsStatus = integration.getWorkspaceService()
                 .openWorkspace(integration.getWorkspaceService().getWorkspaceRoot());
         if (wsStatus != null && !wsStatus.isOK()) {
@@ -38,7 +36,7 @@ public class EntryPoint implements IApplication {
         if (importStatus != null && !importStatus.isOK()) {
             LOG.warn("Workspace import failed: {}", importStatus.getMessage());
         }
-        integration.initialize(model);	
+        model.getServerModel().refreshServers();
         context.applicationRunning();
 		waitUntilStopped();
         return IApplication.EXIT_OK;

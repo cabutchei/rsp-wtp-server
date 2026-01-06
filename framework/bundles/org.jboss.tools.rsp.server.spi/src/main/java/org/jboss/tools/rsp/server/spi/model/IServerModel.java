@@ -77,6 +77,8 @@ public interface IServerModel {
 
 	void removeServerType(IServerType serverType);
 	void removeServerTypes(IServerType[] serverTypes);
+	// TODO: need to deal with this later
+	default void refreshServers() {}
 	
 	void loadServers() throws CoreException;
 

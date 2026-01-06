@@ -482,7 +482,11 @@ public class WSTServerModel implements IServerModel {
 	}
 
 	public void refreshServers() {
-		
+		this.wstIntegrationService.refreshServers(this.managementModel);
+		for (IServer server : getServers().values()) {
+			this.serverDelegates.put(server.getId(), server.getDelegate());
+			fireServerAdded(server);
+		}
 	}
 
 	protected void addServer(IServer server, IServerDelegate del) {

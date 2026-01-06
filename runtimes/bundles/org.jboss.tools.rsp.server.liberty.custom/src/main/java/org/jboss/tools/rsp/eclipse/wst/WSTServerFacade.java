@@ -10,11 +10,12 @@ import java.util.Set;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
+import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
-// import org.eclipse.core.runtime.CoreException;
 import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.IRuntimeType;
 import org.eclipse.wst.server.core.IRuntimeWorkingCopy;
 import org.eclipse.wst.server.core.ServerCore;
@@ -29,7 +30,7 @@ import org.jboss.tools.rsp.server.spi.model.IServerModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
-
+import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
 import org.eclipse.wst.common.project.facet.core.IProjectFacetVersion;
 import org.eclipse.wst.common.project.facet.core.ProjectFacetsManager;
 
@@ -43,14 +44,16 @@ public class WSTServerFacade {
 
 	private final ServerHandleRegistry registry;
 	private final WstModelAdapter adapter;
+	private final IWorkspaceService workspaceService;
 
-	public WSTServerFacade(ServerHandleRegistry registry) {
-		this(registry, new WstModelAdapter());
+	public WSTServerFacade(ServerHandleRegistry registry, IWorkspaceService workspaceService) {
+		this(registry, new WstModelAdapter(), workspaceService);
 	}
 
-	public WSTServerFacade(ServerHandleRegistry registry, WstModelAdapter adapter) {
+	public WSTServerFacade(ServerHandleRegistry registry, WstModelAdapter adapter, IWorkspaceService workspaceService) {
 		this.registry = Objects.requireNonNull(registry, "registry");
 		this.adapter = Objects.requireNonNull(adapter, "adapter");
+		this.workspaceService = workspaceService;
 	}
 
 	public ServerHandleRegistry getRegistry() {
@@ -90,20 +93,17 @@ public class WSTServerFacade {
 	}
 
 	public IStatus addDeployable(DeployableReference ref, ServerHandle server) {
-		org.eclipse.core.runtime.IPath projectDescription = new org.eclipse.core.runtime.Path(ref.getPath()).append(".project");
-		try {
-			IProjectDescription desc = ResourcesPlugin.getWorkspace().loadProjectDescription(projectDescription);
-			IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(desc.getName());
-			if (!project.exists()) project.create(desc, new NullProgressMonitor());
-			project.open(new NullProgressMonitor());
-			org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
-			if (modules == null || modules.length == 0) {
-				IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
-				return status;
-			}
+			IProject project = this.workspaceService.getProject(ref.getPath());
+			IModule module = ServerUtil.getModule(project);
+			// org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
+			// if (modules == null || modules.length == 0) {
+			// 	IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
+			// 	return status;
+			// }
 			org.eclipse.wst.server.core.IServerWorkingCopy copy = this.registry.getWst(server.getId()).createWorkingCopy();
 			try {
-				copy.modifyModules(modules, null, new NullProgressMonitor());
+				// copy.modifyModules(modules, null, new NullProgressMonitor());
+				copy.modifyModules(new IModule[] { module }, null, new NullProgressMonitor());
 				copy.save(false, new NullProgressMonitor());
 			} catch (org.eclipse.core.runtime.CoreException e) {
 				e.printStackTrace();
@@ -111,11 +111,6 @@ public class WSTServerFacade {
 				return status;
 			}
 			return Status.OK_STATUS;
-		} catch (org.eclipse.core.runtime.CoreException e) {
-			e.printStackTrace();
-			IStatus status = this.adapter.toRspStatus(e.getStatus());
-			return status;
-		}
 	}
 
 	public IStatus canAddDeployable(DeployableReference ref, ServerHandle server) {

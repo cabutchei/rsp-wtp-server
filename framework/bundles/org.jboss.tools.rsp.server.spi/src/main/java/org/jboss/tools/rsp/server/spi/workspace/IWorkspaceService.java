@@ -11,6 +11,7 @@ package org.jboss.tools.rsp.server.spi.workspace;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.eclipse.core.resources.IProject;
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 
 public interface IWorkspaceService {
@@ -18,6 +19,8 @@ public interface IWorkspaceService {
 	Path getWorkspaceRoot();
 
 	IStatus openWorkspace(Path workspaceRoot);
+
+	IProject getProject(String projectName);
 
 	IStatus importProject(Path projectRoot);
 

@@ -16,6 +16,7 @@ import org.jboss.tools.rsp.api.dao.util.Optional;
 public class DeployableReference {
 
 	private String label;
+	// TODO: this should be a project name now, not a path
 	private String path;
 	
 	@Optional

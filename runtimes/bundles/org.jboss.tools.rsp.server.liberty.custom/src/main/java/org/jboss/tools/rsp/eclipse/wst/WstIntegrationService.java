@@ -27,7 +27,7 @@ import org.jboss.tools.rsp.eclipse.workspace.EclipseWorkspaceService;
 public final class WstIntegrationService implements IWstIntegrationService {
 
 	private final ServerHandleRegistry registry;
-	private final WSTServerFacade facade;
+	private final WSTFacade facade;
 	private final WstServerLifecycleStrategy lifecycleStrategy;
 	private final WstModelAdapter adapter;
 	private final IWorkspaceService workspaceService;
@@ -40,7 +40,7 @@ public final class WstIntegrationService implements IWstIntegrationService {
 		this.registry = Objects.requireNonNull(registry, "registry");
 		this.adapter = new WstModelAdapter();
 		this.workspaceService = new EclipseWorkspaceService();
-		this.facade = new WSTServerFacade(this.registry, this.adapter, this.workspaceService);
+		this.facade = new WSTFacade(this.registry, this.adapter, this.workspaceService);
 		this.lifecycleStrategy = new WstServerLifecycleStrategy(this.facade);
 	}
 
@@ -49,7 +49,7 @@ public final class WstIntegrationService implements IWstIntegrationService {
 	}
 
 	@Override
-	public WSTServerFacade getFacade() {
+	public WSTFacade getFacade() {
 		return facade;
 	}
 

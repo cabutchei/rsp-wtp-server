@@ -187,7 +187,7 @@ public class WSTServerModel implements IServerModel {
 
 	@Override
 	public IServer getServer(String id) {
-		return this.wstIntegrationService.getFacade().getServer(id);
+		return this.wstIntegrationService.getFacade().getRspServer(id);
 	}
 	
 	@Override

@@ -13,7 +13,7 @@ import org.jboss.tools.rsp.server.spi.model.IServerModel;
 import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
 
 public interface IWstIntegrationService {
-	WSTServerFacade getFacade();
+	WSTFacade getFacade();
 
 	ServerHandleRegistry getRegistry();
 

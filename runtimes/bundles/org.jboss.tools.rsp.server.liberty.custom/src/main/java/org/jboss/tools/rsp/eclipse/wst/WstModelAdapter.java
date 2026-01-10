@@ -64,6 +64,78 @@ public class WstModelAdapter {
 		}
 	}
 
+	public int toRspPublishState(int wstPublishState) {
+		switch (wstPublishState) {
+			case IServer.PUBLISH_STATE_NONE:
+				return ServerManagementAPIConstants.PUBLISH_STATE_NONE;
+			case IServer.PUBLISH_STATE_INCREMENTAL:
+				return ServerManagementAPIConstants.PUBLISH_STATE_INCREMENTAL;
+			case IServer.PUBLISH_STATE_FULL:
+				return ServerManagementAPIConstants.PUBLISH_STATE_FULL;
+			// case IServer.PUBLISH_STATE_ADD:
+			// 	return ServerManagementAPIConstants.PUBLISH_STATE_ADD;
+			// case IServer.PUBLISH_STATE_REMOVE:
+			// 	return ServerManagementAPIConstants.PUBLISH_STATE_REMOVE;
+			case IServer.PUBLISH_STATE_UNKNOWN:
+				return ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN;
+			default:
+				return ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN;
+		}
+	}
+
+	public int toWstPublishState(int rspPublishState) {
+		switch (rspPublishState) {
+			case ServerManagementAPIConstants.PUBLISH_STATE_NONE:
+				return IServer.PUBLISH_STATE_NONE;
+			case ServerManagementAPIConstants.PUBLISH_STATE_INCREMENTAL:
+				return IServer.PUBLISH_STATE_INCREMENTAL;
+			case ServerManagementAPIConstants.PUBLISH_STATE_FULL:
+				return IServer.PUBLISH_STATE_FULL;
+			// case ServerManagementAPIConstants.PUBLISH_STATE_ADD:
+			// 	return IServer.PUBLISH_STATE_ADD;
+			// case ServerManagementAPIConstants.PUBLISH_STATE_REMOVE:
+			// 	return IServer.PUBLISH_STATE_REMOVE;
+			case ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN:
+				return IServer.PUBLISH_STATE_UNKNOWN;
+			default:
+				return IServer.PUBLISH_STATE_UNKNOWN;
+		}
+	}
+
+	public int toRspServerState(int wstServerState) {
+		switch (wstServerState) {
+			case IServer.STATE_STARTING:
+				return ServerManagementAPIConstants.STATE_STARTING;
+			case IServer.STATE_STARTED:
+				return ServerManagementAPIConstants.STATE_STARTED;
+			case IServer.STATE_STOPPING:
+				return ServerManagementAPIConstants.STATE_STOPPING;
+			case IServer.STATE_STOPPED:
+				return ServerManagementAPIConstants.STATE_STOPPED;
+			case IServer.STATE_UNKNOWN:
+				return ServerManagementAPIConstants.STATE_UNKNOWN;
+			default:
+				return ServerManagementAPIConstants.STATE_UNKNOWN;
+		}
+	}
+
+	public int toWstServerState(int rspServerState) {
+		switch (rspServerState) {
+			case ServerManagementAPIConstants.STATE_STARTING:
+				return IServer.STATE_STARTING;
+			case ServerManagementAPIConstants.STATE_STARTED:
+				return IServer.STATE_STARTED;
+			case ServerManagementAPIConstants.STATE_STOPPING:
+				return IServer.STATE_STOPPING;
+			case ServerManagementAPIConstants.STATE_STOPPED:
+				return IServer.STATE_STOPPED;
+			case ServerManagementAPIConstants.STATE_UNKNOWN:
+				return IServer.STATE_UNKNOWN;
+			default:
+				return IServer.STATE_UNKNOWN;
+		}
+	}
+
 	public org.jboss.tools.rsp.server.spi.servertype.IServerType toRspServerType(IServerType wstType, IServerModel model) {
 		if (wstType == null || model == null) {
 			return null;

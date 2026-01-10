@@ -533,17 +533,12 @@ public class GenericServerBehavior extends AbstractServerDelegate
 
 	@Override
 	public void setServerState(int state) {
-		super.setServerState(state);
+		// noop
 	}
 
 	@Override
 	public void setServerState(int state, boolean fire) {
-		if( state == ServerManagementAPIConstants.STATE_STARTED) {
-			pollDeploymentsForState(ServerManagementAPIConstants.STATE_STARTED);
-		} else if( state == ServerManagementAPIConstants.STATE_STOPPED) {
-			pollDeploymentsForState(ServerManagementAPIConstants.STATE_STOPPED);
-		}
-		super.setServerState(state, fire);
+		// noop
 	}
 	
 	protected void pollDeploymentsForState(int state) {

@@ -18,8 +18,9 @@ import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.Status;
-import org.jboss.tools.rsp.eclipse.wst.WSTServerFacade;
+import org.jboss.tools.rsp.eclipse.wst.WSTServerContext;
 import org.jboss.tools.rsp.server.ServerCoreActivator;
+import org.jboss.tools.rsp.server.liberty.custom.impl.LibertyServerDelegate;
 import org.jboss.tools.rsp.server.model.AbstractServerDelegate;
 import org.jboss.tools.rsp.server.model.internal.publishing.AutoPublishThread;
 import org.jboss.tools.rsp.server.model.internal.publishing.DeployableDelta;
@@ -53,8 +54,8 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	private final Map<String, DeploymentAssemblyFile> assembly = new HashMap<>();
 	
 	private AbstractServerDelegate delegate;
-    private WSTServerFacade facade;
-    private Supplier<WSTServerFacade> facadeSupplier;
+    private WSTServerContext wstServerFacade;
+    private Supplier<WSTServerContext> facadeSupplier;
 	private IFileWatcherService fileWatcher;
 	private int publishState = AbstractServerDelegate.PUBLISH_STATE_UNKNOWN;
 	
@@ -62,14 +63,24 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 
 	private IFullPublishRequiredCallback fullPublishRequired;
 	
-	public WSTServerPublishStateModel(AbstractServerDelegate delegate, Supplier<WSTServerFacade> facadeSupplier, IFileWatcherService fileWatcher) {
+	public WSTServerPublishStateModel(AbstractServerDelegate delegate, Supplier<WSTServerContext> facadeSupplier, IFileWatcherService fileWatcher) {
 		this(delegate, facadeSupplier, fileWatcher, null);
 	}
-	public WSTServerPublishStateModel(AbstractServerDelegate delegate, Supplier<WSTServerFacade> facadeSupplier,
+	public WSTServerPublishStateModel(AbstractServerDelegate delegate, Supplier<WSTServerContext> facadeSupplier,
 			IFileWatcherService fileWatcher, IFullPublishRequiredCallback fullPublishRequired) {
 		this.delegate = delegate;
         this.facadeSupplier = facadeSupplier;
-        this.facade = this.facadeSupplier.get();
+        this.wstServerFacade = this.facadeSupplier.get();
+		this.fileWatcher = fileWatcher;
+		this.fullPublishRequired = fullPublishRequired;
+		this.states = new LinkedHashMap<>();
+		this.deploymentOptions = new LinkedHashMap<>();
+	}
+
+	public WSTServerPublishStateModel(AbstractServerDelegate delegate, WSTServerContext wstServerFacade,
+			IFileWatcherService fileWatcher, IFullPublishRequiredCallback fullPublishRequired) {
+		this.delegate = delegate;
+        this.wstServerFacade = wstServerFacade;
 		this.fileWatcher = fileWatcher;
 		this.fullPublishRequired = fullPublishRequired;
 		this.states = new LinkedHashMap<>();
@@ -78,6 +89,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 
 	@Override
 	public synchronized void initialize(List<DeployableReference> references) {
+		// this.wstServerFacade = ((LibertyServerDelegate) this.delegate).getWSTServerFacade();
 		for( DeployableReference reference : references ) {
 			addDeployableImpl(reference, ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN);
 		}
@@ -85,18 +97,6 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		fireState();
 	}
 
-    private WSTServerFacade getFacade() {
-        if (this.facade == null) {
-            if (this.facadeSupplier == null) {
-                throw new IllegalStateException("Facade supplier is null");
-            }
-            if (this.facadeSupplier.get() == null) {
-                throw new IllegalStateException("Facade supplier returned null facade");
-            }
-            this.facade = this.facadeSupplier.get();
-        }
-        return this.facade;
-    }
 
 	private DeployableState cloneDeployableState(DeployableReference reference, DeployableState state) {
 		return createDeployableState(reference, state.getPublishState(), state.getState());
@@ -209,7 +209,8 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		DeployableState deployableState = 
 				createDeployableState(reference, publishState, ServerManagementAPIConstants.STATE_UNKNOWN);
 	
-        getFacade().addDeployable(reference, delegate.getServerHandle());
+        // getFacade().addDeployable(reference, delegate.getServerHandle());
+        this.wstServerFacade.addDeployable(reference);
 
 		String key = getKey(reference);
 		getStates().put(key, deployableState);
@@ -235,7 +236,8 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 					NLS.bind("Could not remove deploybale with path {0}: it doesn't exist", getKey(reference)),
 							null);
 		}
-        IStatus status = getFacade().removeDeployable(reference, delegate.getServerHandle());
+        // IStatus status = getFacade().removeDeployable(reference, delegate.getServerHandle());
+        IStatus status = this.wstServerFacade.removeDeployable(reference);
         if (!status.isOK()) {
             return status;
         }
@@ -273,14 +275,13 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 
 	@Override
 	public synchronized List<DeployableState> getDeployableStates() {
-		List<DeployableState> ret = getStates().values().stream().
-				map(element -> cloneDeployableState(element.getReference(), element))
-				.collect(Collectors.toList());
-		return new ArrayList<>(ret);
+		return this.wstServerFacade.getDeployableStates();
+
 	}
 
 	@Override
 	public synchronized List<DeployableState> getDeployableStatesWithOptions() {
+		// TODO: what do I do with this?
 		List<DeployableState> ret = getStates().values().stream().
 				map(element -> cloneDeployableState(element.getReference(), element))
 				.collect(Collectors.toList());
@@ -292,11 +293,8 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 
 	@Override
 	public synchronized DeployableState getDeployableState(DeployableReference reference) {
-		DeployableState ds = getStates().get(getKey(reference));
-		if (ds == null) {
-			return null;
-		}
-		return cloneDeployableState(reference, ds);
+		return this.wstServerFacade.getDeployableState(reference);
+		// return cloneDeployableState(reference, ds);
 	}
 
 	/**
@@ -501,7 +499,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 
 	@Override
 	public synchronized int getServerPublishState() {
-		return this.publishState;
+		return this.wstServerFacade.getServerPublishState();
 	}
 
 	@Override

@@ -17,13 +17,13 @@ import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 // TODO: we are probably getting rid of this class
 public class WstServerLifecycleStrategy implements ServerLifecycleStrategy {
 
-	private final WSTServerFacade facade;
+	private final WSTFacade facade;
 
-	public WstServerLifecycleStrategy(WSTServerFacade facade) {
+	public WstServerLifecycleStrategy(WSTFacade facade) {
 		this.facade = Objects.requireNonNull(facade, "facade");
 	}
 
-	public WSTServerFacade getFacade() {
+	public WSTFacade getFacade() {
 		return facade;
 	}
 

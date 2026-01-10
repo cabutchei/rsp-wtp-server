@@ -7,20 +7,34 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
+import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.debug.core.DebugPlugin;
+import org.eclipse.debug.core.ILaunchListener;
+import org.eclipse.debug.core.model.IProcess;
 import org.eclipse.wst.server.core.IModule;
+import org.eclipse.wst.server.core.IPublishListener;
 import org.eclipse.wst.server.core.IRuntimeType;
 import org.eclipse.wst.server.core.IRuntimeWorkingCopy;
+import org.eclipse.wst.server.core.IServerListener;
 import org.eclipse.wst.server.core.ServerCore;
+import org.eclipse.wst.server.core.ServerEvent;
 import org.eclipse.wst.server.core.ServerUtil;
+import org.eclipse.wst.server.core.IServer.IOperationListener;
+import org.eclipse.wst.server.core.internal.Runtime;
+import org.eclipse.wst.server.core.internal.RuntimeWorkingCopy;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
+import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.api.dao.ServerHandle;
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.Status;
@@ -40,17 +54,17 @@ import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
 
 
 
-public class WSTServerFacade {
+public class WSTFacade {
 
 	private final ServerHandleRegistry registry;
 	private final WstModelAdapter adapter;
 	private final IWorkspaceService workspaceService;
 
-	public WSTServerFacade(ServerHandleRegistry registry, IWorkspaceService workspaceService) {
+	public WSTFacade(ServerHandleRegistry registry, IWorkspaceService workspaceService) {
 		this(registry, new WstModelAdapter(), workspaceService);
 	}
 
-	public WSTServerFacade(ServerHandleRegistry registry, WstModelAdapter adapter, IWorkspaceService workspaceService) {
+	public WSTFacade(ServerHandleRegistry registry, WstModelAdapter adapter, IWorkspaceService workspaceService) {
 		this.registry = Objects.requireNonNull(registry, "registry");
 		this.adapter = Objects.requireNonNull(adapter, "adapter");
 		this.workspaceService = workspaceService;
@@ -96,6 +110,11 @@ public class WSTServerFacade {
 			IProject project = this.workspaceService.getProject(ref.getPath());
 			IModule module = ServerUtil.getModule(project);
 			// org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
+			// org.eclipse.wst.server.core.IServer s;
+			// s.addPublishListener(null);
+			// org.eclipse.wst.server.core.ServerEvent ev;
+			// IPublishListener l;
+			// s.getModulePublishState(null);
 			// if (modules == null || modules.length == 0) {
 			// 	IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
 			// 	return status;
@@ -212,20 +231,80 @@ public class WSTServerFacade {
 		return this.adapter.toRspStatus(this.registry.getWst(server.getId()).canPublish());
 	}
 
-	public IStatus publish(ServerHandle server, int rspKind) {
-			org.eclipse.core.runtime.IStatus status = this.registry.getWst(server.getId())
-			.publish(this.adapter.toWstPublishKind(rspKind), new NullProgressMonitor());
-			return this.adapter.toRspStatus(status);
+	public IStatus publish(ServerHandle handle, int rspKind) {
+		// IServerListener
+		// getWstServer(handle.getId()).addServerListener(
+		// 	(ServerEvent event) -> {
+		// 		// handle publish events here
+		// 		if (event.getKind() == (ServerEvent.MODULE_CHANGE | ServerEvent.PUBLISH_STATE_CHANGE)) {
+		// 			// publish started
+		// 			}
+		// 		}
+		// );
+		org.eclipse.core.runtime.IStatus status = this.registry.getWst(handle.getId())
+		.publish(this.adapter.toWstPublishKind(rspKind), new NullProgressMonitor());
+		return this.adapter.toRspStatus(status);
 	}
 
-	// public org.eclipse.wst.server.core.IServer getServer(String id) {
-	// 	for (org.eclipse.wst.server.core.IServer server : ServerCore.getServers()) {
-	// 		if (server.getId().equals(id)) {
-	// 			return server;
-	// 		}
-	// 	}
-	// 	return null;
-	// }
+	public int getServerPublishState(ServerHandle handle) {
+		int publishState = getWstServer(handle.getId()).getServerPublishState();
+		return this.adapter.toRspPublishState(publishState);
+	}
+
+	public int getServerRunState(ServerHandle handle) {
+		int runState = getWstServer(handle.getId()).getServerState();
+		return this.adapter.toRspServerState(runState);
+	}
+
+	private org.eclipse.wst.server.core.IModule getModule(ServerHandle handle, String name) {
+		for ( org.eclipse.wst.server.core.IModule module : getWstServer(handle.getId()).getModules()) {
+			if (module.getName().equals(name)) {
+				return module;
+			}
+		}
+		return null;
+	}
+
+	private IModule[] getModules(ServerHandle server) {
+		org.eclipse.wst.server.core.IModule[] modules = this.registry.getWst(server.getId()).getModules();
+		return modules;
+	}
+
+	private int getModulePublishState(ServerHandle server, DeployableReference ref) {
+		org.eclipse.wst.server.core.IServer wstServer = this.registry.getWst(server.getId());
+		IModule module = getModule(server, ref.getPath());
+		return wstServer.getModulePublishState(new IModule[] {module});
+	}
+
+	private int getModuleRunState(ServerHandle server, DeployableReference ref) {
+		org.eclipse.wst.server.core.IServer wstServer = this.registry.getWst(server.getId());
+		IModule module = getModule(server, ref.getPath());
+		return wstServer.getModuleState(new IModule[] {module});
+	}
+
+	// public DeployableState[] getDeployableStates(ServerHandle server) {
+	public List<DeployableState> getDeployableStates(ServerHandle server) {
+		List<DeployableState> states = new ArrayList<>();
+		IModule[] modules = getModules(server);
+		for (IModule module : modules) {
+			// DeployableReference ref = this.adapter.toDeployableReference(module);
+			DeployableReference ref = new DeployableReference(module.getName(), module.getProject().getName());
+			int runState = this.adapter.toRspServerState(getModuleRunState(server, ref));
+			int publishState = this.adapter.toRspPublishState(getModulePublishState(server, ref));
+			DeployableState ds = new DeployableState(server, ref, runState, publishState);
+			states.add(ds);
+		}
+		// return states.toArray(new DeployableState[0]);
+		return states;
+	}
+
+	public DeployableState getDeployableState(ServerHandle handle, DeployableReference ref) {
+		int runState = this.adapter.toRspServerState(getModuleRunState(handle, ref));
+		int publishState = this.adapter.toRspPublishState(getModulePublishState(handle, ref));
+		DeployableState ds = new DeployableState(handle, ref, runState, publishState);	
+		return ds;
+	}
+
 
 	public void createServer(IServerType serverType, String id, Map<String, Object> attributes) throws CoreException{
 		org.eclipse.wst.server.core.IServer wstServer = null; // Replace with actual server creation logic
@@ -241,6 +320,8 @@ public class WSTServerFacade {
 		try {
 			runtimeWC = wstRuntimeType.createRuntime((String)null, monitor);
 			runtimeWC.setLocation(new org.eclipse.core.runtime.Path((String) attributes.get("server.home.dir")));
+			((RuntimeWorkingCopy) runtimeWC).setAttribute("vm-install-id", "/Users/cabutchei/.sdkman/candidates/java/21.0.2-open");
+			((RuntimeWorkingCopy) runtimeWC).setAttribute("vm-install-type-id", "org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType");
 			org.eclipse.wst.server.core.IRuntime run;
 			run = runtimeWC.save(true, monitor);
 			// set same id so we can retrieve the rsp-wst pairs
@@ -254,11 +335,14 @@ public class WSTServerFacade {
 			e.printStackTrace();
 			throw new CoreException(this.adapter.toRspStatus(e.getStatus()));
 		}
-
 	}
 
-	public IServer getServer(String id) {
+	public IServer getRspServer(String id) {
 		return this.registry.getRsp(id);
+	}
+
+	public org.eclipse.wst.server.core.IServer getWstServer(String id) {
+		return this.registry.getWst(id);
 	}
 
 	public Map<String, IServer> getServers() {
@@ -272,4 +356,38 @@ public class WSTServerFacade {
 	// 	}
 	// 	return rspServers.toArray(new IServer[rspServers.size()]);
 	// }
+
+	/** made this because async start caused server ILaunch object to be null. But should we really wait for the done event?
+	 * Perhaps it's best if we listen for ILaunch instead?
+	 */
+	public IStatus startSync(ServerHandle handle, String launchMode) {
+		// DebugPlugin.getDefault().getLaunchManager().addLaunchListener(null);
+		CompletableFuture<IStatus> future = new CompletableFuture<>();
+		IOperationListener listener = (result) -> { future.complete(this.adapter.toRspStatus(result)); };
+		getWstServer(handle.getId()).start(launchMode, listener);
+		return future.join();
+	}
+
+	public void start(ServerHandle handle, String launchMode) throws CoreException {
+		try {
+			getWstServer(handle.getId()).start(launchMode, (IProgressMonitor) null);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			e.printStackTrace();
+			throw new CoreException(this.adapter.toRspStatus(e.getStatus()));
+		}
+	}
+
+	public IStatus canStart(ServerHandle handle, String launchMode) {
+		org.eclipse.core.runtime.IStatus status = getWstServer(handle.getId()).canStart(launchMode);
+		return this.adapter.toRspStatus(status);
+	}
+
+	public void stop(ServerHandle handle, boolean force) {
+		getWstServer(handle.getId()).stop(force);
+	}
+
+	public IStatus canStop(ServerHandle handle) {
+		org.eclipse.core.runtime.IStatus status = getWstServer(handle.getId()).canStop();
+		return this.adapter.toRspStatus(status);
+	}
 }

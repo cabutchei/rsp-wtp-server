@@ -14,6 +14,7 @@ import org.jboss.tools.rsp.launching.memento.JSONMemento;
 import org.jboss.tools.rsp.server.LauncherSingleton;
 import org.jboss.tools.rsp.server.ServerCoreActivator;
 import org.jboss.tools.rsp.server.ServerManagementServerLauncher;
+import org.jboss.tools.rsp.eclipse.wst.WSTServerContext;
 import org.jboss.tools.rsp.eclipse.wst.WstIntegrationService;
 import org.jboss.tools.rsp.server.generic.GenericServerActivator;
 import org.jboss.tools.rsp.server.generic.IServerBehaviorFromJSONProvider;
@@ -22,6 +23,9 @@ import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
 import org.jboss.tools.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
+import org.jboss.tools.rsp.server.spi.servertype.IServerType;
+import org.jboss.tools.rsp.api.dao.ServerHandle;
+import org.jboss.tools.rsp.api.dao.ServerType;
 import org.jboss.tools.rsp.eclipse.osgi.util.NLS;
 import org.jboss.tools.rsp.server.RSPFlags;
 import org.osgi.framework.BundleContext;
@@ -126,10 +130,16 @@ public class Activator extends GenericServerActivator {
 			@Override
 			public IServerBehaviorProvider loadBehaviorFromJSON(String serverTypeId, JSONMemento behaviorMemento) {
 				return new IServerBehaviorProvider() {
+					private ServerHandle toHandle(IServer s) {
+						IServerType st = s.getServerType();
+						return new ServerHandle(s.getId(), new ServerType(st.getId(), st.getName(), st.getDescription()));
+					}
 					@Override
 					public IServerDelegate createServerDelegate(String typeId, IServer server) {
 						if (typeId != null && typeId.startsWith(ILibertyServerAttributes.LIBERTY_SERVER_TYPE_PREFIX)) {
-							return new LibertyServerDelegate(server, behaviorMemento, Activator.getWstIntegrationService().getFacade());
+							LibertyServerDelegate del = new LibertyServerDelegate(server, behaviorMemento, new WSTServerContext(toHandle(server), getWstIntegrationService().getFacade()));
+							// del.setWSTServerFacade(new WSTServerFacade(toHandle(server), getWstIntegrationService().getFacade()));
+							return del;
 						}
 						return null;
 					}

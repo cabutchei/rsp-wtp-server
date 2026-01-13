@@ -6,33 +6,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
-import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IProjectDescription;
-import org.eclipse.core.resources.IWorkspace;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.core.runtime.Path;
-import org.eclipse.debug.core.DebugPlugin;
-import org.eclipse.debug.core.ILaunchListener;
-import org.eclipse.debug.core.model.IProcess;
+import org.eclipse.osgi.util.NLS;
 import org.eclipse.wst.server.core.IModule;
-import org.eclipse.wst.server.core.IPublishListener;
-import org.eclipse.wst.server.core.IRuntimeType;
-import org.eclipse.wst.server.core.IRuntimeWorkingCopy;
-import org.eclipse.wst.server.core.IServerListener;
 import org.eclipse.wst.server.core.ServerCore;
-import org.eclipse.wst.server.core.ServerEvent;
 import org.eclipse.wst.server.core.ServerUtil;
 import org.eclipse.wst.server.core.IServer.IOperationListener;
-import org.eclipse.wst.server.core.internal.Runtime;
 import org.eclipse.wst.server.core.internal.RuntimeWorkingCopy;
+import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.api.dao.ServerHandle;
@@ -43,14 +29,12 @@ import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
 import org.jboss.tools.rsp.server.spi.model.IServerModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
+import org.jboss.tools.rsp.server.spi.servertype.IServerListener;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
-import org.eclipse.wst.common.project.facet.core.IProjectFacetVersion;
-import org.eclipse.wst.common.project.facet.core.ProjectFacetsManager;
 
-import org.eclipse.wst.common.componentcore.ComponentCore;
-import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
-import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
+// import com.ibm.ws.st.core.internal.WebSphereRuntime;
+// import com.ibm.ws.st.core.internal.WebSphereServerBehaviour;
 
 
 
@@ -107,22 +91,11 @@ public class WSTFacade {
 	}
 
 	public IStatus addDeployable(DeployableReference ref, ServerHandle server) {
-			IProject project = this.workspaceService.getProject(ref.getPath());
-			IModule module = ServerUtil.getModule(project);
-			// org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
-			// org.eclipse.wst.server.core.IServer s;
-			// s.addPublishListener(null);
-			// org.eclipse.wst.server.core.ServerEvent ev;
-			// IPublishListener l;
-			// s.getModulePublishState(null);
-			// if (modules == null || modules.length == 0) {
-			// 	IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
-			// 	return status;
-			// }
-			org.eclipse.wst.server.core.IServerWorkingCopy copy = this.registry.getWst(server.getId()).createWorkingCopy();
+			IProject project = this.workspaceService.getProject(ref.getLabel());
+			IModule[] modules = ServerUtil.getModules(project);
+			org.eclipse.wst.server.core.IServerWorkingCopy copy = getWstServer(server.getId()).createWorkingCopy();
 			try {
-				// copy.modifyModules(modules, null, new NullProgressMonitor());
-				copy.modifyModules(new IModule[] { module }, null, new NullProgressMonitor());
+				copy.modifyModules(modules, null, new NullProgressMonitor());
 				copy.save(false, new NullProgressMonitor());
 			} catch (org.eclipse.core.runtime.CoreException e) {
 				e.printStackTrace();
@@ -133,72 +106,33 @@ public class WSTFacade {
 	}
 
 	public IStatus canAddDeployable(DeployableReference ref, ServerHandle server) {
-		org.eclipse.core.runtime.IPath projectDescription = new org.eclipse.core.runtime.Path(ref.getPath()).append(".project");
-		try {
-			IProjectDescription desc = ResourcesPlugin.getWorkspace().loadProjectDescription(projectDescription);
-			IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(desc.getName());
-			// temporary hack to get around missing project in workspace
-			IProjectDescription webDesc = ResourcesPlugin.getWorkspace().loadProjectDescription(new org.eclipse.core.runtime.Path("/Users/cabutchei/Documents/eclipse/runtime-run-eclipse-window/SomeWebModule").append(".project"));
-			IProject web = ResourcesPlugin.getWorkspace().getRoot().getProject(webDesc.getName());
-			if (!web.exists()) web.create(webDesc, new NullProgressMonitor());
-			web.open(new NullProgressMonitor());
-			// end
-			if (!project.exists()) project.create(desc, new NullProgressMonitor());
-			project.open(new NullProgressMonitor());
-
-			//
-			IVirtualComponent earVC = ComponentCore.createComponent(project);
-			IVirtualComponent webVC = ComponentCore.createComponent(web);
-			IVirtualReference reference = ComponentCore.createReference(earVC, webVC);
-			reference.setArchiveName(webVC.getName() + ".war");
-			reference.setRuntimePath(new Path("/"));
-			// earVC.addReferences(new IVirtualReference[] {reference});
-			//
-
-			// TODO: jst.web is not getting picked up - need to figure out why
-			IProjectFacetVersion version = ProjectFacetsManager.getProjectFacet("jst.ear").getLatestVersion();
-			IProjectFacetVersion webVersion = ProjectFacetsManager.getProjectFacet("jst.web").getLatestVersion();
-			Set<IProjectFacetVersion> earFacets = ProjectFacetsManager.create(project).getProjectFacets();
-			Set<IProjectFacetVersion> webFacets = ProjectFacetsManager.create(web).getProjectFacets();
-			org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
-			if (modules == null || modules.length == 0) {
-				IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
-				return status;
-			}
-			org.eclipse.core.runtime.IStatus status = this.registry.getWst(server.getId()).canModifyModules(modules, null, new NullProgressMonitor());
-			// this.registry.getWst(server.getId()).canModifyModules(modules, null, new NullProgressMonitor())
-			org.eclipse.wst.server.core.IServerWorkingCopy copy = this.registry.getWst(server.getId()).createWorkingCopy();
-			// copy.modifyModules(modules, null, new NullProgressMonitor());
-			// copy.save(false, new NullProgressMonitor());
-			return this.adapter.toRspStatus(status);
-		} catch (org.eclipse.core.runtime.CoreException e) {
-			e.printStackTrace();
-			IStatus status = this.adapter.toRspStatus(e.getStatus());
+		IProject project = this.workspaceService.getProject(ref.getLabel());
+		if (!project.exists()) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, NLS.bind("{0} isn't bound to any workspace project", ref.getLabel()));
+		}
+		org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
+		if (modules == null || modules.length == 0) {
+			IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
 			return status;
 		}
+		org.eclipse.core.runtime.IStatus status = getWstServer(server.getId()).canModifyModules(modules, null, new NullProgressMonitor());
+		return this.adapter.toRspStatus(status);
 	}
 
 	public IStatus removeDeployable(DeployableReference ref, ServerHandle server) {
-		org.eclipse.core.runtime.IPath projectDescription = new org.eclipse.core.runtime.Path(ref.getPath()).append(".project");
+		IProject project = this.workspaceService.getProject(ref.getLabel());
+		if (!project.exists()) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, NLS.bind("{0} isn't bound to any workspace project", ref.getLabel()));
+		}
+		org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
+		if (modules == null || modules.length == 0) {
+			IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
+			return status;
+		}
+		org.eclipse.wst.server.core.IServerWorkingCopy copy = getWstServer(server.getId()).createWorkingCopy();
 		try {
-			IProjectDescription desc = ResourcesPlugin.getWorkspace().loadProjectDescription(projectDescription);
-			IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(desc.getName());
-			if (!project.exists()) project.create(desc, new NullProgressMonitor());
-			project.open(new NullProgressMonitor());
-			org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
-			if (modules == null || modules.length == 0) {
-				IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
-				return status;
-			}
-			org.eclipse.wst.server.core.IServerWorkingCopy copy = this.registry.getWst(server.getId()).createWorkingCopy();
-			try {
-				copy.modifyModules(null, modules, new NullProgressMonitor());
-				copy.save(false, new NullProgressMonitor());
-			} catch (org.eclipse.core.runtime.CoreException e) {
-				e.printStackTrace();
-				IStatus status = this.adapter.toRspStatus(e.getStatus());
-				return status;
-			}
+			copy.modifyModules(null, modules, new NullProgressMonitor());
+			copy.save(false, new NullProgressMonitor());
 			return Status.OK_STATUS;
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			e.printStackTrace();
@@ -208,40 +142,25 @@ public class WSTFacade {
 	}
 
 	public IStatus canRemoveDeployable(DeployableReference ref, ServerHandle server) {
-			org.eclipse.core.runtime.IPath projectDescription = new org.eclipse.core.runtime.Path(ref.getPath()).append(".project");
-			try {
-				IProjectDescription desc = ResourcesPlugin.getWorkspace().loadProjectDescription(projectDescription);
-				IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(desc.getName());
-				if (!project.exists()) project.create(desc, new NullProgressMonitor());
-				org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
-				if (modules == null || modules.length == 0) {
-					IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
-					return status;
-				}
-				org.eclipse.core.runtime.IStatus status = this.registry.getWst(server.getId()).canModifyModules(null, modules, new NullProgressMonitor());
-				return this.adapter.toRspStatus(status);
-			} catch (org.eclipse.core.runtime.CoreException e) {
-				e.printStackTrace();
-				IStatus status = this.adapter.toRspStatus(e.getStatus());
-				return status;
-			}
+		IProject project = this.workspaceService.getProject(ref.getLabel());
+		if (!project.exists()) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, NLS.bind("{0} isn't bound to any workspace project", ref.getLabel()));
+		}
+		org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
+		if (modules == null || modules.length == 0) {
+			IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
+			return status;
+		}
+		org.eclipse.core.runtime.IStatus status = getWstServer(server.getId()).canModifyModules(null, modules, new NullProgressMonitor());
+		return this.adapter.toRspStatus(status);
 	}
 
 	public IStatus canPublish(ServerHandle server) {
-		return this.adapter.toRspStatus(this.registry.getWst(server.getId()).canPublish());
+		return this.adapter.toRspStatus(getWstServer(server.getId()).canPublish());
 	}
 
 	public IStatus publish(ServerHandle handle, int rspKind) {
-		// IServerListener
-		// getWstServer(handle.getId()).addServerListener(
-		// 	(ServerEvent event) -> {
-		// 		// handle publish events here
-		// 		if (event.getKind() == (ServerEvent.MODULE_CHANGE | ServerEvent.PUBLISH_STATE_CHANGE)) {
-		// 			// publish started
-		// 			}
-		// 		}
-		// );
-		org.eclipse.core.runtime.IStatus status = this.registry.getWst(handle.getId())
+		org.eclipse.core.runtime.IStatus status = getWstServer(handle.getId())
 		.publish(this.adapter.toWstPublishKind(rspKind), new NullProgressMonitor());
 		return this.adapter.toRspStatus(status);
 	}
@@ -266,23 +185,22 @@ public class WSTFacade {
 	}
 
 	private IModule[] getModules(ServerHandle server) {
-		org.eclipse.wst.server.core.IModule[] modules = this.registry.getWst(server.getId()).getModules();
+		org.eclipse.wst.server.core.IModule[] modules = getWstServer(server.getId()).getModules();
 		return modules;
 	}
 
 	private int getModulePublishState(ServerHandle server, DeployableReference ref) {
-		org.eclipse.wst.server.core.IServer wstServer = this.registry.getWst(server.getId());
-		IModule module = getModule(server, ref.getPath());
+		org.eclipse.wst.server.core.IServer wstServer = getWstServer(server.getId());
+		IModule module = getModule(server, ref.getLabel());
 		return wstServer.getModulePublishState(new IModule[] {module});
 	}
 
 	private int getModuleRunState(ServerHandle server, DeployableReference ref) {
-		org.eclipse.wst.server.core.IServer wstServer = this.registry.getWst(server.getId());
-		IModule module = getModule(server, ref.getPath());
+		org.eclipse.wst.server.core.IServer wstServer = getWstServer(server.getId());
+		IModule module = getModule(server, ref.getLabel());
 		return wstServer.getModuleState(new IModule[] {module});
 	}
 
-	// public DeployableState[] getDeployableStates(ServerHandle server) {
 	public List<DeployableState> getDeployableStates(ServerHandle server) {
 		List<DeployableState> states = new ArrayList<>();
 		IModule[] modules = getModules(server);
@@ -294,7 +212,6 @@ public class WSTFacade {
 			DeployableState ds = new DeployableState(server, ref, runState, publishState);
 			states.add(ds);
 		}
-		// return states.toArray(new DeployableState[0]);
 		return states;
 	}
 
@@ -306,31 +223,34 @@ public class WSTFacade {
 	}
 
 
-	public void createServer(IServerType serverType, String id, Map<String, Object> attributes) throws CoreException{
-		org.eclipse.wst.server.core.IServer wstServer = null; // Replace with actual server creation logic
+	public IServer createServer(IServerType serverType, String id, Map<String, Object> attributes, IServerManagementModel model) throws CoreException {
+		org.eclipse.wst.server.core.IServer wstServer = null;
 		if (serverType == null) {
 			throw new IllegalArgumentException("serverType cannot be null");
 		}
 		org.eclipse.core.runtime.IProgressMonitor monitor = new NullProgressMonitor();
-		List<org.eclipse.wst.server.core.IServerType> serverTypes = new ArrayList<>();
-		for(org.eclipse.wst.server.core.IServerType st : ServerCore.getServerTypes()) serverTypes.add(st);
-		org.eclipse.wst.server.core.IServerType wstServerType = serverTypes.stream().filter(st -> st.getId().equals("com.ibm.ws.st.server.wlp")).findFirst().orElseThrow(null);
-		org.eclipse.wst.server.core.IRuntimeType wstRuntimeType = wstServerType.getRuntimeType(); // "com.ibm.ws.st.runtime.wlp"
+		org.eclipse.wst.server.core.IServerType wstServerType = this.adapter.toWstServerType(serverType);
+		if (wstServerType == null) {
+			throw new CoreException(new Status(IStatus.ERROR, "", "Server Type " + serverType.getId() + " is unknown by this Eclipse application"));
+		}
+		org.eclipse.wst.server.core.IRuntimeType wstRuntimeType = wstServerType.getRuntimeType();
 		org.eclipse.wst.server.core.IRuntimeWorkingCopy runtimeWC;
 		try {
 			runtimeWC = wstRuntimeType.createRuntime((String)null, monitor);
-			runtimeWC.setLocation(new org.eclipse.core.runtime.Path((String) attributes.get("server.home.dir")));
-			((RuntimeWorkingCopy) runtimeWC).setAttribute("vm-install-id", "/Users/cabutchei/.sdkman/candidates/java/21.0.2-open");
-			((RuntimeWorkingCopy) runtimeWC).setAttribute("vm-install-type-id", "org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType");
-			org.eclipse.wst.server.core.IRuntime run;
-			run = runtimeWC.save(true, monitor);
+			runtimeWC.setLocation(new org.eclipse.core.runtime.Path((String) attributes.get(ServerManagementAPIConstants.SERVER_HOME_DIR)));
+			// TODO: let the user choose the vm?
+			// runtimeWC.getAdapter(RuntimeWorkingCopy.class).setAttribute("vm-install-id", "/Users/cabutchei/.sdkman/candidates/java/21.0.2-open");
+			// runtimeWC.getAdapter(RuntimeWorkingCopy.class).setAttribute("vm-install-type-id", "org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType");
+			org.eclipse.wst.server.core.IRuntime run = runtimeWC.save(true, monitor);
 			// set same id so we can retrieve the rsp-wst pairs
 			org.eclipse.wst.server.core.IServerWorkingCopy server = wstServerType.createServer(id, null, run, monitor);
 			// TODO: replace hardcoded attributes
 			server.setHost("localhost");
-			server.setAttribute("serverName",   "AppSrv01");
+			server.setAttribute("serverName", (String) attributes.get("server.liberty.id"));
+			// TODO: eventually use this to create let the user create a new profile
+			// server.getRuntime().getAdapter(com.ibm.ws.st.core.internal.WebSphereRuntime.class).createServer()
 			wstServer = server.save(false, monitor);
-			registry.register(wstServer, id);
+			return createServerProxy(wstServer, model);
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			e.printStackTrace();
 			throw new CoreException(this.adapter.toRspStatus(e.getStatus()));
@@ -342,11 +262,20 @@ public class WSTFacade {
 	}
 
 	public org.eclipse.wst.server.core.IServer getWstServer(String id) {
-		return this.registry.getWst(id);
+		return ServerCore.findServer(id);
+		// return getWstServer(id);
 	}
 
 	public Map<String, IServer> getServers() {
 		return this.registry.getAllRspServers();
+	}
+
+	public void addServerListener(String id, IServerListener listener) {
+		WstServerProxy server = (WstServerProxy) getRspServer(id);
+		if (server == null) {
+			throw new IllegalArgumentException("Server does not exist");
+		}
+		server.addServerListener(listener);
 	}
 
 	// public IServer[] getServers() {
@@ -386,8 +315,19 @@ public class WSTFacade {
 		getWstServer(handle.getId()).stop(force);
 	}
 
+	public IStatus stopSync(ServerHandle handle, boolean force) {
+		CompletableFuture<IStatus> future = new CompletableFuture<>();
+		IOperationListener listener = (result) -> { future.complete(this.adapter.toRspStatus(result)); };
+		getWstServer(handle.getId()).stop(force, listener);
+		return future.join();
+	}
+
 	public IStatus canStop(ServerHandle handle) {
 		org.eclipse.core.runtime.IStatus status = getWstServer(handle.getId()).canStop();
 		return this.adapter.toRspStatus(status);
+	}
+
+	public String getMode(ServerHandle handle) {
+		return getWstServer(handle.getId()).getMode();
 	}
 }

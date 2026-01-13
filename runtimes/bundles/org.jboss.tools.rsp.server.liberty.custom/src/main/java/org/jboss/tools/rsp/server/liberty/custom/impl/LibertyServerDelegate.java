@@ -91,7 +91,6 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 
 	@Override
 	public IStatus publish(int publishRequestType) {
-		// MultiStatus ms = new MultiStatus(ServerCoreActivator.BUNDLE_ID, 0, "Publishing server " + getServer().getName(), null);
 		IStatus status = this.wstServerFacade.publish(publishRequestType);
 		fireStateChanged(getServerState());
 		return status;
@@ -100,6 +99,11 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 	@Override
 	public int getServerRunState() {
 		return this.wstServerFacade.getServerRunState();
+	}
+
+	@Override
+	public String getMode() {
+		return this.wstServerFacade.getMode();
 	}
 
 	@Override
@@ -112,6 +116,7 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 		}
 		try {
 			this.wstServerFacade.start(mode);
+			// fireStateChanged(getServerState());
 			ILaunch launch = this.wstServerFacade.getLaunch();
 			setStartLaunch(launch);
 			addStreamListener(launch);
@@ -130,6 +135,7 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 	@Override
 	public IStatus stop(boolean force) {
 		this.wstServerFacade.stop(force);
+		// fireStateChanged(getServerState());
 		return Status.OK_STATUS;
 	}
 

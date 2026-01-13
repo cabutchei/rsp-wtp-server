@@ -72,9 +72,11 @@ public class WSTServerContext {
 
     public void start(String launchMode) throws CoreException {
         // this.facade.start(this.serverHandle, launchMode);
-        this.facade.startSync(serverHandle, launchMode);
+        IStatus status = this.facade.startSync(serverHandle, launchMode);
+        if (!status.isOK()) {
+            throw new CoreException(status);
+        }
         org.eclipse.wst.server.core.IServer wstServer = this.facade.getWstServer(this.serverHandle.getId());
-        RuntimeWorkingCopy copy = wstServer.getRuntime().createWorkingCopy().getAdapter(RuntimeWorkingCopy.class);
         org.eclipse.debug.core.ILaunch launch = wstServer.getLaunch();
         setLaunch(launch);
     }
@@ -84,7 +86,7 @@ public class WSTServerContext {
     }
 
     public void stop(boolean force) {
-        this.facade.stop(this.serverHandle, force);
+        this.facade.stopSync(serverHandle, force);
     }
 
     public IStatus canStop() {
@@ -98,6 +100,10 @@ public class WSTServerContext {
     public ILaunch getLaunch() {
         return this.launch;
     }
+
+	public String getMode() {
+		return this.facade.getMode(serverHandle);
+	}
 
     // public DeployableReference[] getDeployableReferences() {
     //     return this.facade.getModules(serverHandle);

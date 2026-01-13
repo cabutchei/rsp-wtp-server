@@ -89,14 +89,8 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 
 	@Override
 	public synchronized void initialize(List<DeployableReference> references) {
-		// this.wstServerFacade = ((LibertyServerDelegate) this.delegate).getWSTServerFacade();
-		for( DeployableReference reference : references ) {
-			addDeployableImpl(reference, ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN);
-		}
-		updateServerPublishStateFromDeployments();
 		fireState();
 	}
-
 
 	private DeployableState cloneDeployableState(DeployableReference reference, DeployableState state) {
 		return createDeployableState(reference, state.getPublishState(), state.getState());
@@ -209,7 +203,6 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		DeployableState deployableState = 
 				createDeployableState(reference, publishState, ServerManagementAPIConstants.STATE_UNKNOWN);
 	
-        // getFacade().addDeployable(reference, delegate.getServerHandle());
         this.wstServerFacade.addDeployable(reference);
 
 		String key = getKey(reference);

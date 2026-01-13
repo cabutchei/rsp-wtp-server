@@ -19,27 +19,9 @@ public class ServerHandleRegistry {
      * Register or refresh the WST server and (optionally) its RSP projection.
      * WST is always the source of truth.
      */
-    public void register(org.eclipse.wst.server.core.IServer wst, org.jboss.tools.rsp.server.spi.servertype.IServer rsp) {
-        String id = wst.getId();
-        wstById.put(id, wst);
-        if (rsp != null) {
-            rspById.put(id, rsp);
-        }
-    }
-    public void register(org.eclipse.wst.server.core.IServer wst, String rspId) {
-        wstById.put(rspId, wst);
-    }
-
-    public void register(org.jboss.tools.rsp.server.spi.servertype.IServer rsp, String rspId) {
-        rspById.put(rspId, rsp);
-    }
 
     public void register(org.jboss.tools.rsp.server.spi.servertype.IServer rsp) {
         rspById.put(rsp.getId(), rsp);
-    }
-
-    public org.eclipse.wst.server.core.IServer getWst(String id) {
-        return wstById.get(id);
     }
 
     public org.jboss.tools.rsp.server.spi.servertype.IServer getRsp(String id) {

@@ -31,13 +31,14 @@
               "description": "A filesystem path pointing to a server installation\u0027s root directory",
               "defaultValue": "",
               "secret": "false"
+            },
+            "server.liberty.id": {
+              "type": "string",
+              "description": "The server profile name",
+              "defaultValue": "defaultServer"
             }
           },
           "staticDefaults": {
-            "server.liberty.id": {
-              "type": "string",
-              "value": "defaultServer"
-            },
             "server.http.port": {
               "type": "int",
               "value": "9080"

@@ -95,22 +95,7 @@ public final class WstIntegrationService implements IWstIntegrationService {
 
 	@Override
 	public void refreshServers(IServerManagementModel managementModel) {
-		IServer[] servers = this.facade.createServeProxies(managementModel);
-		List<DeployableReference> references;
-		org.eclipse.wst.server.core.IServer wstServer;
-		for (IServer server : servers) {
-			references = new ArrayList<>();
-			wstServer = ServerCore.findServer(server.getId());
-			this.registry.register(wstServer, server);
-			for (org.eclipse.wst.server.core.IModule module : wstServer.getModules()) {
-				// this.adapter.collectDeployableReferences(module, references);
-				DeployableReference ref = new DeployableReference(
-					module.getName(), module.getProject().getName()
-				);
-				// ref.setOptions(null);
-				references.add(ref);
-			}
-			server.getDelegate().getServerPublishModel().initialize(references);
-		}
+		// noop
+		// TODO: remove this later
 	}
 }

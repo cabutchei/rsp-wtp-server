@@ -99,7 +99,7 @@
       		<unit id="org.eclipse.xsd.feature.group" />
       		<unit id="org.eclipse.xsd.edit.feature.group" />
       		<unit id="org.eclipse.wst.server.discovery" />
-      		<unit id="org.eclipse.jdt.feature.group" />
+      		<!-- <unit id="org.eclipse.jdt.feature.group" /> -->
 			<!-- TODO: see if there are features with the below plugins -->
       		<unit id="org.eclipse.wst.web" />
       		<unit id="org.eclipse.jem" />

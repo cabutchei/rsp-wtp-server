@@ -28,17 +28,18 @@ public class WstServerLifecycleStrategy implements ServerLifecycleStrategy {
 	}
 
 	public void beforeCreate(IServerType type, String id, Map<String, Object> attributes) throws CoreException{
-		this.facade.createServer(type, id, attributes);
+		this.facade.createServer(type, id, attributes, null);
 	}
 
 	public void afterLoad(IServer server) throws CoreException {
-		org.eclipse.wst.server.core.IServer wstServer = this.facade.getRegistry().getWst(server.getId());
-		if (wstServer == null) {
-			IStatus s = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
-					"Unable to find WST server for RSP server with id: " + server.getId());
-			throw new CoreException(s);
-		}
-		this.facade.getRegistry().register(server, server.getId());
-		this.facade.getRegistry().register(wstServer, server.getId());
+		// org.eclipse.wst.server.core.IServer wstServer = this.facade.getRegistry().getWst(server.getId());
+		// if (wstServer == null) {
+		// 	IStatus s = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
+		// 			"Unable to find WST server for RSP server with id: " + server.getId());
+		// 	throw new CoreException(s);
+		// }
+		// this.facade.getRegistry().register(server, server.getId());
+		// this.facade.getRegistry().register(wstServer, server.getId());
+		// TODO: get rid of this method (and the class altogether)
 	}
 }

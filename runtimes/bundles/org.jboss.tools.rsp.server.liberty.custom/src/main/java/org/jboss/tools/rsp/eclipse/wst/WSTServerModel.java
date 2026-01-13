@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.jboss.tools.rsp.api.RSPClient;
 import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
 import org.jboss.tools.rsp.api.dao.Attributes;
@@ -59,8 +60,10 @@ import org.jboss.tools.rsp.server.spi.model.ServerLifecycleStrategy;
 import org.jboss.tools.rsp.server.spi.servertype.CreateServerValidation;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
+import org.jboss.tools.rsp.server.spi.servertype.IServerListener;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 import org.jboss.tools.rsp.server.spi.servertype.IServerWorkingCopy;
+import org.jboss.tools.rsp.server.spi.servertype.ServerEvent;
 import org.jboss.tools.rsp.server.spi.util.StatusConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -151,8 +154,6 @@ public class WSTServerModel implements IServerModel {
 	public synchronized void addServerType(IServerType type) {
 		if( type != null && type.getId() != null ) {
 			serverTypes.put(type.getId(), type);
-			// Try again to load any failed servers
-			loadFailedServers(type.getId());
 		}
 	}
 	
@@ -218,73 +219,73 @@ public class WSTServerModel implements IServerModel {
 		// noop
 	}
 
-	protected void loadFailedServers(String id) {
-		List<File> failed = failedServerLoads.get(id);
-		List<File> failedSafe = (failed == null ? Collections.emptyList() : failed);
-		List<File> failedClone = new ArrayList<>(failedSafe);
-		for( File serverFile : failedClone) {
-			Server loaded = loadServer(serverFile);
-			if( loaded != null ) {
-				if( failed != null )
-					failed.remove(serverFile);
-				addServer(loaded, loaded.getDelegate());
-			}
-		}
-	}
+	// protected void loadFailedServers(String id) {
+	// 	List<File> failed = failedServerLoads.get(id);
+	// 	List<File> failedSafe = (failed == null ? Collections.emptyList() : failed);
+	// 	List<File> failedClone = new ArrayList<>(failedSafe);
+	// 	for( File serverFile : failedClone) {
+	// 		Server loaded = loadServer(serverFile);
+	// 		if( loaded != null ) {
+	// 			if( failed != null )
+	// 				failed.remove(serverFile);
+	// 			addServer(loaded, loaded.getDelegate());
+	// 		}
+	// 	}
+	// }
 	
-	public void loadServers(File folder) {
-		if (!folder.exists()) {
-			return;
-		}
-		for (File serverFile: folder.listFiles()) {
-			Server server = loadServer(serverFile);
-			if( server != null )
-				addServer(server, server.getDelegate());
-		}
-	}
+	// public void loadServers(File folder) {
+	// 	if (!folder.exists()) {
+	// 		return;
+	// 	}
+	// 	for (File serverFile: folder.listFiles()) {
+	// 		Server server = loadServer(serverFile);
+	// 		if( server != null )
+	// 			addServer(server, server.getDelegate());
+	// 	}
+	// }
 
-	private Server loadServer(File serverFile) {
-		Server server = new Server(serverFile, managementModel);
-		try {
-			server.load(new NullProgressMonitor());
-			String tid = server.getTypeId();
-			IServerType st = getIServerType(tid);
-			if( st != null ) {
-				server.setServerType(st);
-				server.setDelegate(st.createServerDelegate(server));
-			}
+	// private Server loadServer(File serverFile) {
+	// 	Server server = new Server(serverFile, managementModel);
+	// 	try {
+	// 		server.load(new NullProgressMonitor());
+	// 		String tid = server.getTypeId();
+	// 		IServerType st = getIServerType(tid);
+	// 		if( st != null ) {
+	// 			server.setServerType(st);
+	// 			server.setDelegate(st.createServerDelegate(server));
+	// 		}
 			
-			if( server.getServerType() == null ) {
-				String typeId = server.getAttribute(Server.TYPE_ID, (String)null);
-				if( typeId == null ) {
-					log(new Exception(
-							"Unable to load server from file " + serverFile.getAbsolutePath() + "; server type is missing or null."));
-				} else if( createServerTypeDAO(typeId) == null ) {
-					logDebug(new Exception(
-							"Unable to load server from file " + serverFile.getAbsolutePath() + "; server type " + typeId + " is not found in model."));
-					List<File> failedType = failedServerLoads.get(typeId);
-					if( failedType == null ) {
-						failedType = new ArrayList<File>();
-						failedServerLoads.put(typeId,  failedType);
-					}
-					if( !failedType.contains(serverFile))
-						failedType.add(serverFile);
-				}
-				return null;
-			} else {
-				try {
-					lifecycleStrategy.afterLoad(server);
-				} catch (CoreException ce) {
-					log(new Exception("Unable to load server from file " + serverFile.getAbsolutePath(), ce));
-					return null;
-				}
-				return server;
-			}
-		} catch(CoreException ce) {
-			log(new Exception("Unable to load server from file " + serverFile.getAbsolutePath(), ce));
-			return null;
-		}
-	}
+	// 		if( server.getServerType() == null ) {
+	// 			String typeId = server.getAttribute(Server.TYPE_ID, (String)null);
+	// 			if( typeId == null ) {
+	// 				log(new Exception(
+	// 						"Unable to load server from file " + serverFile.getAbsolutePath() + "; server type is missing or null."));
+	// 			} else if( createServerTypeDAO(typeId) == null ) {
+	// 				logDebug(new Exception(
+	// 						"Unable to load server from file " + serverFile.getAbsolutePath() + "; server type " + typeId + " is not found in model."));
+	// 				List<File> failedType = failedServerLoads.get(typeId);
+	// 				if( failedType == null ) {
+	// 					failedType = new ArrayList<File>();
+	// 					failedServerLoads.put(typeId,  failedType);
+	// 				}
+	// 				if( !failedType.contains(serverFile))
+	// 					failedType.add(serverFile);
+	// 			}
+	// 			return null;
+	// 		} else {
+	// 			try {
+	// 				lifecycleStrategy.afterLoad(server);
+	// 			} catch (CoreException ce) {
+	// 				log(new Exception("Unable to load server from file " + serverFile.getAbsolutePath(), ce));
+	// 				return null;
+	// 			}
+	// 			return server;
+	// 		}
+	// 	} catch(CoreException ce) {
+	// 		log(new Exception("Unable to load server from file " + serverFile.getAbsolutePath(), ce));
+	// 		return null;
+	// 	}
+	// }
 
 	private void log(Exception e) {
 		LOG.error(e.getMessage(), e);
@@ -309,63 +310,41 @@ public class WSTServerModel implements IServerModel {
 	
 
 	private CreateServerResponse createServerUnprotected(String serverType, String id, Map<String, Object> attributes) throws CoreException {
-		// if( servers.get(id) != null) {
-		// 	throw new CoreException(new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
-		// 			"Server with id " + id + " already exists."));
-		// }
-		// IServerType type = serverTypes.get(serverType);
-		// if( type == null ) {
-		// 	return new CreateServerResponse(createDaoErrorStatus("Server Type " + serverType + " not found"), 
-		// 			Collections.emptyList());
-		// }
+		if( getServer(id) != null) {
+			throw new CoreException(new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
+					"Server with id " + id + " already exists."));
+		}
+		IServerType type = serverTypes.get(serverType);
+		if( type == null ) {
+			return new CreateServerResponse(createDaoErrorStatus("Server Type " + serverType + " not found"), 
+					Collections.emptyList());
+		}
+		// TODO: how do we validate if we don't have access to org.jboss.tools.rsp.server.model.internal.DaoUtilities?
+
 		// IStatus validAttributes = validateAttributes(type, attributes, true, false);
 		// if( !validAttributes.isOK()) {
 		// 	return new CreateServerResponse(StatusConverter.convert(validAttributes), 
 		// 			getInvalidAttributeKeys(validAttributes));
 		// }
 
-		// CreateServerValidation lifecycleValidation = lifecycleStrategy.validateCreate(type, id, attributes);
-		// if( lifecycleValidation != null && lifecycleValidation.getStatus() != null && !lifecycleValidation.getStatus().isOK()) {
-		// 	return lifecycleValidation.toDao();
-		// }
-		
-		// File serverFile = getServerFile(id);
-		// if( !canCreateFile(serverFile)) {
-		// 	return new CreateServerResponse(
-		// 			StatusConverter.convert(
-		// 					new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
-		// 							"Server id is invalid for this filesystem")), 
-		// 			Collections.EMPTY_LIST);
-		// }
-
-		// lifecycleStrategy.beforeCreate(type, id, attributes);
-		// Server server = createServer2(type, id, attributes);
-		// IServerDelegate del = server.getDelegate();
-		// if( del == null ) {
-		// 	return new CreateServerResponse(
-		// 			StatusConverter.convert(
-		// 					new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
-		// 							"Error creating server delegate")), 
-		// 							Collections.EMPTY_LIST);
-		// }
+		IServer server = this.wstIntegrationService.getFacade().createServer(type, id, attributes, managementModel);
+		IServerDelegate del = server.getDelegate();
+		if( del == null ) {
+			return new CreateServerResponse(
+					StatusConverter.convert(
+							new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
+									"Error creating server delegate")), 
+									Collections.EMPTY_LIST);
+		}
 		// CreateServerValidation valid = del.validate();
 		// if( !valid.getStatus().isOK()) {
 		// 	return valid.toDao();
 		// }
-		// lifecycleStrategy.afterCreate(server);
-		// try {
-		// 	server.save(new NullProgressMonitor());
-		// } catch(CoreException ce) {
-		// 	return new CreateServerResponse(
-		// 			StatusConverter.convert(
-		// 					new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
-		// 							"Error saving server in model", ce)), 
-		// 							Collections.EMPTY_LIST);
-
-		// }
-		// addServer(server, del);
-		// return valid.toDao();
-		return null;
+		addServer(server);
+		return new CreateServerResponse(
+			StatusConverter.convert(
+				new Status(IStatus.OK, ServerCoreActivator.BUNDLE_ID, "Server created")),
+					Collections.EMPTY_LIST);
 	}
 	
 	private IStatus validateAttributes(IServerType type, 
@@ -469,30 +448,24 @@ public class WSTServerModel implements IServerModel {
 		return serverFile;
 	}
 
-	private boolean canCreateFile(File file) {
-		if (file.exists()) {
-			return file.canWrite();
-		} else {
-			try {
-				return file.createNewFile() && file.delete();
-			} catch (Exception e) {
-				return false;
-			}
-		}
-	}
-
 	public void refreshServers() {
-		this.wstIntegrationService.refreshServers(this.managementModel);
-		for (IServer server : getServers().values()) {
+		IServer[] servers = this.wstIntegrationService.getFacade().createServeProxies(managementModel);
+		for (IServer server : servers) {
 			this.serverDelegates.put(server.getId(), server.getDelegate());
-			fireServerAdded(server);
+			addServer(server);
 		}
 	}
 
-	protected void addServer(IServer server, IServerDelegate del) {
-		// servers.put(server.getId(), server);
-		// serverDelegates.put(server.getId(), del);
-		// fireServerAdded(server);
+	protected void addServer(IServer server) {
+		this.wstIntegrationService.getRegistry().register(server);
+		this.wstIntegrationService.getFacade().addServerListener(server.getId(),
+			new IServerListener() {
+				public void serverChanged(ServerEvent event) {
+					ServerState state = event.getServer().getDelegate().getServerState();
+					WSTServerModel.this.fireServerStateChanged(server, state);
+				}
+			});
+		fireServerAdded(server);
 	}
 
 	private void fireServerAdded(IServer server) {
@@ -698,6 +671,8 @@ public class WSTServerModel implements IServerModel {
 
 	@Override
 	public IStatus addDeployable(IServer server, DeployableReference ref) {
+		// temporary hack, need to handle this better. Maybe a custom object?
+		ref.setLabel(java.nio.file.Paths.get(ref.getLabel()).getFileName().toString());
 		IServerDelegate s = serverDelegates.get(server.getId());
 		if( s == null ) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
@@ -708,7 +683,6 @@ public class WSTServerModel implements IServerModel {
 			return canAdd;
 		}
 		IStatus ret = s.getServerPublishModel().addDeployable(ref);
-		saveServerLogError(server);
 		return ret;
 	}
 

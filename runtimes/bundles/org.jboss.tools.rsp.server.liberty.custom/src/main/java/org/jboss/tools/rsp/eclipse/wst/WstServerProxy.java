@@ -68,6 +68,9 @@ public class WstServerProxy implements IServer {
 			// setAttribute(TYPE_ID, serverType.getId());
 			this.delegate = this.serverType.createServerDelegate(this);
 		}
+		if( delegate != null && delegate.getServerPublishModel() != null ) {
+			delegate.getServerPublishModel().initialize(Collections.emptyList());
+		}
 		// if( this.delegate != null ) {
 		// 	this.delegate.setDefaults(this);
 		// }
@@ -307,6 +310,16 @@ public class WstServerProxy implements IServer {
 			String s = iterator.next();
 			keyChild.putString(PROPERTY_KEY_VALUE_PREFIX + (i++), s);
 		}
+	}
+
+	public void addServerListener(org.jboss.tools.rsp.server.spi.servertype.IServerListener listener) {
+		org.eclipse.wst.server.core.IServerListener wrapper = new org.eclipse.wst.server.core.IServerListener() {
+			public void serverChanged(org.eclipse.wst.server.core.ServerEvent event) {
+				org.jboss.tools.rsp.server.spi.servertype.ServerEvent rspEvent = WstServerProxy.this.adapter.toRspServerEvent(event, WstServerProxy.this);
+				listener.serverChanged(rspEvent);
+			}
+		};
+		this.wstServer.addServerListener(wrapper);
 	}
 
 	private static class WstServerWorkingCopy implements IServerWorkingCopy {

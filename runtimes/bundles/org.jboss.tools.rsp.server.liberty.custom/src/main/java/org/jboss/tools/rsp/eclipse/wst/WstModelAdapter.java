@@ -8,10 +8,17 @@
  ******************************************************************************/
 package org.jboss.tools.rsp.eclipse.wst;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.IServer;
 import org.eclipse.wst.server.core.IServerType;
+import org.eclipse.wst.server.core.ServerCore;
+import org.eclipse.wst.server.core.ServerEvent;
 import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
+import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.eclipse.core.runtime.MultiStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.Status;
 import org.jboss.tools.rsp.server.spi.model.IServerModel;
@@ -141,6 +148,168 @@ public class WstModelAdapter {
 			return null;
 		}
 		return model.getIServerType(wstType.getId());
+	}
+
+	public org.jboss.tools.rsp.server.spi.servertype.IServerType toRspServerType(String typeId, IServerModel model) {
+		if (typeId == null || model == null) {
+			return null;
+		}
+		return model.getIServerType(typeId);
+	}
+
+	public IServerType toWstServerType(org.jboss.tools.rsp.server.spi.servertype.IServerType rspType) {
+		if (rspType == null) {
+			return null;
+		}
+		return toWstServerType(rspType.getId());
+	}
+
+	public IServerType toWstServerType(String typeId) {
+		if (typeId == null) {
+			return null;
+		}
+		for (IServerType serverType : ServerCore.getServerTypes()) {
+			if (typeId.equals(serverType.getId())) {
+				return serverType;
+			}
+		}
+		return null;
+	}
+
+	public org.jboss.tools.rsp.server.spi.servertype.ServerEvent toRspServerEvent(ServerEvent event,
+			org.jboss.tools.rsp.server.spi.servertype.IServer rspServer) {
+		if (event == null || rspServer == null) {
+			return null;
+		}
+		DeployableReference[] deployables = toDeployableReferences(event.getModule());
+		int state = toRspServerState(event.getState());
+		int publishState = toRspPublishState(event.getPublishState());
+		org.jboss.tools.rsp.eclipse.core.runtime.IStatus status = toRspStatusOrNull(event.getStatus());
+		return new org.jboss.tools.rsp.server.spi.servertype.ServerEvent(event.getKind(), rspServer, deployables,
+				state, publishState, event.getRestartState(), status);
+	}
+
+	public ServerEvent toWstServerEvent(org.jboss.tools.rsp.server.spi.servertype.ServerEvent event,
+			org.eclipse.wst.server.core.IServer wstServer) {
+		if (event == null || wstServer == null) {
+			return null;
+		}
+		IModule[] modules = toWstModules(event.getDeployables(), wstServer);
+		int state = toWstServerState(event.getState());
+		int publishState = toWstPublishState(event.getPublishState());
+		boolean restartState = event.getRestartState();
+		org.eclipse.core.runtime.IStatus status = toWstStatus(event.getStatus());
+		int kind = event.getKind();
+		if (modules != null && modules.length > 0) {
+			kind = kind & ~ServerEvent.SERVER_CHANGE;
+			if (status != null) {
+				return new ServerEvent(kind, wstServer, modules, state, publishState, restartState, status);
+			}
+			return new ServerEvent(kind, wstServer, modules, state, publishState, restartState);
+		}
+		kind = kind & ~ServerEvent.MODULE_CHANGE;
+		if (status != null) {
+			return new ServerEvent(kind, wstServer, state, publishState, restartState, status);
+		}
+		return new ServerEvent(kind, wstServer, state, publishState, restartState);
+	}
+
+	private DeployableReference[] toDeployableReferences(IModule[] modules) {
+		if (modules == null || modules.length == 0) {
+			return null;
+		}
+		List<DeployableReference> refs = new ArrayList<>(modules.length);
+		for (IModule module : modules) {
+			if (module == null) {
+				continue;
+			}
+			String label = module.getName();
+			String path = label;
+			if (module.getProject() != null && module.getProject().getName() != null) {
+				path = module.getProject().getName();
+			}
+			refs.add(new DeployableReference(label, path));
+		}
+		if (refs.isEmpty()) {
+			return null;
+		}
+		return refs.toArray(new DeployableReference[0]);
+	}
+
+	private IModule[] toWstModules(DeployableReference[] deployables, org.eclipse.wst.server.core.IServer wstServer) {
+		if (deployables == null || deployables.length == 0 || wstServer == null) {
+			return null;
+		}
+		IModule[] available = wstServer.getModules();
+		if (available == null || available.length == 0) {
+			return null;
+		}
+		List<IModule> matches = new ArrayList<>();
+		for (DeployableReference deployable : deployables) {
+			for (IModule module : available) {
+				if (matchesModule(deployable, module)) {
+					matches.add(module);
+					break;
+				}
+			}
+		}
+		if (matches.isEmpty()) {
+			return null;
+		}
+		return matches.toArray(new IModule[0]);
+	}
+
+	private boolean matchesModule(DeployableReference deployable, IModule module) {
+		if (deployable == null || module == null) {
+			return false;
+		}
+		String label = deployable.getLabel();
+		String path = deployable.getPath();
+		if (label != null && label.equals(module.getName())) {
+			return true;
+		}
+		if (module.getProject() != null && module.getProject().getName() != null) {
+			String projectName = module.getProject().getName();
+			if (label != null && label.equals(projectName)) {
+				return true;
+			}
+			if (path != null && path.equals(projectName)) {
+				return true;
+			}
+		}
+		return path != null && path.equals(module.getName());
+	}
+
+	private org.jboss.tools.rsp.eclipse.core.runtime.IStatus toRspStatusOrNull(IStatus status) {
+		if (status == null) {
+			return null;
+		}
+		return toRspStatus(status);
+	}
+
+	private org.eclipse.core.runtime.IStatus toWstStatus(org.jboss.tools.rsp.eclipse.core.runtime.IStatus status) {
+		if (status == null) {
+			return null;
+		}
+		String pluginId = normalizePluginId(status.getPlugin());
+		if (status.isMultiStatus()) {
+			org.eclipse.core.runtime.IStatus[] children = toWstChildren(status.getChildren());
+			return new org.eclipse.core.runtime.MultiStatus(pluginId, status.getCode(), children, status.getMessage(),
+					status.getException());
+		}
+		return new org.eclipse.core.runtime.Status(status.getSeverity(), pluginId, status.getCode(), status.getMessage(),
+				status.getException());
+	}
+
+	private org.eclipse.core.runtime.IStatus[] toWstChildren(org.jboss.tools.rsp.eclipse.core.runtime.IStatus[] children) {
+		if (children == null || children.length == 0) {
+			return new org.eclipse.core.runtime.IStatus[0];
+		}
+		org.eclipse.core.runtime.IStatus[] converted = new org.eclipse.core.runtime.IStatus[children.length];
+		for (int i = 0; i < children.length; i++) {
+			converted[i] = toWstStatus(children[i]);
+		}
+		return converted;
 	}
 
 	private org.jboss.tools.rsp.eclipse.core.runtime.IStatus[] convertChildren(IStatus[] children) {

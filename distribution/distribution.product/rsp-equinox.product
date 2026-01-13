@@ -31,6 +31,8 @@
 		<plugin id="com.ibm.ws.st.core"/>
 		<plugin id="org.eclipse.jface.text"/>
 		<plugin id="com.ibm.ws.st.was.core"/>
+		<plugin id="javax.annotation"/>
+		<plugin id="org.eclipse.jdt.launching.macosx"/>
 	</plugins>
 	<configurations>
 		<plugin id="org.jboss.tools.rsp.server.liberty.custom" autoStart="true" startLevel="3"/>

@@ -26,6 +26,12 @@ public interface IWorkspaceService {
 
 	IStatus importAllProjects();
 
+	IStatus importAllWorkspaceProjects();
+
+	IStatus importProjects(List<Path> projectRoots);
+
+	IStatus importProjects(Path[] projectRoots);
+
 	IStatus refreshProject(String projectName);
 
 	List<WorkspaceProject> listProjects();

@@ -27,12 +27,12 @@ public class EntryPoint implements IApplication {
         // TODO: should this be here or elsewhere?
         WstIntegrationService integration = Activator.getWstIntegrationService();
         IServerManagementModel model = LauncherSingleton.getDefault().getLauncher().getModel();
-        IStatus wsStatus = integration.getWorkspaceService()
-                .openWorkspace(integration.getWorkspaceService().getWorkspaceRoot());
-        if (wsStatus != null && !wsStatus.isOK()) {
-            LOG.warn("Workspace initialization failed: {}", wsStatus.getMessage());
-        }
-        IStatus importStatus = integration.getWorkspaceService().importAllProjects();
+        // IStatus wsStatus = integration.getWorkspaceService()
+        //         .openWorkspace(integration.getWorkspaceService().getWorkspaceRoot());
+        // if (wsStatus != null && !wsStatus.isOK()) {
+        //     LOG.warn("Workspace initialization failed: {}", wsStatus.getMessage());
+        // }
+        IStatus importStatus = integration.getWorkspaceService().importAllWorkspaceProjects();
         if (importStatus != null && !importStatus.isOK()) {
             LOG.warn("Workspace import failed: {}", importStatus.getMessage());
         }

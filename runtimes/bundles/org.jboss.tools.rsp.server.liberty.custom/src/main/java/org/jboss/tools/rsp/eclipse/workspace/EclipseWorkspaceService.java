@@ -12,8 +12,10 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
@@ -25,6 +27,8 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.wst.common.project.facet.core.ProjectFacetsManager;
+import org.eclipse.jst.j2ee.model.ModelProviderManager;
 import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.ServerUtil;
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
@@ -39,7 +43,9 @@ public class EclipseWorkspaceService implements IWorkspaceService {
 
 	@Override
 	public java.nio.file.Path getWorkspaceRoot() {
-		IPath rootLocation = new Path("/Users/cabutchei/workspace");
+		IPath rootLocation = null;
+		// IPath rootLocation = new Path("/Users/cabutchei/workspace");
+		// IPath rootLocation = new Path(System.getProperty("org.jboss.tools.rsp.workspace.projects"));
 		// IPath rootLocation = ResourcesPlugin.getWorkspace().getRoot().getLocation();
 		if (rootLocation == null) {
 			return null;
@@ -137,6 +143,46 @@ public class EclipseWorkspaceService implements IWorkspaceService {
 	}
 
 	@Override
+	public IStatus importAllWorkspaceProjects() {
+		/* we're now reading the project paths from a property passed to the process by the client
+		Good enough for now, but I feel like they should be passed to the server via json/rpc request as part of
+		the initialization process*/
+		String[] workspaceProjectsPaths = System.getProperty("org.jboss.tools.rsp.workspace.projects").split(",");
+		java.nio.file.Path[] paths = Arrays.asList(workspaceProjectsPaths).stream().map(p -> java.nio.file.Paths.get(p)).toArray(java.nio.file.Path[]::new);
+		return importProjects(paths);
+	}
+
+	@Override
+	public IStatus importProjects(List<java.nio.file.Path> projectRoots) {
+		if (projectRoots == null) {
+			return errorStatus("Project roots cannot be null", null);
+		}
+		if (projectRoots.isEmpty()) {
+			return Status.OK_STATUS;
+		}
+		List<IStatus> failures = new ArrayList<>();
+		for (java.nio.file.Path projectRoot : projectRoots) {
+			if (projectRoot == null) {
+				failures.add(errorStatus("Project root cannot be null", null));
+				continue;
+			}
+			IStatus status = importProject(projectRoot);
+			if (!status.isOK()) {
+				failures.add(status);
+			}
+		}
+		return aggregateImportResults(failures);
+	}
+
+	@Override
+	public IStatus importProjects(java.nio.file.Path[] projectRoots) {
+		if (projectRoots == null) {
+			return errorStatus("Project roots cannot be null", null);
+		}
+		return importProjects(Arrays.asList(projectRoots));
+	}
+
+	@Override
 	public IStatus refreshProject(String projectName) {
 		if (projectName == null || projectName.isEmpty()) {
 			return errorStatus("Project name cannot be null or empty", null);
@@ -194,6 +240,7 @@ public class EclipseWorkspaceService implements IWorkspaceService {
 
 	@Override
 	public IStatus ensureFacets(String projectName, List<String> facetIds) {
+		// ResourcesPlugin.getWorkspace().getRoot()
 		return errorStatus("Facet operations are not implemented", null);
 	}
 

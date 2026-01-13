@@ -20,10 +20,10 @@
 
   <modules>
     <module>distribution</module>
-    <module>distribution.wildfly</module>
+    <!-- <module>distribution.wildfly</module>
     <module>distribution.minishift</module>
-    <module>distribution.liberty.custom</module>
+    <module>distribution.liberty.custom</module> -->
     <module>distribution.product</module>
-    <module>integration-tests</module>
+    <!-- <module>integration-tests</module> -->
   </modules>
 </project>

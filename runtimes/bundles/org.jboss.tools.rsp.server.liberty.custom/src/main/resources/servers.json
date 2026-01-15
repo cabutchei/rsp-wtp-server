@@ -12,6 +12,16 @@
           "versionFile": "lib/versions/openliberty.properties",
           "versionKey": "com.ibm.websphere.productVersion",
           "versionRequiredPrefix": "25.0."
+        },
+        "websphere.8.x": {
+          "discoveryType": "xml",
+          "name": "WebSphere Traditional 8.x",
+          "nameFile": "properties/version/platform.websphere",
+          "nameKey": "@name",
+          "nameRequiredPrefix": "IBM WebSphere",
+          "versionFile": "properties/version/platform.websphere",
+          "versionKey": "@version",
+          "versionRequiredPrefix": "8.5"
         }
       },
       "type": {
@@ -28,7 +38,7 @@
           "required": {
             "server.home.dir": {
               "type": "string",
-              "description": "A filesystem path pointing to a server installation\u0027s root directory",
+              "description": "A filesystem path pointing to a server installation's root directory",
               "defaultValue": "",
               "secret": "false"
             },
@@ -61,7 +71,7 @@
               "workingDirectory": "bin",
               "mainType": "com.ibm.ws.kernel.boot.cmdline.EnvCheck",
               "programArgs": "${server.liberty.id}",
-              "vmArgs": "-javaagent:${server.home.dir}/bin/tools/ws-javaagent.jar -Djava.awt.headless\u003dtrue -Djdk.attach.allowAttachSelf\u003dtrue",
+              "vmArgs": "-javaagent:${server.home.dir}/bin/tools/ws-javaagent.jar -Djava.awt.headless=true -Djdk.attach.allowAttachSelf=true",
               "classpath": "bin/tools/ws-server.jar;lib/com.ibm.ws.kernel.boot_1.0.48.jar;${server.classpath.additions}"
             },
             "poller": "webPoller",
@@ -76,7 +86,7 @@
               "workingDirectory": "bin",
               "mainType": "com.ibm.ws.kernel.boot.cmdline.EnvCheck",
               "programArgs": "${server.liberty.id} --stop",
-              "vmArgs": "-javaagent:${server.home.dir}/bin/tools/ws-javaagent.jar -Djava.awt.headless\u003dtrue -Djdk.attach.allowAttachSelf\u003dtrue",
+              "vmArgs": "-javaagent:${server.home.dir}/bin/tools/ws-javaagent.jar -Djava.awt.headless=true -Djdk.attach.allowAttachSelf=true",
               "classpath": "bin/tools/ws-server.jar;lib/com.ibm.ws.kernel.boot_1.0.48.jar;${server.classpath.additions}"
             },
             "poller": "webPoller",

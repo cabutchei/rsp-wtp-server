@@ -25,16 +25,6 @@ import org.jboss.tools.rsp.server.persistence.DataLocationCore;
 /** We are now skipping ServerCoreActivator and using our own Launcher. This allows us to have control over the server management model instance.*/
 public class LibertyServerMain extends ServerManagementServerLauncher {
 
-	public Object start(IApplicationContext context) throws Exception {
-		LibertyServerMain.main(context.getArguments().get("application.args") != null ?
-				(String[]) context.getArguments().get("application.args") : new String[0]);
-		return IApplication.EXIT_OK;
-	}
-
-	public void stop() {
-		// Nothing to do
-	}
-
 	public static void main(String[] args) throws Exception {
 		LibertyServerMain instance = new LibertyServerMain("" + RSPFlags.DEFAULT_PORT);
 		LauncherSingleton.getDefault().setLauncher(instance);

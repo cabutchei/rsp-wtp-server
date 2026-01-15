@@ -16,6 +16,7 @@ import org.jboss.tools.rsp.server.generic.discovery.ExplodedManifestDiscovery;
 import org.jboss.tools.rsp.server.generic.discovery.GenericServerBeanTypeProvider;
 import org.jboss.tools.rsp.server.generic.discovery.JarManifestDiscovery;
 import org.jboss.tools.rsp.server.generic.discovery.PropertiesFileDiscovery;
+import org.jboss.tools.rsp.server.generic.discovery.XmlFileDiscovery;
 import org.jboss.tools.rsp.server.generic.runtimes.download.GenericDownloadRuntimesProvider;
 import org.jboss.tools.rsp.server.generic.servertype.GenericServerType;
 import org.jboss.tools.rsp.server.spi.discovery.ServerBeanType;
@@ -119,6 +120,10 @@ public class GenericServerTypeExtensionModel implements IServerBehaviorFromJSONP
 						versionString, versionIsPattern, versionKey, requiredVersionPrefix));
 			} else if( "properties".equals(discoveryType)) {
 				collector.add(new PropertiesFileDiscovery(id, name, serverTypeId, 
+						nameString, nameIsPattern, nameKey, requiredNamePrefix, 
+						versionString, versionIsPattern, versionKey, requiredVersionPrefix));
+			} else if( "xml".equals(discoveryType)) {
+				collector.add(new XmlFileDiscovery(id, name, serverTypeId, 
 						nameString, nameIsPattern, nameKey, requiredNamePrefix, 
 						versionString, versionIsPattern, versionKey, requiredVersionPrefix));
 			}

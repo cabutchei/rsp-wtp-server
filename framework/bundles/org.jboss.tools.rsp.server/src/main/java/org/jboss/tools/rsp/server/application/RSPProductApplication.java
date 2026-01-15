@@ -1,4 +1,4 @@
-package org.jboss.tools.rsp.server.product;
+package org.jboss.tools.rsp.server.application;
 
 /*******************************************************************************
  * Copyright (c) 2024 Red Hat, Inc. Distributed under license by Red Hat, Inc.

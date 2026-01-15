@@ -2,21 +2,24 @@
 <?eclipse version="3.4"?>
 <plugin>
    <extension
-         id="org.jboss.tools.rsp.server.product"
-         point="org.eclipse.core.runtime.products">
+         point="org.eclipse.core.runtime.applications"
+         id="org.jboss.tools.rsp.server.product.application">
+      <application
+            cardinality="singleton-global"
+            thread="main"
+            visible="true">
+         <run class="org.jboss.tools.rsp.server.application.RSPProductApplication"/>
+      </application>
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.products"
+         id="org.jboss.tools.rsp.server.product">
       <product
-            application="org.jboss.tools.rsp.server.product.application"
-            name="Runtime Server Protocol Equinox Server">
+            name="Runtime Server Protocol Equinox Server"
+            application="org.jboss.tools.rsp.server.product.application">
          <property
                name="aboutText"
                value="Runtime Server Protocol server packaged for the Equinox runtime."/>
       </product>
-   </extension>
-   <extension
-         id="org.jboss.tools.rsp.server.product.application"
-         point="org.eclipse.core.runtime.applications">
-      <application>
-         <run class="org.jboss.tools.rsp.server.product.RSPProductApplication"/>
-      </application>
    </extension>
 </plugin>

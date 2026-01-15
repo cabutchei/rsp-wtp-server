@@ -1,22 +1,22 @@
 {
   "serverTypes": {
-    "com.ibm.ws.st.server.wlp": {
+    "com.ibm.ws.st.server.v85.was": {
       "template": "liberty.template",
       "discoveries": {
-        "payara.25.x": {
-          "discoveryType": "properties",
-          "name": "WebSphere Liberty 25.x",
-          "nameFile": "lib/versions/openliberty.properties",
-          "nameKey": "com.ibm.websphere.productId",
-          "nameRequiredPrefix": "io.openliberty",
-          "versionFile": "lib/versions/openliberty.properties",
-          "versionKey": "com.ibm.websphere.productVersion",
-          "versionRequiredPrefix": "25.0."
+        "websphere.8.x": {
+          "discoveryType": "xml",
+          "name": "WebSphere Traditional 8.x",
+          "nameFile": "properties/version/platform.websphere",
+          "nameKey": "@name",
+          "nameRequiredPrefix": "IBM WebSphere",
+          "versionFile": "properties/version/platform.websphere",
+          "versionKey": "@version",
+          "versionRequiredPrefix": "8.5"
         }
       },
       "type": {
-        "name": "WebSphere Liberty 25.0.x",
-        "description": "A server adapter capable of discovering and controlling a WebSphere Liberty 25.x runtime instance."
+        "name": "WebSphere Traditional 8.5.x",
+        "description": "A server adapter capable of discovering and controlling a WebSphere Traditional 8.x runtime instance."
       }
     }
   },
@@ -34,8 +34,7 @@
             },
             "server.liberty.id": {
               "type": "string",
-              "description": "The server profile name",
-              "defaultValue": "defaultServer"
+              "description": "The server profile name"
             }
           },
           "staticDefaults": {

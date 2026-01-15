@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-	<!-- application="org.jboss.tools.rsp.server.product.application" -->
+	<!-- application="org.jboss.tools.rsp.server.liberty.custom.application" -->
 <product name="Runtime Server Protocol Equinox"
 	uid="org.jboss.tools.rsp.server.liberty.custom.product"
 	id="org.jboss.tools.rsp.server.liberty.custom.product"
-	application="org.jboss.tools.rsp.server.liberty.custom.application"
+	application="org.jboss.tools.rsp.server.product.application"
 	version="0.26.18.qualifier"
 	useFeatures="false"
 	includeLaunchers="true">
@@ -22,13 +22,14 @@
 		<plugin id="org.jboss.tools.rsp.runtime.core"/>
 		<plugin id="org.jboss.tools.rsp.server.spi"/>
 		<plugin id="org.jboss.tools.rsp.server"/>
+		<plugin id="org.jboss.tools.rsp.server.wst"/>
 		<plugin id="org.jboss.tools.rsp.server.generic"/>
 		<plugin id="org.jboss.tools.rsp.server.redhat.download"/>
 		<plugin id="org.jboss.tools.rsp.server.wildfly"/>
 		<plugin id="org.jboss.tools.rsp.server.minishift"/>
 		<plugin id="org.jboss.tools.rsp.server.liberty"/>
 		<plugin id="org.jboss.tools.rsp.server.liberty.custom"/>
-		<plugin id="org.jboss.tools.rsp.server.wst"/>
+		<plugin id="org.jboss.tools.rsp.server.websphere"/>
 		<plugin id="com.ibm.ws.st.core"/>
 		<plugin id="org.eclipse.jface.text"/>
 		<plugin id="com.ibm.ws.st.was.core"/>
@@ -37,11 +38,11 @@
 	</plugins>
 	<configurations>
 		<plugin id="org.jboss.tools.rsp.server.liberty.custom" autoStart="true" startLevel="3"/>
-		<plugin id="com.ibm.ws.st.core" autoStart="true" startLevel="3"/>
-		<plugin id="org.eclipse.equinox.app"/>
+		<plugin id="org.jboss.tools.rsp.server.wst" autoStart="true" startLevel="2"/>
+		<plugin id="org.jboss.tools.rsp.server.websphere" autoStart="true" startLevel="3"/>
 		<plugin id="org.eclipse.core.runtime" autoStart="true" startLevel="0"/>
 		<plugin id="org.eclipse.core.resources" autoStart="true" startLevel="0"/>
 		<plugin id="org.eclipse.equinox.simpleconfigurator" autoStart="true" startLevel="1"/>
-		<plugin id="org.jboss.tools.rsp.server" autoStart="false" startLevel="4"/>
+		<plugin id="org.jboss.tools.rsp.server" autoStart="true" startLevel="4"/>
 	</configurations>
 </product>

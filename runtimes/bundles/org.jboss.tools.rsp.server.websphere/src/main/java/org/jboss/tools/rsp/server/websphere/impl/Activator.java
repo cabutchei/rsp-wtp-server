@@ -6,23 +6,20 @@
  * 
  * Contributors: Red Hat, Inc.
  ******************************************************************************/
-package org.jboss.tools.rsp.server.liberty.custom.impl;
+package org.jboss.tools.rsp.server.websphere.impl;
 
 import java.io.InputStream;
 
 import org.jboss.tools.rsp.launching.memento.JSONMemento;
-import org.jboss.tools.rsp.server.LauncherSingleton;
 import org.jboss.tools.rsp.server.ServerCoreActivator;
-import org.jboss.tools.rsp.server.ServerManagementServerLauncher;
 import org.jboss.tools.rsp.eclipse.wst.WSTServerContext;
 import org.jboss.tools.rsp.eclipse.wst.IWstIntegrationService;
-import org.jboss.tools.rsp.eclipse.wst.WstServerManagementModelFactory;
 import org.jboss.tools.rsp.server.generic.GenericServerActivator;
 import org.jboss.tools.rsp.server.generic.IServerBehaviorFromJSONProvider;
 import org.jboss.tools.rsp.server.generic.IServerBehaviorProvider;
+import org.jboss.tools.rsp.server.servertype.impl.IWebSphereServerAttributes;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
-import org.jboss.tools.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 import org.jboss.tools.rsp.api.dao.ServerHandle;
 import org.jboss.tools.rsp.api.dao.ServerType;
@@ -32,8 +29,10 @@ import org.osgi.framework.ServiceReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
+
 public class Activator extends GenericServerActivator {
-	public static final String BUNDLE_ID = "org.jboss.tools.rsp.server.liberty.custom";
+	public static final String BUNDLE_ID = "org.jboss.tools.rsp.server.websphere";
 	private static final Logger LOG = LoggerFactory.getLogger(Activator.class);
 	private static volatile IWstIntegrationService wstIntegration;
 	private static volatile BundleContext bundleContext;
@@ -111,9 +110,8 @@ public class Activator extends GenericServerActivator {
 							LOG.error("WST integration service not available.");
 							return null;
 						}
-						if (typeId != null && typeId.startsWith(ILibertyServerAttributes.LIBERTY_SERVER_TYPE_PREFIX)) {
-							LibertyServerDelegate del = new LibertyServerDelegate(server, behaviorMemento, new WSTServerContext(toHandle(server), integration.getFacade()));
-							// del.setWSTServerFacade(new WSTServerFacade(toHandle(server), integration.getFacade()));
+						if (typeId != null && typeId.startsWith(IWebSphereServerAttributes.WEBSPHERE_SERVER_TYPE_PREFIX)) {
+							WebSphereServerDelegate del = new WebSphereServerDelegate(server, behaviorMemento, new WSTServerContext(toHandle(server), integration.getFacade()));
 							return del;
 						}
 						return null;

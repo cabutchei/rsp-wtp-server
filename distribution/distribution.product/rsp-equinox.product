@@ -28,6 +28,7 @@
 		<plugin id="org.jboss.tools.rsp.server.minishift"/>
 		<plugin id="org.jboss.tools.rsp.server.liberty"/>
 		<plugin id="org.jboss.tools.rsp.server.liberty.custom"/>
+		<plugin id="org.jboss.tools.rsp.server.wst"/>
 		<plugin id="com.ibm.ws.st.core"/>
 		<plugin id="org.eclipse.jface.text"/>
 		<plugin id="com.ibm.ws.st.was.core"/>

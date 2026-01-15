@@ -505,7 +505,6 @@ public class ServerManagementServerImpl implements RSPServer {
 	public CompletableFuture<ServerState> getServerState(ServerHandle handle) {
 		return createCompletableFuture(() -> getServerStateSync(handle));
 	}
-
 	public ServerState getServerStateSync(ServerHandle handle) {
 		IServer is = managementModel.getServerModel().getServer(handle.getId());
 		return is.getDelegate().getServerState();

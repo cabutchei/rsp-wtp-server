@@ -24,13 +24,24 @@ import org.jboss.tools.rsp.server.model.ServerPersistenceManager;
 import org.jboss.tools.rsp.server.persistence.DataLocationCore;
 import org.jboss.tools.rsp.server.spi.client.ClientThreadLocal;
 import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
+import org.jboss.tools.rsp.server.spi.model.IServerManagementModelFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ServerManagementServerLauncher {
 	private static final Logger LOG = LoggerFactory.getLogger(ServerManagementServerLauncher.class);
 
-	private final ServerPersistenceManager persistenceEventManager;
+	private static volatile IServerManagementModelFactory modelFactory;
+
+	public static void setServerManagementModelFactory(IServerManagementModelFactory factory) {
+		modelFactory = factory;
+	}
+
+	public static void clearServerManagementModelFactory() {
+		modelFactory = null;
+	}
+
+	// private final ServerPersistenceManager persistenceEventManager;
 	
 	public static void main(String[] args) throws Exception {
 		ServerManagementServerLauncher instance = new ServerManagementServerLauncher(args[0]);
@@ -61,7 +72,7 @@ public class ServerManagementServerLauncher {
 	public ServerManagementServerLauncher(String portString) {
 		this.portString = portString;
 		this.serverImpl = createImpl();
-		this.persistenceEventManager = new ServerPersistenceManager(this);
+		// this.persistenceEventManager = new ServerPersistenceManager(this);
 	}
 	
 	protected ServerManagementServerImpl createImpl() {
@@ -69,7 +80,7 @@ public class ServerManagementServerLauncher {
 		if( !dlc.isInUse()) {
 			try {
 				dlc.lock();
-				return new ServerManagementServerImpl(this, new ServerManagementModel(dlc));
+				return new ServerManagementServerImpl(this, createServerManagementModel(dlc));
 			} catch(IOException ioe) {
 				LOG.error("Error locking workspace", ioe.getMessage(), ioe);
 			}
@@ -77,6 +88,14 @@ public class ServerManagementServerLauncher {
 		throw new RuntimeException("Workspace is locked. Please verify workspace is not in use, or, remove the .lock file at " + dlc.getDataLocation().getAbsolutePath() + "/.lock");
 	}
 	
+	protected IServerManagementModel createServerManagementModel(DataLocationCore dataLocationCore) {
+		IServerManagementModelFactory factory = modelFactory;
+		if (factory != null) {
+			return factory.create(dataLocationCore);
+		}
+		return new ServerManagementModel(dataLocationCore);
+	}
+
 	public IServerManagementModel getModel() {
 		return serverImpl.getModel();
 	}
@@ -90,7 +109,7 @@ public class ServerManagementServerLauncher {
 	}
 
 	public void launch(int port) throws Exception {
-		persistenceEventManager.loadState();
+		// persistenceEventManager.loadState();
 		startListening(port, serverImpl);
 	}
 	
@@ -210,7 +229,7 @@ public class ServerManagementServerLauncher {
 	}
 	
 	public void shutdown() {
-		persistenceEventManager.saveState();
+		// persistenceEventManager.saveState();
 		if( socketRunnable != null )
 			socketRunnable.stopListening();
 		closeAllConnections();

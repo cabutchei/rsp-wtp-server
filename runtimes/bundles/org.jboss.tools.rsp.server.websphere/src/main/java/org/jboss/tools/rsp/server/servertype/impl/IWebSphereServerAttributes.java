@@ -12,7 +12,16 @@ import org.jboss.tools.rsp.api.DefaultServerAttributes;
 
 public interface IWebSphereServerAttributes extends DefaultServerAttributes {
 	// this property defines what delegate will be bound to server object
-	public static final String WEBSPHERE_SERVER_TYPE_PREFIX = "com.ibm.ws.st.server.v85.was";
+	public static final String WEBSPHERE_SERVER_TYPE_PREFIX = "com.ibm.ws.ast.st.v85.server.base";
+
+	/*
+	* Other attributes:
+		com.ibm.etools.wdt.server.serverType
+		com.ibm.ws.ast.st.v7.server.base
+		com.ibm.ws.ast.st.v85.server.base
+		com.ibm.ws.ast.st.v9.server.base
+
+	*/
 	
 
 	/*

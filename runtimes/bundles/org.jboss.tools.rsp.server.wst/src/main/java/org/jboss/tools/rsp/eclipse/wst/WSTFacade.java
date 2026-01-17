@@ -35,6 +35,7 @@ import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
 
 // import com.ibm.ws.st.core.internal.WebSphereRuntime;
 // import com.ibm.ws.st.core.internal.WebSphereServerBehaviour;
+// import com.ibm.ws.ast.st.v85.core.internal.WASServer;
 
 
 
@@ -246,7 +247,10 @@ public class WSTFacade {
 			org.eclipse.wst.server.core.IServerWorkingCopy server = wstServerType.createServer(id, null, run, monitor);
 			// TODO: replace hardcoded attributes
 			server.setHost("localhost");
-			server.setAttribute("serverName", (String) attributes.get("server.liberty.id"));
+			// server.setAttribute("serverName", (String) attributes.get("server.liberty.id"));
+			//WebSphere
+			server.setAttribute("webSphereProfileName", (String) attributes.get("server.liberty.id"));
+			server.setAttribute(id, attributes);
 			// TODO: eventually use this to create let the user create a new profile
 			// server.getRuntime().getAdapter(com.ibm.ws.st.core.internal.WebSphereRuntime.class).createServer()
 			wstServer = server.save(false, monitor);

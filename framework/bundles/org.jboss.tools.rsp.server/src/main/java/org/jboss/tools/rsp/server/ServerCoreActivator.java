@@ -52,7 +52,12 @@ public class ServerCoreActivator implements BundleActivator {
 			return;
 		}
 		ServerManagementServerLauncher launcher2 = launcher;
-		new Thread(() -> {
+		ClassLoader osgiContextClassLoader = Thread.currentThread().getContextClassLoader();
+		if (osgiContextClassLoader == null) {
+			osgiContextClassLoader = getClass().getClassLoader();
+		}
+		OsgiClassLoaderHolder.set(osgiContextClassLoader);
+		Thread serverThread = new Thread(() -> {
 				addDelayedExtensions();
 				try {
 					launcher2.launch(port);
@@ -60,8 +65,10 @@ public class ServerCoreActivator implements BundleActivator {
 					LOG.error("Unable to launch RSP server", e);
 				}
 			}, 
-			"Launch RSP Server")
-		.start();
+			"Launch RSP Server");
+		// Use an OSGi-aware context classloader for request handling.
+		serverThread.setContextClassLoader(osgiContextClassLoader);
+		serverThread.start();
 	}
 
 	private void addDelayedExtensions() {

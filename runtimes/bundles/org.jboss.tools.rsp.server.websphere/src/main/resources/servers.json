@@ -1,6 +1,6 @@
 {
   "serverTypes": {
-    "com.ibm.ws.st.server.v85.was": {
+    "com.ibm.ws.ast.st.v85.server.base": {
       "template": "liberty.template",
       "discoveries": {
         "websphere.8.x": {

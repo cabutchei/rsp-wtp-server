@@ -114,8 +114,13 @@
       		<unit id="org.eclipse.jst.common.frameworks" />
       		<unit id="org.eclipse.jst.common.annotations.core" />
       		<unit id="org.eclipse.jst.common.annotations.controller" />
+      		<unit id="org.eclipse.emf.importer" />
+      		<unit id="org.eclipse.emf.importer.java" />
+      		<unit id="org.eclipse.jst.j2ee.webservice" />
+      		<unit id="org.eclipse.emf.converter" />
+      		<unit id="org.eclipse.emf.codegen.ecore" />
 		</location>
-    	
+
     	<location
       		type="InstallableUnit"
       		includeMode="slicer"
@@ -125,10 +130,21 @@
       		<unit id="com.ibm.ws.st.was.tools.common.core.feature.group" />
       		<unit id="com.ibm.etools.webservice.discovery.core.feature.group" />
       		<unit id="com.ibm.ws.st.jee.core" />
+      		<unit id="com.ibm.ws.ast.st.core" />
+      		<unit id="com.ibm.ws.ast.st.common.core" />
+      		<unit id="com.ibm.ws.ast.facets.core" />
+      		<unit id="com.ibm.ws.ast.verify.core" />
+      		<unit id="com.ibm.ws.ast.st.jmx.core" />
+      		<unit id="com.ibm.etools.wrd.websphere.core" />
+      		<unit id="com.ibm.etools.wrd.websphere.v85" />
+      		<unit id="com.ibm.etools.wrd.websphere.core.util" />
+      		<unit id="com.ibm.etools.common.frameworks" />
+      		<unit id="com.ibm.etools.j2ee" />
+      		<unit id="com.ibm.websphere.v85.core" />
+      		<unit id="com.ibm.websphere.v9.core" />
+      		<unit id="com.ibm.ws.ast.st.v85.core" />
       		<repository
         		location="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/wasdev/updates/wdt/2025-03/" />
-      		<!-- <repository
-        		location="file:/Users/cabutchei/.m2/repository/p2-mirrors/public.dhe.ibm.com:ibmdl:export:pub:software:websphere:wasdev:updates:wdt:2025-03:" /> -->
     	</location>
 
 	</locations>

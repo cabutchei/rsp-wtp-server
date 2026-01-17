@@ -19,5 +19,7 @@
     <module>org.jboss.tools.rsp.server.wildfly</module>
     <module>org.jboss.tools.rsp.server.liberty</module>
     <module>org.jboss.tools.rsp.server.liberty.custom</module>
+    <module>org.jboss.tools.rsp.server.websphere</module>
+    <module>org.jboss.tools.rsp.server.wst</module>
   </modules>
 </project>

@@ -11,6 +11,9 @@ package org.jboss.tools.rsp.server;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 import org.eclipse.lsp4j.jsonrpc.MessageConsumer;
 import org.eclipse.lsp4j.jsonrpc.MessageProducer;
@@ -20,6 +23,19 @@ import org.jboss.tools.rsp.server.spi.client.MessageContextStore;
 import org.jboss.tools.rsp.server.spi.client.MessageContextStore.MessageContext;
 
 class RSPServerSocketLauncher<T> extends SocketLauncher<T> {
+	private static final ExecutorService REQUEST_EXECUTOR = Executors.newCachedThreadPool(new ThreadFactory() {
+		@Override
+		public Thread newThread(Runnable r) {
+			return new Thread(() -> {
+				ClassLoader loader = OsgiClassLoaderHolder.get();
+				if (loader != null) {
+					Thread.currentThread().setContextClassLoader(loader);
+				}
+				r.run();
+			}, "RSP-JSONRPC");
+		}
+	});
+
 	public RSPServerSocketLauncher(Object localService, 
 			Class<T> remoteInterface, Socket socket,
 			MessageContextStore<T> contextStore,
@@ -28,12 +44,14 @@ class RSPServerSocketLauncher<T> extends SocketLauncher<T> {
 	}
 
 	static <T> Builder<T> createBuilder(MessageContextStore<T> store) {
-		return new Builder<T>() {
+		Builder<T> builder = new Builder<T>() {
 			protected ConcurrentMessageProcessor createMessageProcessor(MessageProducer reader, 
 					MessageConsumer messageConsumer, T remoteProxy) {
 				return new CustomConcurrentMessageProcessor<T>(reader, messageConsumer, remoteProxy, store);
 			}
 		};
+		builder.setExecutorService(REQUEST_EXECUTOR);
+		return builder;
 	}
 
 	/*
@@ -53,6 +71,14 @@ class RSPServerSocketLauncher<T> extends SocketLauncher<T> {
 
 		protected void processingStarted() {
 			super.processingStarted();
+			ClassLoader targetLoader = OsgiClassLoaderHolder.get();
+			if (targetLoader != null) {
+				Thread current = Thread.currentThread();
+				ClassLoader existing = current.getContextClassLoader();
+				if (existing != targetLoader) {
+					current.setContextClassLoader(targetLoader);
+				}
+			}
 			if (threadMap != null) {
 				threadMap.setContext(new MessageContext<T>(remoteProxy));
 			}

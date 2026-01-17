@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -938,6 +940,22 @@ public class ServerManagementServerImpl implements RSPServer {
 		return StatusConverter.convert(is);
 	}
 
+	private static final Executor OSGI_EXECUTOR = command -> {
+		ForkJoinPool.commonPool().execute(() -> {
+			Thread thread = Thread.currentThread();
+			ClassLoader previous = thread.getContextClassLoader();
+			ClassLoader osgi = OsgiClassLoaderHolder.get();
+			if( osgi != null ) {
+				thread.setContextClassLoader(osgi);
+			}
+			try {
+				command.run();
+			} finally {
+				thread.setContextClassLoader(previous);
+			}
+		});
+	};
+
 	private static <T> CompletableFuture<T> createCompletableFuture(Supplier<T> supplier) {
 		final RSPClient rspc = ClientThreadLocal.getActiveClient();
 		CompletableFuture<T> completableFuture = new CompletableFuture<>();
@@ -945,7 +963,7 @@ public class ServerManagementServerImpl implements RSPServer {
 			ClientThreadLocal.setActiveClient(rspc);
 			completableFuture.complete(supplier.get());
 			ClientThreadLocal.setActiveClient(null);
-		});
+		}, OSGI_EXECUTOR);
 		return completableFuture;
 	}
 

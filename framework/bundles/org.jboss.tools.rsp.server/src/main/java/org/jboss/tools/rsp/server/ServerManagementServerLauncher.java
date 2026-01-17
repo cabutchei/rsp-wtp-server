@@ -114,6 +114,10 @@ public class ServerManagementServerLauncher {
 	}
 	
 	protected void startListening(int port, ServerManagementServerImpl server) throws IOException {
+		ClassLoader osgiLoader = Thread.currentThread().getContextClassLoader();
+		if (osgiLoader != null) {
+			OsgiClassLoaderHolder.set(osgiLoader);
+		}
 		ExecutorService threadPool = Executors.newCachedThreadPool();
 		serverSocket = new ServerSocket(port);
 		// create the socket server

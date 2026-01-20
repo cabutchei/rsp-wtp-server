@@ -3,6 +3,7 @@ package org.jboss.tools.rsp.eclipse.wst;
 
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,6 +34,10 @@ import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
 import org.jboss.tools.rsp.server.spi.servertype.IServerListener;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
+
+import com.ibm.ws.ast.st.common.core.internal.AbstractWASServer;
+import com.ibm.ws.ast.st.common.core.internal.util.ProfileChangeHelper;
+import com.ibm.ws.ast.st.v85.core.internal.WASServer;
 
 // import com.ibm.ws.st.core.internal.WebSphereRuntime;
 // import com.ibm.ws.st.core.internal.WebSphereServerBehaviour;
@@ -251,7 +256,16 @@ public class WSTFacade {
 			// server.setAttribute("serverName", (String) attributes.get("server.liberty.id"));
 			//WebSphere
 			server.setAttribute("webSphereProfileName", (String) attributes.get("server.liberty.id"));
-			server.setAttribute(id, attributes);
+			server.setName(id);
+			server.setAttribute("id", id);
+			WASServer wasServer = ((WASServer) server.loadAdapter(WASServer.class, null));
+			String profileName = (String) attributes.get("server.liberty.id");
+			if (!Arrays.asList(wasServer.getProfileNames()).contains(profileName)) {
+				throw new CoreException(new Status(Status.ERROR, null, "Profile does not exist"));
+			}
+			wasServer.setWebSphereProfileName(id);
+			// this triggers config reading and refresh
+			new ProfileChangeHelper().updateBaseServerForProfileChange(server, profileName);
 			// TODO: eventually use this to create let the user create a new profile
 			// server.getRuntime().getAdapter(com.ibm.ws.st.core.internal.WebSphereRuntime.class).createServer()
 			wstServer = server.save(false, monitor);

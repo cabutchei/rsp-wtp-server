@@ -143,6 +143,7 @@
       		<unit id="com.ibm.websphere.v85.core" />
       		<unit id="com.ibm.websphere.v9.core" />
       		<unit id="com.ibm.ws.ast.st.v85.core" />
+      		<unit id="com.ibm.ws.ast.st.v85.wdt" />
       		<repository
         		location="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/wasdev/updates/wdt/2025-03/" />
     	</location>

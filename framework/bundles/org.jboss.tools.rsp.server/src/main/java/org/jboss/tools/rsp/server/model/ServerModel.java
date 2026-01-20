@@ -15,7 +15,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -114,11 +113,6 @@ public class ServerModel implements IServerModel {
 		return managementModel.getSecureStorageProvider();
 	}
 
-	@Override
-	public void setServerLifecycleStrategy(ServerLifecycleStrategy strategy) {
-		this.lifecycleStrategy = strategy == null ? DefaultServerLifecycleStrategy.INSTANCE : strategy;
-	}
-	
 	@Override
 	public void addServerModelListener(IServerModelListener l) {
 		listeners.add(l);

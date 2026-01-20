@@ -134,10 +134,4 @@ public interface IServerModel {
 	 */
 	UpdateServerResponse updateServer(UpdateServerRequest req);
 
-	/**
-	 * Set a lifecycle strategy to hook external behavior into server operations.
-	 * Passing null resets to the default no-op strategy.
-	 */
-	void setServerLifecycleStrategy(ServerLifecycleStrategy strategy);
-
 }

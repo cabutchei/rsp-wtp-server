@@ -84,7 +84,6 @@ public class WSTServerModel implements IServerModel {
 	private final Set<String> approvedAttributeTypes = new HashSet<>();
 	private final IServerManagementModel managementModel;
 	private final Map<String, List<File>> failedServerLoads = new HashMap<String, List<File>>();
-	private ServerLifecycleStrategy lifecycleStrategy;
 
 	public WSTServerModel(IServerManagementModel managementModel, IWstIntegrationService wstIntegrationService) {
 		this(managementModel, wstIntegrationService, new HashMap<String, IServerType>(),
@@ -116,7 +115,6 @@ public class WSTServerModel implements IServerModel {
 		this.serverTypes = serverTypes;
 		this.serverDelegates = delegates;
 		this.managementModel = managementModel;
-		this.lifecycleStrategy = lifecycleStrategy == null ? DefaultServerLifecycleStrategy.INSTANCE : lifecycleStrategy;
 
 		// Server attributes must be one of the following types
 		approvedAttributeTypes.add(ServerManagementAPIConstants.ATTR_TYPE_INT);
@@ -133,11 +131,6 @@ public class WSTServerModel implements IServerModel {
 	@Override
 	public ISecureStorageProvider getSecureStorageProvider() {
 		return managementModel.getSecureStorageProvider();
-	}
-
-	@Override
-	public void setServerLifecycleStrategy(ServerLifecycleStrategy strategy) {
-		this.lifecycleStrategy = strategy == null ? DefaultServerLifecycleStrategy.INSTANCE : strategy;
 	}
 
 	@Override
@@ -519,36 +512,22 @@ public class WSTServerModel implements IServerModel {
 	
 	@Override
 	public boolean removeServer(IServer toRemove) {
-		// if( toRemove == null || toRemove.getId() == null) {
-		// 	return false;
-		// }
-		// try {
-		// 	lifecycleStrategy.beforeRemove(toRemove);
-		// } catch(CoreException ce) {
-		// 	log(new Exception("Unable to remove server " + toRemove.getId(), ce));
-		// 	return false;
-		// }
-		// String serverId = toRemove.getId();
-		// servers.remove(serverId);
-		// IServerDelegate s = serverDelegates.get(serverId);
-		// serverDelegates.remove(serverId);
-		// if( s != null ) {
-		// 	s.dispose();
-		// }
-		// fireServerRemoved(toRemove);
-		// try {
-		// 	toRemove.delete();
-		// } catch (CoreException e) {
-		// 	//log silently. Looks like nothing crucial
-		// 	log(e);
-		// }
-		// try {
-		// 	lifecycleStrategy.afterRemove(serverId);
-		// } catch (CoreException ce) {
-		// 	log(new Exception("Unable to complete server removal for " + serverId, ce));
-		// }
-		// return true;
-		return false;
+		if( toRemove == null || toRemove.getId() == null) {
+			return false;
+		}
+		String serverId = toRemove.getId();
+		try {
+			toRemove.delete();
+			this.wstIntegrationService.getRegistry().unregister(serverId);
+			IServerDelegate s = serverDelegates.get(serverId);
+			serverDelegates.remove(serverId);
+			if( s != null ) s.dispose();
+			fireServerRemoved(toRemove);
+		} catch (CoreException ce) {
+			log(ce);
+			return false;
+		}
+		return true;
 	}
 	
 	@Override
@@ -845,13 +824,6 @@ public class WSTServerModel implements IServerModel {
 			return resp;
 		}
 
-		try {
-			lifecycleStrategy.beforeUpdate(server, ds.getMap());
-		} catch(CoreException ce) {
-			resp.getValidation().setStatus(StatusConverter.convert(ce.getStatus()));
-			return resp;
-		}
-		
 		server.getDelegate().updateServer(ds, resp);
 		if( resp.getValidation().getStatus() != null && 
 				resp.getValidation().getStatus().getSeverity() == Status.ERROR) {
@@ -869,12 +841,6 @@ public class WSTServerModel implements IServerModel {
 
 		if( resp.getValidation().getStatus() != null && 
 				resp.getValidation().getStatus().getSeverity() == Status.ERROR) {
-			return resp;
-		}
-		try {
-			lifecycleStrategy.afterUpdate(server);
-		} catch(CoreException ce) {
-			resp.getValidation().setStatus(StatusConverter.convert(ce.getStatus()));
 			return resp;
 		}
 		

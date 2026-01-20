@@ -297,6 +297,13 @@ public class WSTFacade {
 		server.addServerListener(listener);
 	}
 
+
+	public void deleteServer(String id) throws CoreException {
+		IServer server = getRspServer(id);
+		if (server == null) return;
+		server.delete();
+	}
+
 	// public IServer[] getServers() {
 	// 	List<IServer> rspServers = new ArrayList<>();
 	// 	for (org.eclipse.wst.server.core.IServer wstServer : ServerCore.getServers()) {

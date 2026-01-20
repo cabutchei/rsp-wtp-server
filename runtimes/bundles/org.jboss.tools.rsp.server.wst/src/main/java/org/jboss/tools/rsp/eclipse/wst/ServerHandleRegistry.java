@@ -1,18 +1,13 @@
 package org.jboss.tools.rsp.eclipse.wst;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Function;
-
-import org.eclipse.wst.server.core.IServer;
 
 // RSP type import will be whatever your domain uses.
 
 public class ServerHandleRegistry {
 
-    private final ConcurrentMap<String, org.eclipse.wst.server.core.IServer> wstById = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, org.jboss.tools.rsp.server.spi.servertype.IServer> rspById = new ConcurrentHashMap<>();
 
     /**
@@ -31,31 +26,23 @@ public class ServerHandleRegistry {
     /**
      * Lazily project an RSP server from WST if needed.
      */
-    public org.jboss.tools.rsp.server.spi.servertype.IServer getOrCreateRsp(org.eclipse.wst.server.core.IServer wst, Function<org.eclipse.wst.server.core.IServer, org.jboss.tools.rsp.server.spi.servertype.IServer> factory) {
-        Objects.requireNonNull(wst, "wst");
-        Objects.requireNonNull(factory, "factory");
-        String id = wst.getId();
-        wstById.put(id, wst);
-        return rspById.computeIfAbsent(id, k -> factory.apply(wst));
-    }
+    // public org.jboss.tools.rsp.server.spi.servertype.IServer getOrCreateRsp(org.eclipse.wst.server.core.IServer wst, Function<org.eclipse.wst.server.core.IServer, org.jboss.tools.rsp.server.spi.servertype.IServer> factory) {
+    //     Objects.requireNonNull(wst, "wst");
+    //     Objects.requireNonNull(factory, "factory");
+    //     String id = wst.getId();
+    //     wstById.put(id, wst);
+    //     return rspById.computeIfAbsent(id, k -> factory.apply(wst));
+    // }
 
     public Map<String, org.jboss.tools.rsp.server.spi.servertype.IServer> getAllRspServers() {
         return rspById;
     }
 
-    public void unregisterById(String id) {
-        wstById.remove(id);
+    public void unregister(String id) {
         rspById.remove(id);
     }
 
-    public void unregisterWst(org.eclipse.wst.server.core.IServer wst) {
-        if (wst != null) {
-            unregisterById(wst.getId());
-        }
-    }
-
     public void clear() {
-        wstById.clear();
         rspById.clear();
     }
 }

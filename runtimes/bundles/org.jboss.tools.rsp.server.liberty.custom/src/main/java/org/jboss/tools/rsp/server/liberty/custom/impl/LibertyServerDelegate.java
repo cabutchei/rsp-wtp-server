@@ -136,7 +136,6 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 	@Override
 	public IStatus stop(boolean force) {
 		this.wstServerFacade.stop(force);
-		// fireStateChanged(getServerState());
 		return Status.OK_STATUS;
 	}
 

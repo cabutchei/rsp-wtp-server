@@ -5,7 +5,6 @@ package org.jboss.tools.rsp.eclipse.wst;
 import java.util.List;
 import java.util.Objects;
 
-import org.eclipse.wst.server.core.internal.RuntimeWorkingCopy;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.api.dao.ServerHandle;
@@ -90,7 +89,8 @@ public class WSTServerContext {
     }
 
     public void stop(boolean force) {
-        this.facade.stopSync(serverHandle, force);
+        // this.facade.stopSync(serverHandle, force);
+        this.facade.stop(serverHandle, force);
     }
 
     public IStatus canStop() {

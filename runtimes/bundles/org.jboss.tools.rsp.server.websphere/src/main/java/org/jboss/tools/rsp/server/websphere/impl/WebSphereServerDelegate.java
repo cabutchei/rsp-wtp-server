@@ -150,6 +150,9 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 		IProcess[] all = launch.getProcesses();
 		
 		for( int i = 0; i < all.length; i++ ) {
+			if( all[i].getAttribute(PROCESS_ID_KEY) != null ) {
+				continue;
+			}
 			String pName = getServer().getTypeId() + ":" + getServer().getId()
 					+ ":" + ctime + ":p" + i;
 			all[i].setAttribute(PROCESS_ID_KEY, pName);

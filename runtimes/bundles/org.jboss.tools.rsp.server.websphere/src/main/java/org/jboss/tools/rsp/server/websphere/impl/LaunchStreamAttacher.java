@@ -23,7 +23,6 @@ final class LaunchStreamAttacher {
 	private final String serverId;
 	private final Consumer<ILaunch> onLaunchReady;
 	private ILaunchesListener2 launchListener;
-	private boolean attached;
 
 	LaunchStreamAttacher(String serverId, Consumer<ILaunch> onLaunchReady) {
 		this.serverId = Objects.requireNonNull(serverId, "serverId");
@@ -31,17 +30,13 @@ final class LaunchStreamAttacher {
 	}
 
 	void attach() {
-		org.eclipse.debug.core.ILaunch wstLaunch = getWstLaunch();
-		if( tryAttachLaunch(wstLaunch) ) {
-			removeLaunchListener();
-			return;
-		}
 		registerLaunchListener();
+		org.eclipse.debug.core.ILaunch wstLaunch = getWstLaunch();
+		tryAttachLaunch(wstLaunch);
 	}
 
 	void reset() {
 		synchronized(lock) {
-			attached = false;
 			removeLaunchListenerLocked();
 		}
 	}
@@ -63,15 +58,9 @@ final class LaunchStreamAttacher {
 		if( processes == null || processes.length == 0 ) {
 			return false;
 		}
-		synchronized(lock) {
-			if( attached ) {
-				return true;
-			}
-			ILaunch launch = new WstLaunchProxy(wstLaunch, null);
-			onLaunchReady.accept(launch);
-			attached = true;
-			return true;
-		}
+		ILaunch launch = new WstLaunchProxy(wstLaunch, null);
+		onLaunchReady.accept(launch);
+		return true;
 	}
 
 	private void registerLaunchListener() {
@@ -112,10 +101,7 @@ final class LaunchStreamAttacher {
 			if( !isLaunchForServer(launch) ) {
 				continue;
 			}
-			if( tryAttachLaunch(launch) ) {
-				removeLaunchListener();
-				return;
-			}
+			tryAttachLaunch(launch);
 		}
 	}
 

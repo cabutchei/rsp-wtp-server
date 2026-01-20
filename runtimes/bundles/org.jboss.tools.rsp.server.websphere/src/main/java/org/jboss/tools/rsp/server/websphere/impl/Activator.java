@@ -14,6 +14,7 @@ import org.jboss.tools.rsp.launching.memento.JSONMemento;
 import org.jboss.tools.rsp.server.ServerCoreActivator;
 import org.jboss.tools.rsp.eclipse.wst.WSTServerContext;
 import org.jboss.tools.rsp.eclipse.wst.IWstIntegrationService;
+import org.jboss.tools.rsp.eclipse.wst.WstServerTypeHandlerRegistry;
 import org.jboss.tools.rsp.server.generic.GenericServerActivator;
 import org.jboss.tools.rsp.server.generic.IServerBehaviorFromJSONProvider;
 import org.jboss.tools.rsp.server.generic.IServerBehaviorProvider;
@@ -36,6 +37,7 @@ public class Activator extends GenericServerActivator {
 	private static final Logger LOG = LoggerFactory.getLogger(Activator.class);
 	private static volatile IWstIntegrationService wstIntegration;
 	private static volatile BundleContext bundleContext;
+	private static final WebSphereWstServerTypeHandler WST_HANDLER = new WebSphereWstServerTypeHandler();
 
 	public static synchronized IWstIntegrationService getWstIntegrationService() {
 		if (wstIntegration == null) {
@@ -65,6 +67,7 @@ public class Activator extends GenericServerActivator {
 	public void start(BundleContext context) throws Exception {
 		LOG.info("Bundle {} starting...", context.getBundle().getSymbolicName());
 		bundleContext = context;
+		WstServerTypeHandlerRegistry.register(WST_HANDLER);
 		addExtensions(ServerCoreActivator.BUNDLE_ID, context);
 	}
 
@@ -72,6 +75,7 @@ public class Activator extends GenericServerActivator {
 	public void stop(BundleContext context) throws Exception {
 		LOG.info("Bundle {} stopping...", context.getBundle().getSymbolicName());
 		removeExtensions(ServerCoreActivator.BUNDLE_ID, context);
+		WstServerTypeHandlerRegistry.unregister(WST_HANDLER);
 		bundleContext = null;
 		wstIntegration = null;
 	}

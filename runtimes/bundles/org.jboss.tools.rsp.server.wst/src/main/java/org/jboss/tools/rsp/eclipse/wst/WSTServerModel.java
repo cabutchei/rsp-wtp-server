@@ -55,8 +55,6 @@ import org.jboss.tools.rsp.server.spi.client.ClientThreadLocal;
 import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
 import org.jboss.tools.rsp.server.spi.model.IServerModel;
 import org.jboss.tools.rsp.server.spi.model.IServerModelListener;
-import org.jboss.tools.rsp.server.spi.model.DefaultServerLifecycleStrategy;
-import org.jboss.tools.rsp.server.spi.model.ServerLifecycleStrategy;
 import org.jboss.tools.rsp.server.spi.servertype.CreateServerValidation;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
@@ -87,30 +85,28 @@ public class WSTServerModel implements IServerModel {
 
 	public WSTServerModel(IServerManagementModel managementModel, IWstIntegrationService wstIntegrationService) {
 		this(managementModel, wstIntegrationService, new HashMap<String, IServerType>(),
-				new HashMap<String, IServerDelegate>(), DefaultServerLifecycleStrategy.INSTANCE);
+				new HashMap<String, IServerDelegate>());
 	}
 
 	/** for testing purposes **/
 	protected WSTServerModel(IServerManagementModel managementModel, 
 			Map<String, IServerType> serverTypes, Map<String, IServer> servers, Map<String, IServerDelegate> delegates) {
-		this(managementModel, new WstIntegrationService(), serverTypes, delegates, DefaultServerLifecycleStrategy.INSTANCE);
+		this(managementModel, new WstIntegrationService(), serverTypes, delegates);
 	}
 
 	protected WSTServerModel(IServerManagementModel managementModel, IWstIntegrationService wstIntegrationService,
 			Map<String, IServerType> serverTypes, Map<String, IServer> servers, Map<String, IServerDelegate> delegates) {
-		this(managementModel, wstIntegrationService, serverTypes, delegates, DefaultServerLifecycleStrategy.INSTANCE);
+		this(managementModel, wstIntegrationService, serverTypes, delegates);
 	}
 
 	/** for testing purposes **/
 	protected WSTServerModel(IServerManagementModel managementModel, 
-			Map<String, IServerType> serverTypes, Map<String, IServerDelegate> delegates,
-			ServerLifecycleStrategy lifecycleStrategy) {
-		this(managementModel, new WstIntegrationService(), serverTypes, delegates, lifecycleStrategy);
+			Map<String, IServerType> serverTypes, Map<String, IServerDelegate> delegates) {
+		this(managementModel, new WstIntegrationService(), serverTypes, delegates);
 	}
 
 	protected WSTServerModel(IServerManagementModel managementModel, IWstIntegrationService wstIntegrationService,
-			Map<String, IServerType> serverTypes, Map<String, IServerDelegate> delegates,
-			ServerLifecycleStrategy lifecycleStrategy) {
+			Map<String, IServerType> serverTypes, Map<String, IServerDelegate> delegates) {
 		this.wstIntegrationService = Objects.requireNonNull(wstIntegrationService, "wstIntegrationService");
 		this.serverTypes = serverTypes;
 		this.serverDelegates = delegates;
@@ -181,7 +177,7 @@ public class WSTServerModel implements IServerModel {
 
 	@Override
 	public IServer getServer(String id) {
-		return this.wstIntegrationService.getFacade().getRspServer(id);
+		return this.wstIntegrationService.getRegistry().getRsp(id);
 	}
 	
 	@Override
@@ -205,80 +201,11 @@ public class WSTServerModel implements IServerModel {
 			LOG.error(ce.getMessage(), ce);
 		}
 	}
-
 	
 	@Override
 	public void loadServers() throws CoreException {
-		// noop
+		// no-op
 	}
-
-	// protected void loadFailedServers(String id) {
-	// 	List<File> failed = failedServerLoads.get(id);
-	// 	List<File> failedSafe = (failed == null ? Collections.emptyList() : failed);
-	// 	List<File> failedClone = new ArrayList<>(failedSafe);
-	// 	for( File serverFile : failedClone) {
-	// 		Server loaded = loadServer(serverFile);
-	// 		if( loaded != null ) {
-	// 			if( failed != null )
-	// 				failed.remove(serverFile);
-	// 			addServer(loaded, loaded.getDelegate());
-	// 		}
-	// 	}
-	// }
-	
-	// public void loadServers(File folder) {
-	// 	if (!folder.exists()) {
-	// 		return;
-	// 	}
-	// 	for (File serverFile: folder.listFiles()) {
-	// 		Server server = loadServer(serverFile);
-	// 		if( server != null )
-	// 			addServer(server, server.getDelegate());
-	// 	}
-	// }
-
-	// private Server loadServer(File serverFile) {
-	// 	Server server = new Server(serverFile, managementModel);
-	// 	try {
-	// 		server.load(new NullProgressMonitor());
-	// 		String tid = server.getTypeId();
-	// 		IServerType st = getIServerType(tid);
-	// 		if( st != null ) {
-	// 			server.setServerType(st);
-	// 			server.setDelegate(st.createServerDelegate(server));
-	// 		}
-			
-	// 		if( server.getServerType() == null ) {
-	// 			String typeId = server.getAttribute(Server.TYPE_ID, (String)null);
-	// 			if( typeId == null ) {
-	// 				log(new Exception(
-	// 						"Unable to load server from file " + serverFile.getAbsolutePath() + "; server type is missing or null."));
-	// 			} else if( createServerTypeDAO(typeId) == null ) {
-	// 				logDebug(new Exception(
-	// 						"Unable to load server from file " + serverFile.getAbsolutePath() + "; server type " + typeId + " is not found in model."));
-	// 				List<File> failedType = failedServerLoads.get(typeId);
-	// 				if( failedType == null ) {
-	// 					failedType = new ArrayList<File>();
-	// 					failedServerLoads.put(typeId,  failedType);
-	// 				}
-	// 				if( !failedType.contains(serverFile))
-	// 					failedType.add(serverFile);
-	// 			}
-	// 			return null;
-	// 		} else {
-	// 			try {
-	// 				lifecycleStrategy.afterLoad(server);
-	// 			} catch (CoreException ce) {
-	// 				log(new Exception("Unable to load server from file " + serverFile.getAbsolutePath(), ce));
-	// 				return null;
-	// 			}
-	// 			return server;
-	// 		}
-	// 	} catch(CoreException ce) {
-	// 		log(new Exception("Unable to load server from file " + serverFile.getAbsolutePath(), ce));
-	// 		return null;
-	// 	}
-	// }
 
 	private void log(Exception e) {
 		LOG.error(e.getMessage(), e);

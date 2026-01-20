@@ -8,19 +8,18 @@
  ******************************************************************************/
 package org.jboss.tools.rsp.eclipse.wst;
 
-import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
-import org.jboss.tools.rsp.server.spi.model.IServerModel;
-import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
+import java.util.Map;
 
-public interface IWstIntegrationService {
-	WSTFacade getFacade();
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.wst.server.core.IRuntimeWorkingCopy;
+import org.eclipse.wst.server.core.IServerWorkingCopy;
+import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
 
-	ServerHandleRegistry getRegistry();
+public interface WstServerTypeHandler {
+	boolean handles(String serverTypeId);
 
-	WstModelAdapter getAdapter();
-
-	IWorkspaceService getWorkspaceService();
-
-	void dispose(IServerModel model);
-
+	void configureServer(IServerWorkingCopy server,
+			IRuntimeWorkingCopy runtime,
+			Map<String, Object> attributes,
+			IProgressMonitor monitor) throws CoreException;
 }

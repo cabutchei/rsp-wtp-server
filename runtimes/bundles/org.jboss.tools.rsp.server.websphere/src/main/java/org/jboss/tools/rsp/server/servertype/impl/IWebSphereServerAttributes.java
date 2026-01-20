@@ -28,6 +28,7 @@ public interface IWebSphereServerAttributes extends DefaultServerAttributes {
 	 * Required attributes
 	 */
 	public static final String SERVER_HOME = DefaultServerAttributes.SERVER_HOME_DIR;
+	public static final String WEBSPHERE_PROFILE = "websphere.profile";
 	
 	/*
 	 * Optional attributes

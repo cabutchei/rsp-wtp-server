@@ -3,7 +3,6 @@ package org.jboss.tools.rsp.eclipse.wst;
 
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -18,9 +17,7 @@ import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.ServerCore;
 import org.eclipse.wst.server.core.ServerUtil;
 import org.eclipse.wst.server.core.IServer.IOperationListener;
-import org.eclipse.wst.server.core.internal.RuntimeWorkingCopy;
-import org.eclipse.wst.server.core.internal.Server;
-import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
+import org.jboss.tools.rsp.api.DefaultServerAttributes;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.api.dao.ServerHandle;
@@ -34,10 +31,6 @@ import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
 import org.jboss.tools.rsp.server.spi.servertype.IServerListener;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
-
-import com.ibm.ws.ast.st.common.core.internal.AbstractWASServer;
-import com.ibm.ws.ast.st.common.core.internal.util.ProfileChangeHelper;
-import com.ibm.ws.ast.st.v85.core.internal.WASServer;
 
 // import com.ibm.ws.st.core.internal.WebSphereRuntime;
 // import com.ibm.ws.st.core.internal.WebSphereServerBehaviour;
@@ -244,30 +237,18 @@ public class WSTFacade {
 		org.eclipse.wst.server.core.IRuntimeWorkingCopy runtimeWC;
 		try {
 			runtimeWC = wstRuntimeType.createRuntime((String)null, monitor);
-			runtimeWC.setLocation(new org.eclipse.core.runtime.Path((String) attributes.get(ServerManagementAPIConstants.SERVER_HOME_DIR)));
+			runtimeWC.setLocation(new org.eclipse.core.runtime.Path((String) attributes.get(DefaultServerAttributes.SERVER_HOME_DIR)));
 			// TODO: let the user choose the vm?
 			// runtimeWC.getAdapter(RuntimeWorkingCopy.class).setAttribute("vm-install-id", "/Users/cabutchei/.sdkman/candidates/java/21.0.2-open");
 			// runtimeWC.getAdapter(RuntimeWorkingCopy.class).setAttribute("vm-install-type-id", "org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType");
 			org.eclipse.wst.server.core.IRuntime run = runtimeWC.save(true, monitor);
 			// set same id so we can retrieve the rsp-wst pairs
 			org.eclipse.wst.server.core.IServerWorkingCopy server = wstServerType.createServer(id, null, run, monitor);
-			// TODO: replace hardcoded attributes
-			server.setHost("localhost");
-			// server.setAttribute("serverName", (String) attributes.get("server.liberty.id"));
-			//WebSphere
-			server.setAttribute("webSphereProfileName", (String) attributes.get("server.liberty.id"));
 			server.setName(id);
-			server.setAttribute("id", id);
-			WASServer wasServer = ((WASServer) server.loadAdapter(WASServer.class, null));
-			String profileName = (String) attributes.get("server.liberty.id");
-			if (!Arrays.asList(wasServer.getProfileNames()).contains(profileName)) {
-				throw new CoreException(new Status(Status.ERROR, null, "Profile does not exist"));
+			WstServerTypeHandler handler = WstServerTypeHandlerRegistry.find(serverType.getId());
+			if( handler != null ) {
+				handler.configureServer(server, runtimeWC, attributes, monitor);
 			}
-			wasServer.setWebSphereProfileName(id);
-			// this triggers config reading and refresh
-			new ProfileChangeHelper().updateBaseServerForProfileChange(server, profileName);
-			// TODO: eventually use this to create let the user create a new profile
-			// server.getRuntime().getAdapter(com.ibm.ws.st.core.internal.WebSphereRuntime.class).createServer()
 			wstServer = server.save(false, monitor);
 			return createServerProxy(wstServer, model);
 		} catch (org.eclipse.core.runtime.CoreException e) {

@@ -32,7 +32,7 @@
               "defaultValue": "",
               "secret": "false"
             },
-            "server.liberty.id": {
+            "server.websphere.profile": {
               "type": "string",
               "description": "The server profile name"
             }
@@ -89,7 +89,7 @@
               "deploymentStrategy": "appendDeploymentNameRemoveSuffix"
             },
             "editServerConfiguration": {
-              "paths": "usr/servers/${server.liberty.id}/server.xml"
+              "paths": "profiles/${server.websphere.profile}/config/server.xml"
             }
           }
         }

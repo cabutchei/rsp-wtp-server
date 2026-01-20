@@ -43,12 +43,14 @@ import com.ibm.ws.st.core.internal.WebSphereServerBehaviour;
 public class WebSphereServerDelegate extends GenericServerBehavior implements IServerDelegate {
 
 	private static final String PROCESS_ID_KEY = "process.id.key";
-	// private static final Logger LOG = LoggerFactory.getLogger(LibertyServerDelegate.class);
+	// private static final Logger LOG = LoggerFactory.getLogger(WebSphereServerDelegate.class);
 	private WSTServerContext wstServerFacade;
+	private final LaunchStreamAttacher launchStreamAttacher;
 
 	public WebSphereServerDelegate(IServer server, JSONMemento behaviorMemento, WSTServerContext wstServerFacade) {
 		super(server, behaviorMemento);
 		this.wstServerFacade = wstServerFacade;
+		this.launchStreamAttacher = new LaunchStreamAttacher(server.getId(), this::handleLaunchReady);
 	}
 	
 	@Override
@@ -109,18 +111,17 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 	@Override
 	public StartServerResponse start(String mode) {
 		IStatus stat = canStart(mode);
-		org.jboss.tools.rsp.api.dao.Status s ;
+		org.jboss.tools.rsp.api.dao.Status s;
 		if( !stat.isOK()) {
 			s = StatusConverter.convert(stat);
 			return new StartServerResponse(s, null);
 		}
 		try {
-			this.wstServerFacade.start(mode);
-			// fireStateChanged(getServerState());
-			ILaunch launch = this.wstServerFacade.getLaunch();
-			setStartLaunch(launch);
-			addStreamListener(launch);
+			launchStreamAttacher.reset();
+			this.wstServerFacade.startAsync(mode);
+			launchStreamAttacher.attach();
 		} catch (CoreException e) {
+			launchStreamAttacher.reset();
 			s = StatusConverter.convert(e.getStatus());
 			return new StartServerResponse(s, null);
 		}
@@ -134,9 +135,14 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 
 	@Override
 	public IStatus stop(boolean force) {
+		launchStreamAttacher.reset();
 		this.wstServerFacade.stop(force);
-		// fireStateChanged(getServerState());
 		return Status.OK_STATUS;
+	}
+
+	private void handleLaunchReady(ILaunch launch) {
+		setStartLaunch(launch);
+		addStreamListener(launch);
 	}
 
 	private void addStreamListener(ILaunch launch) {
@@ -158,5 +164,3 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 		}
 	}
 }
-
-

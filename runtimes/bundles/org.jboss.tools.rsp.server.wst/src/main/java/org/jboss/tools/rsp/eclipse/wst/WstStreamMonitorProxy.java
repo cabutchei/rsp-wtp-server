@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.jboss.tools.rsp.eclipse.debug.core.IStreamListener;
-import org.jboss.tools.rsp.eclipse.debug.core.model.IStreamMonitor;
+import org.jboss.tools.rsp.eclipse.debug.core.model.IFlushableStreamMonitor;
 import org.jboss.tools.rsp.eclipse.core.runtime.SafeRunner;
 import org.jboss.tools.rsp.eclipse.core.runtime.ISafeRunnable;
 import org.slf4j.Logger;
@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 
 
 
-public class WstStreamMonitorProxy implements IStreamMonitor {
+public class WstStreamMonitorProxy implements IFlushableStreamMonitor {
 	private static final Logger LOG = LoggerFactory.getLogger(WstStreamMonitorProxy.class);
 	private final org.eclipse.debug.core.model.IStreamMonitor wstMonitor;
 	private final Map<IStreamListener, org.eclipse.debug.core.IStreamListener> listenerMap = new HashMap<>();
@@ -44,9 +44,17 @@ public class WstStreamMonitorProxy implements IStreamMonitor {
 		};
 		listenerMap.put(listener, wrapped);
 		wstMonitor.addListener(wrapped);
-		// fire on add to get already buffered content
+		this.flushAndDisableBuffer(listener);
 		listener.streamAppended(getContents(), WstStreamMonitorProxy.this);
 	}
+
+	private void flushAndDisableBuffer(IStreamListener listener) {
+		byte[] data = null;
+		String contents = getContents();
+		this.flushContents();
+		this.setBuffered(false);
+		listener.streamAppended(contents, this);
+}
 
 	@Override
 	public String getContents() {
@@ -76,6 +84,28 @@ public class WstStreamMonitorProxy implements IStreamMonitor {
 	private ContentNotifier getNotifier() {
 		return new ContentNotifier();
 	}
+
+	public void setBuffered(boolean buffer) {
+		if (this.wstMonitor instanceof IFlushableStreamMonitor) {
+			IFlushableStreamMonitor m = (IFlushableStreamMonitor) this.wstMonitor;
+			m.setBuffered(buffer);
+		}
+   	}
+
+   public void flushContents() {
+		if (this.wstMonitor instanceof IFlushableStreamMonitor) {
+			IFlushableStreamMonitor m = (IFlushableStreamMonitor) this.wstMonitor;
+			m.flushContents();
+		}
+   }
+
+   public boolean isBuffered() {
+		if (this.wstMonitor instanceof IFlushableStreamMonitor) {
+			IFlushableStreamMonitor m = (IFlushableStreamMonitor) this.wstMonitor;
+			return m.isBuffered();
+		}
+		return false;
+   }
 
 
 	class ContentNotifier implements ISafeRunnable {

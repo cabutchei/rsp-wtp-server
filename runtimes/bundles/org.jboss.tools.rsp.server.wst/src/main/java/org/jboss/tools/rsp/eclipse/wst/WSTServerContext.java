@@ -81,6 +81,10 @@ public class WSTServerContext {
         setLaunch(launch);
     }
 
+    public void startAsync(String launchMode) throws CoreException {
+        this.facade.start(serverHandle, launchMode);
+    }
+
     public IStatus canStart(String launchMode) {
         return this.facade.canStart(this.serverHandle, launchMode);
     }

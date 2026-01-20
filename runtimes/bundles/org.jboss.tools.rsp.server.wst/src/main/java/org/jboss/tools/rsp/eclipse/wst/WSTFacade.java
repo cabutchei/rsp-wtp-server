@@ -18,6 +18,7 @@ import org.eclipse.wst.server.core.ServerCore;
 import org.eclipse.wst.server.core.ServerUtil;
 import org.eclipse.wst.server.core.IServer.IOperationListener;
 import org.eclipse.wst.server.core.internal.RuntimeWorkingCopy;
+import org.eclipse.wst.server.core.internal.Server;
 import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;

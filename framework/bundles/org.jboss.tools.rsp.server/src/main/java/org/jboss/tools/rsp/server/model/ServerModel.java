@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,8 +51,6 @@ import org.jboss.tools.rsp.server.spi.client.ClientThreadLocal;
 import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
 import org.jboss.tools.rsp.server.spi.model.IServerModel;
 import org.jboss.tools.rsp.server.spi.model.IServerModelListener;
-import org.jboss.tools.rsp.server.spi.model.DefaultServerLifecycleStrategy;
-import org.jboss.tools.rsp.server.spi.model.ServerLifecycleStrategy;
 import org.jboss.tools.rsp.server.spi.servertype.CreateServerValidation;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
@@ -73,28 +72,19 @@ public class ServerModel implements IServerModel {
 	private final Set<String> approvedAttributeTypes = new HashSet<>();
 	private final IServerManagementModel managementModel;
 	private final Map<String, List<File>> failedServerLoads = new HashMap<String, List<File>>();
-	private ServerLifecycleStrategy lifecycleStrategy;
 
 	public ServerModel(IServerManagementModel managementModel) {
-		this(managementModel, new HashMap<String, IServerType>(), new HashMap<String, IServer>(),
-				new HashMap<String, IServerDelegate>(), DefaultServerLifecycleStrategy.INSTANCE);
+		this(managementModel, 
+				new HashMap<String, IServerType>(), new HashMap<String, IServer>(), new HashMap<String, IServerDelegate>());
 	}
 
 	/** for testing purposes **/
 	protected ServerModel(IServerManagementModel managementModel, 
 			Map<String, IServerType> serverTypes, Map<String, IServer> servers, Map<String, IServerDelegate> delegates) {
-		this(managementModel, serverTypes, servers, delegates, DefaultServerLifecycleStrategy.INSTANCE);
-	}
-
-	/** for testing purposes **/
-	protected ServerModel(IServerManagementModel managementModel, 
-			Map<String, IServerType> serverTypes, Map<String, IServer> servers, Map<String, IServerDelegate> delegates,
-			ServerLifecycleStrategy lifecycleStrategy) {
 		this.serverTypes = serverTypes;
 		this.servers = servers;
 		this.serverDelegates = delegates;
 		this.managementModel = managementModel;
-		this.lifecycleStrategy = lifecycleStrategy == null ? DefaultServerLifecycleStrategy.INSTANCE : lifecycleStrategy;
 
 		// Server attributes must be one of the following types
 		approvedAttributeTypes.add(ServerManagementAPIConstants.ATTR_TYPE_INT);
@@ -112,7 +102,7 @@ public class ServerModel implements IServerModel {
 	public ISecureStorageProvider getSecureStorageProvider() {
 		return managementModel.getSecureStorageProvider();
 	}
-
+	
 	@Override
 	public void addServerModelListener(IServerModelListener l) {
 		listeners.add(l);
@@ -256,12 +246,6 @@ public class ServerModel implements IServerModel {
 				}
 				return null;
 			} else {
-				try {
-					lifecycleStrategy.afterLoad(server);
-				} catch (CoreException ce) {
-					log(new Exception("Unable to load server from file " + serverFile.getAbsolutePath(), ce));
-					return null;
-				}
 				return server;
 			}
 		} catch(CoreException ce) {
@@ -307,11 +291,6 @@ public class ServerModel implements IServerModel {
 			return new CreateServerResponse(StatusConverter.convert(validAttributes), 
 					getInvalidAttributeKeys(validAttributes));
 		}
-
-		CreateServerValidation lifecycleValidation = lifecycleStrategy.validateCreate(type, id, attributes);
-		if( lifecycleValidation != null && lifecycleValidation.getStatus() != null && !lifecycleValidation.getStatus().isOK()) {
-			return lifecycleValidation.toDao();
-		}
 		
 		File serverFile = getServerFile(id);
 		if( !canCreateFile(serverFile)) {
@@ -319,10 +298,8 @@ public class ServerModel implements IServerModel {
 					StatusConverter.convert(
 							new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
 									"Server id is invalid for this filesystem")), 
-					Collections.EMPTY_LIST);
+									Collections.EMPTY_LIST);
 		}
-
-		lifecycleStrategy.beforeCreate(type, id, attributes);
 		Server server = createServer2(type, id, attributes);
 		IServerDelegate del = server.getDelegate();
 		if( del == null ) {
@@ -336,7 +313,6 @@ public class ServerModel implements IServerModel {
 		if( !valid.getStatus().isOK()) {
 			return valid.toDao();
 		}
-		lifecycleStrategy.afterCreate(server);
 		try {
 			server.save(new NullProgressMonitor());
 		} catch(CoreException ce) {
@@ -524,30 +500,17 @@ public class ServerModel implements IServerModel {
 		if( toRemove == null || toRemove.getId() == null) {
 			return false;
 		}
-		try {
-			lifecycleStrategy.beforeRemove(toRemove);
-		} catch(CoreException ce) {
-			log(new Exception("Unable to remove server " + toRemove.getId(), ce));
-			return false;
-		}
 		String serverId = toRemove.getId();
 		servers.remove(serverId);
 		IServerDelegate s = serverDelegates.get(serverId);
 		serverDelegates.remove(serverId);
-		if( s != null ) {
-			s.dispose();
-		}
+		s.dispose();
 		fireServerRemoved(toRemove);
 		try {
 			toRemove.delete();
 		} catch (CoreException e) {
 			//log silently. Looks like nothing crucial
 			log(e);
-		}
-		try {
-			lifecycleStrategy.afterRemove(serverId);
-		} catch (CoreException ce) {
-			log(new Exception("Unable to complete server removal for " + serverId, ce));
 		}
 		return true;
 	}
@@ -844,13 +807,6 @@ public class ServerModel implements IServerModel {
 			resp.getValidation().setStatus(StatusConverter.convert(validAttributes));
 			return resp;
 		}
-
-		try {
-			lifecycleStrategy.beforeUpdate(server, ds.getMap());
-		} catch(CoreException ce) {
-			resp.getValidation().setStatus(StatusConverter.convert(ce.getStatus()));
-			return resp;
-		}
 		
 		server.getDelegate().updateServer(ds, resp);
 		if( resp.getValidation().getStatus() != null && 
@@ -865,17 +821,6 @@ public class ServerModel implements IServerModel {
 			((IServerWorkingCopy)server).save(new NullProgressMonitor());
 		} catch(CoreException ce) {
 			resp.getValidation().setStatus(StatusConverter.convert(ce.getStatus()));
-		}
-
-		if( resp.getValidation().getStatus() != null && 
-				resp.getValidation().getStatus().getSeverity() == Status.ERROR) {
-			return resp;
-		}
-		try {
-			lifecycleStrategy.afterUpdate(server);
-		} catch(CoreException ce) {
-			resp.getValidation().setStatus(StatusConverter.convert(ce.getStatus()));
-			return resp;
 		}
 		
 		if( resp.getValidation().getStatus() == null ) {

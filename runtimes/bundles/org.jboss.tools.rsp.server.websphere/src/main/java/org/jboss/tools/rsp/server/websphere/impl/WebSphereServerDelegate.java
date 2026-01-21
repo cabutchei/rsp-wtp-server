@@ -121,13 +121,12 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 		}
 		CommandLineDetails details = new CommandLineDetails();
 		try {
-			launchStreamAttacher.reset();
-			this.wstServerFacade.startAsync(mode);
-			launchStreamAttacher.attach();
 			if(ILaunchModes.DEBUG.equals(mode)) {
 				addDebugDetails(WebSphereWstServerAccess.getDebugPort(wstServerFacade), details);
 			}
-			details = awaitLaunchDetails(mode);
+			launchStreamAttacher.reset();
+			this.wstServerFacade.startAsync(mode);
+			launchStreamAttacher.attach();
 		} catch (CoreException e) {
 			launchStreamAttacher.reset();
 			s = StatusConverter.convert(e.getStatus());

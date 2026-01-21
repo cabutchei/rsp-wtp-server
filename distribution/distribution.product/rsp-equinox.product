@@ -35,6 +35,7 @@
 		<plugin id="com.ibm.ws.ast.st.common.core"/>
 		<plugin id="com.ibm.ws.st.was.core"/>
 		<plugin id="com.ibm.ws.ast.st.v85.core"/>
+		<plugin id="com.ibm.ws.ast.st.v85.wdt"/>
 		<plugin id="com.ibm.websphere.v85.core"/>
 		<plugin id="com.ibm.websphere.v9.core"/>
 		<plugin id="javax.annotation"/>

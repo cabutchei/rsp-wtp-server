@@ -124,7 +124,7 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 			launchStreamAttacher.reset();
 			this.wstServerFacade.startAsync(mode);
 			launchStreamAttacher.attach();
-			if( !ILaunchModes.DEBUG.equals(mode)) {
+			if(ILaunchModes.DEBUG.equals(mode)) {
 				addDebugDetails(WebSphereWstServerAccess.getDebugPort(wstServerFacade), details);
 			}
 			details = awaitLaunchDetails(mode);

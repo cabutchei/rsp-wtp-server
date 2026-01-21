@@ -263,7 +263,6 @@ public class WSTFacade {
 
 	public org.eclipse.wst.server.core.IServer getWstServer(String id) {
 		return ServerCore.findServer(id);
-		// return getWstServer(id);
 	}
 
 	public Map<String, IServer> getServers() {
@@ -278,20 +277,11 @@ public class WSTFacade {
 		server.addServerListener(listener);
 	}
 
-
 	public void deleteServer(String id) throws CoreException {
 		IServer server = getRspServer(id);
 		if (server == null) return;
 		server.delete();
 	}
-
-	// public IServer[] getServers() {
-	// 	List<IServer> rspServers = new ArrayList<>();
-	// 	for (org.eclipse.wst.server.core.IServer wstServer : ServerCore.getServers()) {
-	// 		rspServers.add(createServerProxy(wstServer));
-	// 	}
-	// 	return rspServers.toArray(new IServer[rspServers.size()]);
-	// }
 
 	/** made this because async start caused server ILaunch object to be null. But should we really wait for the done event?
 	 * Perhaps it's best if we listen for ILaunch instead?

@@ -8,12 +8,21 @@
  ******************************************************************************/
 package org.jboss.tools.rsp.server.websphere.impl;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
+import org.jboss.tools.rsp.api.dao.CommandLineDetails;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.api.dao.StartServerResponse;
+import org.jboss.tools.rsp.eclipse.debug.core.ArgumentUtils;
 import org.jboss.tools.rsp.launching.memento.JSONMemento;
+import org.jboss.tools.rsp.launching.java.ILaunchModes;
+import org.jboss.tools.rsp.launching.utils.LaunchingDebugProperties;
 import org.jboss.tools.rsp.server.generic.servertype.GenericServerBehavior;
 import org.jboss.tools.rsp.server.modeeel.WSTServerStreamListener;
 import org.jboss.tools.rsp.server.publishing.WSTServerPublishStateModel;
@@ -31,21 +40,15 @@ import org.jboss.tools.rsp.eclipse.debug.core.IStreamListener;
 import org.jboss.tools.rsp.eclipse.debug.core.model.IProcess;
 import org.jboss.tools.rsp.eclipse.wst.WSTServerContext;
 
-
-import com.ibm.ws.st.core.internal.WebSphereRuntime;
-import com.ibm.ws.st.core.internal.WebSphereServer;
-import com.ibm.ws.st.core.internal.WebSphereServerInfo;
-import com.ibm.ws.st.core.internal.WebSphereServerBehaviour;
-
-
-
-
 public class WebSphereServerDelegate extends GenericServerBehavior implements IServerDelegate {
 
 	private static final String PROCESS_ID_KEY = "process.id.key";
+	private static final long LAUNCH_WAIT_TIMEOUT_MS = 5000;
+	private static final long DEBUG_PORT_WAIT_TIMEOUT_MS = 15000;
 	// private static final Logger LOG = LoggerFactory.getLogger(WebSphereServerDelegate.class);
 	private WSTServerContext wstServerFacade;
 	private final LaunchStreamAttacher launchStreamAttacher;
+	private volatile CompletableFuture<Integer> debugPortFuture = new CompletableFuture<>();
 
 	public WebSphereServerDelegate(IServer server, JSONMemento behaviorMemento, WSTServerContext wstServerFacade) {
 		super(server, behaviorMemento);
@@ -116,16 +119,19 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 			s = StatusConverter.convert(stat);
 			return new StartServerResponse(s, null);
 		}
+		CommandLineDetails details = null;
 		try {
 			launchStreamAttacher.reset();
+			resetDebugPortFuture();
 			this.wstServerFacade.startAsync(mode);
 			launchStreamAttacher.attach();
+			details = awaitLaunchDetails(mode);
 		} catch (CoreException e) {
 			launchStreamAttacher.reset();
 			s = StatusConverter.convert(e.getStatus());
 			return new StartServerResponse(s, null);
 		}
-		return new StartServerResponse(StatusConverter.convert(Status.OK_STATUS), null);
+		return new StartServerResponse(StatusConverter.convert(Status.OK_STATUS), details);
 	}
 
 	@Override
@@ -136,6 +142,7 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 	@Override
 	public IStatus stop(boolean force) {
 		launchStreamAttacher.reset();
+		resetDebugPortFuture();
 		this.wstServerFacade.stop(force);
 		return Status.OK_STATUS;
 	}
@@ -158,12 +165,87 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 			all[i].setAttribute(PROCESS_ID_KEY, pName);
 			IStreamListener out = new WSTServerStreamListener(
 					getServer(), getProcessId(all[i]), 
-					ServerManagementAPIConstants.STREAM_TYPE_SYSOUT);
+					ServerManagementAPIConstants.STREAM_TYPE_SYSOUT, this::handleDebugPort);
 			IStreamListener err = new WSTServerStreamListener(
 					getServer(), getProcessId(all[i]), 
-					ServerManagementAPIConstants.STREAM_TYPE_SYSERR);
+					ServerManagementAPIConstants.STREAM_TYPE_SYSERR, this::handleDebugPort);
 			all[i].getStreamsProxy().getOutputStreamMonitor().addListener(out);
 			all[i].getStreamsProxy().getErrorStreamMonitor().addListener(err);
 		}
+	}
+
+	private CommandLineDetails awaitLaunchDetails(String mode) {
+		ILaunch launch = launchStreamAttacher.awaitLaunchWithProcess(LAUNCH_WAIT_TIMEOUT_MS);
+		if( launch == null ) {
+			return null;
+		}
+		IProcess[] processes = launch.getProcesses();
+		if( processes == null || processes.length == 0 ) {
+			return null;
+		}
+		String cmdline = null;
+		for( int i = 0; i < processes.length; i++ ) {
+			String candidate = processes[i].getAttribute(IProcess.ATTR_CMDLINE);
+			if( candidate != null && !candidate.isEmpty()) {
+				cmdline = candidate;
+				break;
+			}
+		}
+		if( cmdline == null ) {
+			return null;
+		}
+		CommandLineDetails details = new CommandLineDetails();
+		details.setCmdLine(ArgumentUtils.parseArguments(cmdline));
+		addDebugDetails(mode, details);
+		return details;
+	}
+
+	private void addDebugDetails(String mode, CommandLineDetails details) {
+		if( !ILaunchModes.DEBUG.equals(mode)) {
+			return;
+		}
+		Integer port = awaitDebugPort();
+		if( port == null ) {
+			return;
+		}
+		Map<String, String> props = details.getProperties();
+		if( props == null ) {
+			props = new HashMap<>();
+			details.setProperties(props);
+		}
+		props.put(LaunchingDebugProperties.DEBUG_DETAILS_TYPE, LaunchingDebugProperties.DEBUG_DETAILS_TYPE_JAVA);
+		props.put(LaunchingDebugProperties.DEBUG_DETAILS_HOST, "localhost");
+		props.put(LaunchingDebugProperties.DEBUG_DETAILS_PORT, Integer.toString(port));
+	}
+
+	private Integer awaitDebugPort() {
+		CompletableFuture<Integer> future = debugPortFuture;
+		if( future == null ) {
+			return null;
+		}
+		try {
+			return future.get(DEBUG_PORT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+		} catch (TimeoutException e) {
+			return null;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return null;
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	private void handleDebugPort(int port) {
+		if( port <= 0 ) {
+			return;
+		}
+		CompletableFuture<Integer> future = debugPortFuture;
+		if( future != null && !future.isDone() ) {
+			future.complete(port);
+		}
+	}
+
+	private void resetDebugPortFuture() {
+		debugPortFuture = new CompletableFuture<>();
 	}
 }

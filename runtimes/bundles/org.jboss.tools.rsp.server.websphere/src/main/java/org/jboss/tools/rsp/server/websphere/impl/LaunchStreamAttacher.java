@@ -9,6 +9,9 @@
 package org.jboss.tools.rsp.server.websphere.impl;
 
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import org.eclipse.debug.core.DebugPlugin;
@@ -23,6 +26,7 @@ final class LaunchStreamAttacher {
 	private final String serverId;
 	private final Consumer<ILaunch> onLaunchReady;
 	private ILaunchesListener2 launchListener;
+	private volatile CompletableFuture<ILaunch> launchWithProcessFuture = new CompletableFuture<>();
 
 	LaunchStreamAttacher(String serverId, Consumer<ILaunch> onLaunchReady) {
 		this.serverId = Objects.requireNonNull(serverId, "serverId");
@@ -38,11 +42,26 @@ final class LaunchStreamAttacher {
 	void reset() {
 		synchronized(lock) {
 			removeLaunchListenerLocked();
+			launchWithProcessFuture = new CompletableFuture<>();
 		}
 	}
 
 	void dispose() {
 		reset();
+	}
+
+	ILaunch awaitLaunchWithProcess(long timeoutMillis) {
+		CompletableFuture<ILaunch> future = launchWithProcessFuture;
+		try {
+			return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
+		} catch (TimeoutException e) {
+			return null;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return null;
+		} catch (Exception e) {
+			return null;
+		}
 	}
 
 	private org.eclipse.debug.core.ILaunch getWstLaunch() {
@@ -60,6 +79,7 @@ final class LaunchStreamAttacher {
 		}
 		ILaunch launch = new WstLaunchProxy(wstLaunch, null);
 		onLaunchReady.accept(launch);
+		completeLaunchFuture(launch);
 		return true;
 	}
 
@@ -114,6 +134,16 @@ final class LaunchStreamAttacher {
 			return wstServer != null && serverId.equals(wstServer.getId());
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			return false;
+		}
+	}
+
+	private void completeLaunchFuture(ILaunch launch) {
+		if( launch == null ) {
+			return;
+		}
+		CompletableFuture<ILaunch> future = launchWithProcessFuture;
+		if( future != null && !future.isDone() ) {
+			future.complete(launch);
 		}
 	}
 

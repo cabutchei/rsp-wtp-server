@@ -119,12 +119,14 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 			s = StatusConverter.convert(stat);
 			return new StartServerResponse(s, null);
 		}
-		CommandLineDetails details = null;
+		CommandLineDetails details = new CommandLineDetails();
 		try {
 			launchStreamAttacher.reset();
-			resetDebugPortFuture();
 			this.wstServerFacade.startAsync(mode);
 			launchStreamAttacher.attach();
+			if( !ILaunchModes.DEBUG.equals(mode)) {
+				addDebugDetails(WebSphereWstServerAccess.getDebugPort(wstServerFacade), details);
+			}
 			details = awaitLaunchDetails(mode);
 		} catch (CoreException e) {
 			launchStreamAttacher.reset();
@@ -174,6 +176,7 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 		}
 	}
 
+
 	private CommandLineDetails awaitLaunchDetails(String mode) {
 		ILaunch launch = launchStreamAttacher.awaitLaunchWithProcess(LAUNCH_WAIT_TIMEOUT_MS);
 		if( launch == null ) {
@@ -198,6 +201,20 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 		details.setCmdLine(ArgumentUtils.parseArguments(cmdline));
 		addDebugDetails(mode, details);
 		return details;
+	}
+
+	private void addDebugDetails(int port, CommandLineDetails details) {
+		if( port == 0 ) {
+			return;
+		}
+		Map<String, String> props = details.getProperties();
+		if( props == null ) {
+			props = new HashMap<>();
+			details.setProperties(props);
+		}
+		props.put(LaunchingDebugProperties.DEBUG_DETAILS_TYPE, LaunchingDebugProperties.DEBUG_DETAILS_TYPE_JAVA);
+		props.put(LaunchingDebugProperties.DEBUG_DETAILS_HOST, "localhost");
+		props.put(LaunchingDebugProperties.DEBUG_DETAILS_PORT, Integer.toString(port));
 	}
 
 	private void addDebugDetails(String mode, CommandLineDetails details) {

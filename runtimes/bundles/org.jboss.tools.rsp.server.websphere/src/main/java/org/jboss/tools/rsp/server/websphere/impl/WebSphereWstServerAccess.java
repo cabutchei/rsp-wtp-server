@@ -8,17 +8,31 @@
  ******************************************************************************/
 package org.jboss.tools.rsp.server.websphere.impl;
 
+import java.io.IOException;
+
 import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.Status;
 import org.jboss.tools.rsp.eclipse.wst.IWstIntegrationService;
 import org.jboss.tools.rsp.eclipse.wst.WSTServerContext;
 
+import com.ibm.ws.ast.st.common.core.internal.config.IWASConfigModelHelper;
+import com.ibm.ws.ast.st.v85.core.internal.util.ServerXmlFileHandler;
 import com.ibm.ws.ast.st.v85.core.internal.WASServer;
 
 final class WebSphereWstServerAccess {
 	private WebSphereWstServerAccess() {
 		// utility class
+	}
+
+	static ServerXmlFileHandler createServerXmlFileHandler(WSTServerContext context) throws IOException, CoreException  {
+		WASServer server;
+		server = getWASServer(context);
+		return createServerXmlFileHandler(server.getWebSphereInstallPath(), server.getProfileName(), server.getBaseServerName());
+	}
+
+	static ServerXmlFileHandler createServerXmlFileHandler(String curWASInstallRoot, String profileName, String serverName) throws IOException {
+		return ServerXmlFileHandler.create(curWASInstallRoot, profileName, serverName);
 	}
 
 	static int getDebugPortNum(WSTServerContext context) throws CoreException {
@@ -27,12 +41,25 @@ final class WebSphereWstServerAccess {
 	}
 
 	static IWASConfigModelHelper createLocalWASConfigHelper(WSTServerContext context) {
-      return getWASServer(context).createLocalWASConfigHelper();
+      try {
+		return getWASServer(context).createLocalWASConfigHelper();
+	  } catch (CoreException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	  }
+	  return null;
 	}
 
-	// static int getDebugPort(WSTServerContext context) {
-	// 	return WebSphereWstServerAccess.createLocalWASConfigHelper(context).
-	// }
+	static int getDebugPort(WSTServerContext context) {
+		try {
+			return createServerXmlFileHandler(context).getDebugPortNum();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (CoreException e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
 
 	static WASServer getWASServer(WSTServerContext context) throws CoreException {
 		if( context == null ) {

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+    <extension point="com.ibm.ws.ast.st.common.core.internalDebugTargetUtil">
+    <debugTargetUtil
+        serverTypeId="com.ibm.ws.ast.st.v85.server.base"
+        class="org.jboss.tools.rsp.server.servertype.debug.VSCodeDebugTargetUtil"
+        weight="1000"/>
+    </extension>
+</plugin>

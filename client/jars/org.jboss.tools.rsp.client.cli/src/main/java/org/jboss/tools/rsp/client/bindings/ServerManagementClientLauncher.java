@@ -12,14 +12,14 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
-import org.jboss.tools.rsp.api.RSPServer;
+import org.jboss.tools.rsp.api.RSPWTPServer;
 import org.jboss.tools.rsp.api.SocketLauncher;
 import org.jboss.tools.rsp.client.cli.InputProvider;
 
 public class ServerManagementClientLauncher {
 
 	private ServerManagementClientImpl myClient;
-	private SocketLauncher<RSPServer> launcher;
+	private SocketLauncher<RSPWTPServer> launcher;
 	private Socket socket;
 	private String host;
 	private int port;
@@ -38,7 +38,7 @@ public class ServerManagementClientLauncher {
 		// connect to the server
 		this.socket = new Socket(host, port);
 		// open a JSON-RPC connection for the opened socket
-		this.launcher = new SocketLauncher<>(client, RSPServer.class, socket);
+		this.launcher = new SocketLauncher<>(client, RSPWTPServer.class, socket);
 		/*
          * Start listening for incoming message.
          * When the JSON-RPC connection is closed, 
@@ -73,7 +73,7 @@ public class ServerManagementClientLauncher {
 		return connectionOpen;
 	}
 	
-	public RSPServer getServerProxy() {
+	public RSPWTPServer getServerProxy() {
 		if( myClient != null ) {
 			return myClient.getProxy();
 		}

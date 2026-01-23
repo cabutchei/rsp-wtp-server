@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 
 import org.jboss.tools.rsp.api.RSPClient;
 import org.jboss.tools.rsp.api.RSPServer;
+import org.jboss.tools.rsp.api.WTPServer;
 import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
 import org.jboss.tools.rsp.api.SocketLauncher;
 import org.jboss.tools.rsp.api.dao.Attributes;
@@ -33,11 +34,13 @@ import org.jboss.tools.rsp.api.dao.CreateServerWorkflowRequest;
 import org.jboss.tools.rsp.api.dao.DiscoveryPath;
 import org.jboss.tools.rsp.api.dao.DownloadRuntimeDescription;
 import org.jboss.tools.rsp.api.dao.DownloadSingleRuntimeRequest;
+import org.jboss.tools.rsp.api.dao.DidChangeWorkspaceFoldersParams;
 import org.jboss.tools.rsp.api.dao.GetServerJsonResponse;
 import org.jboss.tools.rsp.api.dao.JobHandle;
 import org.jboss.tools.rsp.api.dao.JobProgress;
 import org.jboss.tools.rsp.api.dao.LaunchAttributesRequest;
 import org.jboss.tools.rsp.api.dao.LaunchParameters;
+import org.jboss.tools.rsp.api.dao.ListDeployableResourcesResponse;
 import org.jboss.tools.rsp.api.dao.ListDeployablesResponse;
 import org.jboss.tools.rsp.api.dao.ListDeploymentOptionsResponse;
 import org.jboss.tools.rsp.api.dao.ListDownloadRuntimeResponse;
@@ -81,7 +84,7 @@ import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 import org.jboss.tools.rsp.server.spi.util.AlphanumComparator;
 import org.jboss.tools.rsp.server.spi.util.StatusConverter;
 
-public class ServerManagementServerImpl implements RSPServer {
+public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	
 	private final List<RSPClient> clients = new CopyOnWriteArrayList<>();
 	private final List<SocketLauncher<RSPClient>> launchers = new CopyOnWriteArrayList<>();
@@ -575,6 +578,18 @@ public class ServerManagementServerImpl implements RSPServer {
 		Map<String,String> resp2 = managementModel.getCapabilityManagement().getServerCapabilities();
 		ServerCapabilitiesResponse resp = new ServerCapabilitiesResponse(st, resp2);
 		return CompletableFuture.completedFuture(resp);
+	}
+
+	@Override
+	public CompletableFuture<ListDeployableResourcesResponse> getDeployableResources() {
+		ListDeployableResourcesResponse resp = new ListDeployableResourcesResponse();
+		resp.setStatus(errorStatus("Not implemented"));
+		return CompletableFuture.completedFuture(resp);
+	}
+
+	@Override
+	public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params) {
+		// TODO: track workspace folders and re-evaluate deployable resources
 	}
 
 	/*

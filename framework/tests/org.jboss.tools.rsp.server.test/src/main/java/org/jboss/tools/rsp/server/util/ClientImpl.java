@@ -14,7 +14,7 @@ package org.jboss.tools.rsp.server.util;
 import java.util.concurrent.CompletableFuture;
 
 import org.jboss.tools.rsp.api.RSPClient;
-import org.jboss.tools.rsp.api.RSPServer;
+import org.jboss.tools.rsp.api.RSPWTPServer;
 import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
 import org.jboss.tools.rsp.api.dao.DiscoveryPath;
 import org.jboss.tools.rsp.api.dao.JobHandle;
@@ -29,16 +29,16 @@ import org.jboss.tools.rsp.api.dao.StringPrompt;
 
 public class ClientImpl implements RSPClient {
 	
-	public RSPServer server;
+public RSPWTPServer server;
 	
 	
-	public void initialize(RSPServer server) throws Exception {
-		this.server = server;
-	}
+public void initialize(RSPWTPServer server) throws Exception {
+	this.server = server;
+}
 
-	public RSPServer getProxy() {
-		return server;
-	}
+public RSPWTPServer getProxy() {
+	return server;
+}
 
 	@Override
 	public void discoveryPathAdded(DiscoveryPath message) {

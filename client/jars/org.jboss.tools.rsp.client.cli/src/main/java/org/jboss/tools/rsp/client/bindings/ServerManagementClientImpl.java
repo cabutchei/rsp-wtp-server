@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import org.jboss.tools.rsp.api.RSPClient;
-import org.jboss.tools.rsp.api.RSPServer;
+import org.jboss.tools.rsp.api.RSPWTPServer;
 import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
 import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.api.dao.DiscoveryPath;
@@ -30,19 +30,19 @@ import org.jboss.tools.rsp.client.cli.InputProvider;
 
 public class ServerManagementClientImpl implements RSPClient {
 	
-	private RSPServer server;
+	private RSPWTPServer server;
 	private InputProvider inputProvider;
 	public ServerManagementClientImpl() {
 		super();
 		// here for debugging
 	}
 	
-	public void initialize(RSPServer server, InputProvider inputProvider) {
+	public void initialize(RSPWTPServer server, InputProvider inputProvider) {
 		this.server = server;
 		this.inputProvider = inputProvider;
 	}
 
-	public RSPServer getProxy() {
+	public RSPWTPServer getProxy() {
 		return server;
 	}
 

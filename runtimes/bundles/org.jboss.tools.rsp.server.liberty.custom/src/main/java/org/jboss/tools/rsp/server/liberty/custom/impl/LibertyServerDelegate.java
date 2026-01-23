@@ -12,6 +12,7 @@ package org.jboss.tools.rsp.server.liberty.custom.impl;
 import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
+import org.jboss.tools.rsp.api.dao.ServerState;
 import org.jboss.tools.rsp.api.dao.StartServerResponse;
 import org.jboss.tools.rsp.launching.memento.JSONMemento;
 import org.jboss.tools.rsp.server.generic.servertype.GenericServerBehavior;
@@ -104,6 +105,15 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 	}
 
 	@Override
+	public ServerState getServerState() {
+		ServerState state = super.getServerState();
+		if (state != null) {
+			state.setModuleStates(this.wstServerFacade.getModuleStates());
+		}
+		return state;
+	}
+
+	@Override
 	public String getMode() {
 		return this.wstServerFacade.getMode();
 	}
@@ -163,5 +173,4 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 		}
 	}
 }
-
 

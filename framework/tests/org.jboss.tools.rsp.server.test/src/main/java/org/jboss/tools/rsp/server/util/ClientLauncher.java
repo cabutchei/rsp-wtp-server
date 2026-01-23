@@ -11,13 +11,13 @@ package org.jboss.tools.rsp.server.util;
 import java.net.Socket;
 import java.util.concurrent.Future;
 
-import org.jboss.tools.rsp.api.RSPServer;
+import org.jboss.tools.rsp.api.RSPWTPServer;
 import org.jboss.tools.rsp.api.SocketLauncher;
 
 public class ClientLauncher {
 
 	private ClientImpl myClient;
-	private SocketLauncher<RSPServer> launcher;
+	private SocketLauncher<RSPWTPServer> launcher;
 	private Socket socket;
 	private String host;
 	private int port;
@@ -33,7 +33,7 @@ public class ClientLauncher {
 		// connect to the server
 		this.socket = new Socket(host, port);
 		// open a JSON-RPC connection for the opened socket
-		this.launcher = new SocketLauncher<>(client, RSPServer.class, socket);
+		this.launcher = new SocketLauncher<>(client, RSPWTPServer.class, socket);
 		/*
          * Start listening for incoming message.
          * When the JSON-RPC connection is closed, 
@@ -62,7 +62,7 @@ public class ClientLauncher {
 		return this.myClient;
 	}
 	
-	public SocketLauncher<RSPServer> getLauncher() {
+	public SocketLauncher<RSPWTPServer> getLauncher() {
 		return launcher;
 	}
 	
@@ -70,7 +70,7 @@ public class ClientLauncher {
 		return connectionOpen;
 	}
 	
-	public RSPServer getServerProxy() {
+	public RSPWTPServer getServerProxy() {
 		if( myClient != null ) {
 			return myClient.getProxy();
 		}

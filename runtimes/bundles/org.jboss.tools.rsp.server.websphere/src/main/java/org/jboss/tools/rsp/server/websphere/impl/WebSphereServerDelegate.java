@@ -18,6 +18,7 @@ import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
 import org.jboss.tools.rsp.api.dao.CommandLineDetails;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
+import org.jboss.tools.rsp.api.dao.ServerState;
 import org.jboss.tools.rsp.api.dao.StartServerResponse;
 import org.jboss.tools.rsp.eclipse.debug.core.ArgumentUtils;
 import org.jboss.tools.rsp.launching.memento.JSONMemento;
@@ -104,6 +105,15 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 	@Override
 	public int getServerRunState() {
 		return this.wstServerFacade.getServerRunState();
+	}
+
+	@Override
+	public ServerState getServerState() {
+		ServerState state = super.getServerState();
+		if (state != null) {
+			state.setModuleStates(this.wstServerFacade.getModuleStates());
+		}
+		return state;
 	}
 
 	@Override

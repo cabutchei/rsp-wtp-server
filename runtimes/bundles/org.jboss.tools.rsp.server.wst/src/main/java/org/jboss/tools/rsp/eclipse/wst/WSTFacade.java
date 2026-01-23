@@ -20,6 +20,8 @@ import org.eclipse.wst.server.core.IServer.IOperationListener;
 import org.jboss.tools.rsp.api.DefaultServerAttributes;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
+import org.jboss.tools.rsp.api.dao.ModuleReference;
+import org.jboss.tools.rsp.api.dao.ModuleState;
 import org.jboss.tools.rsp.api.dao.ServerHandle;
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.Status;
@@ -201,16 +203,67 @@ public class WSTFacade {
 		return wstServer.getModuleState(new IModule[] {module});
 	}
 
+	private int getModulePublishState(org.eclipse.wst.server.core.IServer wstServer, IModule module) {
+		return wstServer.getModulePublishState(new IModule[] {module});
+	}
+
+	private int getModuleRunState(org.eclipse.wst.server.core.IServer wstServer, IModule module) {
+		return wstServer.getModuleState(new IModule[] {module});
+	}
+
+	private DeployableReference toDeployableReference(IModule module) {
+		String label = module.getName();
+		String path = module.getProject() != null ? module.getProject().getName() : module.getName();
+		return new DeployableReference(label, path);
+	}
+
+	private ModuleReference toModuleReference(IModule module) {
+		String typeId = module.getModuleType() != null ? module.getModuleType().getId() : null;
+		return new ModuleReference(module.getId(), module.getName(), typeId);
+	}
+
+	private List<IModule> collectChildModules(org.eclipse.wst.server.core.IServer wstServer, IModule module) {
+		List<IModule> result = new ArrayList<>();
+		IModule[] children = wstServer.getChildModules(new IModule[] {module}, new NullProgressMonitor());
+		if (children != null) {
+			for (IModule child : children) {
+				result.add(child);
+				result.addAll(collectChildModules(wstServer, child));
+			}
+		}
+		return result;
+	}
+
 	public List<DeployableState> getDeployableStates(ServerHandle server) {
 		List<DeployableState> states = new ArrayList<>();
 		IModule[] modules = getModules(server);
 		for (IModule module : modules) {
 			// DeployableReference ref = this.adapter.toDeployableReference(module);
-			DeployableReference ref = new DeployableReference(module.getName(), module.getProject().getName());
+			DeployableReference ref = toDeployableReference(module);
 			int runState = this.adapter.toRspServerState(getModuleRunState(server, ref));
 			int publishState = this.adapter.toRspPublishState(getModulePublishState(server, ref));
 			DeployableState ds = new DeployableState(server, ref, runState, publishState);
 			states.add(ds);
+		}
+		return states;
+	}
+
+	public List<ModuleState> getModuleStates(ServerHandle server) {
+		List<ModuleState> states = new ArrayList<>();
+		org.eclipse.wst.server.core.IServer wstServer = getWstServer(server.getId());
+		IModule[] modules = getModules(server);
+		if (modules == null) {
+			return states;
+		}
+		for (IModule module : modules) {
+			DeployableReference deployable = toDeployableReference(module);
+			List<IModule> children = collectChildModules(wstServer, module);
+			for (IModule child : children) {
+				ModuleReference moduleRef = toModuleReference(child);
+				int runState = this.adapter.toRspServerState(getModuleRunState(wstServer, child));
+				int publishState = this.adapter.toRspPublishState(getModulePublishState(wstServer, child));
+				states.add(new ModuleState(deployable, moduleRef, runState, publishState));
+			}
 		}
 		return states;
 	}

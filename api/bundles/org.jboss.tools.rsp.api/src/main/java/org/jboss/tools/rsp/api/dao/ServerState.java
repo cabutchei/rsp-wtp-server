@@ -17,6 +17,7 @@ public class ServerState {
 	private int publishState;
 	private String runMode;
 	private List<DeployableState> deployableStates;
+	private List<ModuleState> moduleStates;
 
 	public ServerState() {
 	}
@@ -51,6 +52,14 @@ public class ServerState {
 
 	public void setDeployableStates(List<DeployableState> deployStates) {
 		this.deployableStates = deployStates;
+	}
+
+	public List<ModuleState> getModuleStates() {
+		return moduleStates;
+	}
+
+	public void setModuleStates(List<ModuleState> moduleStates) {
+		this.moduleStates = moduleStates;
 	}
 
 	public String getRunMode() {

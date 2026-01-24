@@ -211,6 +211,26 @@ public class WSTFacade {
 		return wstServer.getModuleState(new IModule[] {module});
 	}
 
+	public void startModule(ServerHandle server, DeployableReference ref) {
+		org.eclipse.wst.server.core.IServer wstServer = getWstServer(server.getId());
+		IModule module = this.getModule(server, ref.getPath());
+		this.startModule(wstServer, module);
+	}
+
+	public void stopModule(ServerHandle server, DeployableReference ref) {
+		org.eclipse.wst.server.core.IServer wstServer = getWstServer(server.getId());
+		IModule module = this.getModule(server, ref.getPath());
+		this.stopModule(wstServer, module);
+	}
+
+	private void startModule(org.eclipse.wst.server.core.IServer wstServer, IModule module) {
+		wstServer.startModule(new IModule[] { module }, null);
+	}
+
+	private void stopModule(org.eclipse.wst.server.core.IServer wstServer, IModule module) {
+		wstServer.stopModule(new IModule[] { module }, null);
+	}
+
 	private DeployableReference toDeployableReference(IModule module) {
 		String label = module.getName();
 		String path = module.getProject() != null ? module.getProject().getName() : module.getName();

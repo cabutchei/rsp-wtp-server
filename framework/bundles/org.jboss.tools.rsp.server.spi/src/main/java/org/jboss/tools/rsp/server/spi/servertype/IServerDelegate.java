@@ -359,5 +359,9 @@ public interface IServerDelegate {
 	 */
 	public void setDependentDefaults(IServerWorkingCopy server);
 
+	// TODO: remove default and update all delegates in the repo
+	public default IStatus startModule(DeployableReference ref) {return null;};
+	public default IStatus stopModule(DeployableReference ref) {return null;};
+
 
 }

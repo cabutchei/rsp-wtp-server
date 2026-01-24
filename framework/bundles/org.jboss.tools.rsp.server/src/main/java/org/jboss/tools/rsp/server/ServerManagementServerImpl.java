@@ -31,6 +31,7 @@ import org.jboss.tools.rsp.api.dao.ClientCapabilitiesRequest;
 import org.jboss.tools.rsp.api.dao.CommandLineDetails;
 import org.jboss.tools.rsp.api.dao.CreateServerResponse;
 import org.jboss.tools.rsp.api.dao.CreateServerWorkflowRequest;
+import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.api.dao.DiscoveryPath;
 import org.jboss.tools.rsp.api.dao.DownloadRuntimeDescription;
 import org.jboss.tools.rsp.api.dao.DownloadSingleRuntimeRequest;
@@ -45,6 +46,7 @@ import org.jboss.tools.rsp.api.dao.ListDeployablesResponse;
 import org.jboss.tools.rsp.api.dao.ListDeploymentOptionsResponse;
 import org.jboss.tools.rsp.api.dao.ListDownloadRuntimeResponse;
 import org.jboss.tools.rsp.api.dao.ListServerActionResponse;
+import org.jboss.tools.rsp.api.dao.ModuleState;
 import org.jboss.tools.rsp.api.dao.PublishServerRequest;
 import org.jboss.tools.rsp.api.dao.ServerActionRequest;
 import org.jboss.tools.rsp.api.dao.ServerAttributes;
@@ -58,6 +60,7 @@ import org.jboss.tools.rsp.api.dao.ServerState;
 import org.jboss.tools.rsp.api.dao.ServerType;
 import org.jboss.tools.rsp.api.dao.StartServerResponse;
 import org.jboss.tools.rsp.api.dao.Status;
+import org.jboss.tools.rsp.api.dao.StopModuleAttributes;
 import org.jboss.tools.rsp.api.dao.StopServerAttributes;
 import org.jboss.tools.rsp.api.dao.UpdateServerRequest;
 import org.jboss.tools.rsp.api.dao.UpdateServerResponse;
@@ -80,6 +83,7 @@ import org.jboss.tools.rsp.server.spi.jobs.IJob;
 import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
+import org.jboss.tools.rsp.server.spi.servertype.IModuleStateProvider;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 import org.jboss.tools.rsp.server.spi.util.AlphanumComparator;
 import org.jboss.tools.rsp.server.spi.util.StatusConverter;
@@ -480,6 +484,77 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			return errorStatus(ServerStringConstants.UNEXPECTED_ERROR, e);
 		}
 
+	}
+
+	@Override
+	public CompletableFuture<Status> startModule(ServerDeployableReference attr) {
+		return createCompletableFuture(() -> startModuleImpl(attr));
+	}
+
+	private Status startModuleImpl(ServerDeployableReference attr) {
+		if( attr == null || attr.getServer() == null || attr.getDeployableReference() == null) {
+			return invalidParameterStatus();
+		}
+		IServer server = managementModel.getServerModel().getServer(attr.getServer().getId());
+		IServerDelegate del = server.getDelegate();
+		if( del == null ) {
+			return errorStatus("An unexpected error occurred: Server " + attr.getServer().getId() + " has no delegate.");
+		}
+		if(del.getServerRunState() == IServerDelegate.STATE_STOPPED) {
+			return errorStatus(
+				"Cannot start module when server is stopped.");
+			}
+		try {
+			return StatusConverter.convert(del.startModule(attr.getDeployableReference()));
+		} catch( Exception e ) {
+			return errorStatus(ServerStringConstants.UNEXPECTED_ERROR, e);
+		}
+	}
+
+	@Override
+	public CompletableFuture<Status> stopModule(ServerDeployableReference attr) {
+		return createCompletableFuture(() -> stopModuleImpl(attr));
+	}
+		
+	private Status stopModuleImpl(ServerDeployableReference attr) {
+		if( attr == null) return invalidParameterStatus();
+		
+		IServer server = managementModel.getServerModel().getServer(attr.getServer().getId());
+		IServerDelegate del = server.getDelegate();
+		if( del == null ) {
+			return errorStatus("An unexpected error occurred: Server " + attr.getServer().getId() + " has no delegate.");
+		}
+		if(del.getServerRunState() == IServerDelegate.STATE_STOPPED) {
+			return errorStatus(
+					"Cannot stop module when server is stopped.");
+		}
+		try {
+			return StatusConverter.convert(del.stopModule(attr.getDeployableReference()));
+		} catch( Exception e ) {
+			return errorStatus(ServerStringConstants.UNEXPECTED_ERROR, e);
+		}
+	}
+
+	@Override
+	public CompletableFuture<List<ModuleState>> getModuleStates(ServerHandle handle) {
+		return createCompletableFuture(() -> getModuleStatesSync(handle));
+	}
+
+	private List<ModuleState> getModuleStatesSync(ServerHandle handle) {
+		List<ModuleState> empty = new ArrayList<>();
+		if( handle == null || isEmpty(handle.getId())) {
+			return empty;
+		}
+		IServer server = managementModel.getServerModel().getServer(handle.getId());
+		if( server == null ) {
+			return empty;
+		}
+		IServerDelegate del = server.getDelegate();
+		if( del instanceof IModuleStateProvider ) {
+			List<ModuleState> states = ((IModuleStateProvider) del).getModuleStates();
+			return states == null ? empty : states;
+		}
+		return empty;
 	}
 
 	@Override

@@ -8,10 +8,13 @@
  ******************************************************************************/
 package org.jboss.tools.rsp.server.liberty.custom.impl;
 
+import java.util.Collections;
+import java.util.List;
 
 import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
+import org.jboss.tools.rsp.api.dao.ModuleState;
 import org.jboss.tools.rsp.api.dao.ServerState;
 import org.jboss.tools.rsp.api.dao.StartServerResponse;
 import org.jboss.tools.rsp.launching.memento.JSONMemento;
@@ -20,6 +23,7 @@ import org.jboss.tools.rsp.server.modeeel.WSTServerStreamListener;
 import org.jboss.tools.rsp.server.publishing.WSTServerPublishStateModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
+import org.jboss.tools.rsp.server.spi.servertype.IModuleStateProvider;
 import org.jboss.tools.rsp.server.spi.servertype.IServerPublishModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServerWorkingCopy;
 import org.jboss.tools.rsp.server.spi.util.StatusConverter;
@@ -41,7 +45,7 @@ import com.ibm.ws.st.core.internal.WebSphereServerBehaviour;
 
 
 
-public class LibertyServerDelegate extends GenericServerBehavior implements IServerDelegate {
+public class LibertyServerDelegate extends GenericServerBehavior implements IServerDelegate, IModuleStateProvider {
 
 	private static final String PROCESS_ID_KEY = "process.id.key";
 	// private static final Logger LOG = LoggerFactory.getLogger(LibertyServerDelegate.class);
@@ -106,11 +110,15 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 
 	@Override
 	public ServerState getServerState() {
-		ServerState state = super.getServerState();
-		if (state != null) {
-			state.setModuleStates(this.wstServerFacade.getModuleStates());
+		return super.getServerState();
+	}
+
+	@Override
+	public List<ModuleState> getModuleStates() {
+		if (this.wstServerFacade == null) {
+			return Collections.emptyList();
 		}
-		return state;
+		return this.wstServerFacade.getModuleStates();
 	}
 
 	@Override
@@ -149,6 +157,18 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 		return Status.OK_STATUS;
 	}
 
+	@Override
+	public IStatus startModule(DeployableReference ref) {
+		this.wstServerFacade.startModule(ref);
+		return Status.OK_STATUS;
+	}
+
+	@Override
+	public IStatus stopModule(DeployableReference ref) {
+		this.wstServerFacade.stopModule(ref);
+		return Status.OK_STATUS;
+	}
+
 	private void handleLaunchReady(ILaunch launch) {
 		setStartLaunch(launch);
 		addStreamListener(launch);
@@ -173,4 +193,3 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 		}
 	}
 }
-

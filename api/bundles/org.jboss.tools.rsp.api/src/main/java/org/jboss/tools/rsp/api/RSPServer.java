@@ -30,6 +30,7 @@ import org.jboss.tools.rsp.api.dao.ListDeployablesResponse;
 import org.jboss.tools.rsp.api.dao.ListDeploymentOptionsResponse;
 import org.jboss.tools.rsp.api.dao.ListDownloadRuntimeResponse;
 import org.jboss.tools.rsp.api.dao.ListServerActionResponse;
+import org.jboss.tools.rsp.api.dao.ModuleState;
 import org.jboss.tools.rsp.api.dao.PublishServerRequest;
 import org.jboss.tools.rsp.api.dao.ServerActionRequest;
 import org.jboss.tools.rsp.api.dao.ServerAttributes;
@@ -43,6 +44,7 @@ import org.jboss.tools.rsp.api.dao.ServerState;
 import org.jboss.tools.rsp.api.dao.ServerType;
 import org.jboss.tools.rsp.api.dao.StartServerResponse;
 import org.jboss.tools.rsp.api.dao.Status;
+import org.jboss.tools.rsp.api.dao.StopModuleAttributes;
 import org.jboss.tools.rsp.api.dao.StopServerAttributes;
 import org.jboss.tools.rsp.api.dao.UpdateServerRequest;
 import org.jboss.tools.rsp.api.dao.UpdateServerResponse;
@@ -332,6 +334,27 @@ public interface RSPServer {
 	 */
 	@JsonRequest
 	CompletableFuture<Status> stopServerAsync(StopServerAttributes attr);
+
+	/**
+	 * The `server/startModule` request is sent by the client to the server to
+	 * start a deployed module on an existing server in the model.
+	 */
+	@JsonRequest
+	CompletableFuture<Status> startModule(ServerDeployableReference attr);
+
+	/**
+	 * The `server/stopModule` request is sent by the client to the server to
+	 * stop a deployed module of an existing server in the model.
+	 */
+
+	@JsonRequest
+	CompletableFuture<Status> stopModule(ServerDeployableReference attr);
+	/**
+	 * The `server/getModuleStates` request is sent by the client to the server to
+	 * get a list of all module states for the given server.
+	 */
+	@JsonRequest
+	CompletableFuture<List<ModuleState>> getModuleStates(ServerHandle handle);
 
 
 	/*

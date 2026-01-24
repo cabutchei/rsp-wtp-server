@@ -184,6 +184,17 @@ public class GenericServerBehavior extends AbstractServerDelegate
 		return Status.OK_STATUS;
 
 	}
+
+	/**
+	 * This is meant to be a temporary hack
+	 */
+	@Override public IStatus startModule(DeployableReference ref) {
+		return null;
+	}
+	@Override public IStatus stopModule(DeployableReference ref) {
+		return null;
+	}
+
 	protected IServerStartLauncher getStartLauncher() {
 		JSONMemento startupMemento = behaviorMemento.getChild("startup");
 		// TODO casting is dumb. Should be smarter than this

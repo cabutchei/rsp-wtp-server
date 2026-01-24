@@ -8,7 +8,9 @@
  ******************************************************************************/
 package org.jboss.tools.rsp.server.websphere.impl;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -18,6 +20,7 @@ import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
 import org.jboss.tools.rsp.api.dao.CommandLineDetails;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
+import org.jboss.tools.rsp.api.dao.ModuleState;
 import org.jboss.tools.rsp.api.dao.ServerState;
 import org.jboss.tools.rsp.api.dao.StartServerResponse;
 import org.jboss.tools.rsp.eclipse.debug.core.ArgumentUtils;
@@ -29,6 +32,7 @@ import org.jboss.tools.rsp.server.modeeel.WSTServerStreamListener;
 import org.jboss.tools.rsp.server.publishing.WSTServerPublishStateModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
+import org.jboss.tools.rsp.server.spi.servertype.IModuleStateProvider;
 import org.jboss.tools.rsp.server.spi.servertype.IServerPublishModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServerWorkingCopy;
 import org.jboss.tools.rsp.server.spi.util.StatusConverter;
@@ -41,7 +45,7 @@ import org.jboss.tools.rsp.eclipse.debug.core.IStreamListener;
 import org.jboss.tools.rsp.eclipse.debug.core.model.IProcess;
 import org.jboss.tools.rsp.eclipse.wst.WSTServerContext;
 
-public class WebSphereServerDelegate extends GenericServerBehavior implements IServerDelegate {
+public class WebSphereServerDelegate extends GenericServerBehavior implements IServerDelegate, IModuleStateProvider {
 
 	private static final String PROCESS_ID_KEY = "process.id.key";
 	private static final long LAUNCH_WAIT_TIMEOUT_MS = 5000;
@@ -109,11 +113,15 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 
 	@Override
 	public ServerState getServerState() {
-		ServerState state = super.getServerState();
-		if (state != null) {
-			state.setModuleStates(this.wstServerFacade.getModuleStates());
+		return super.getServerState();
+	}
+
+	@Override
+	public List<ModuleState> getModuleStates() {
+		if (this.wstServerFacade == null) {
+			return Collections.emptyList();
 		}
-		return state;
+		return this.wstServerFacade.getModuleStates();
 	}
 
 	@Override
@@ -155,6 +163,12 @@ public class WebSphereServerDelegate extends GenericServerBehavior implements IS
 		launchStreamAttacher.reset();
 		resetDebugPortFuture();
 		this.wstServerFacade.stop(force);
+		return Status.OK_STATUS;
+	}
+
+	@Override
+	public IStatus startModule(DeployableReference ref) {
+		this.wstServerFacade.startModule(ref);
 		return Status.OK_STATUS;
 	}
 

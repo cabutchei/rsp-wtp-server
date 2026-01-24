@@ -102,6 +102,14 @@ public class WSTServerContext {
         return this.facade.canStop(serverHandle);
     }
 
+    public void startModule(DeployableReference ref) {
+        this.facade.startModule(serverHandle, ref);
+    }
+
+    public void stopModule(DeployableReference ref) {
+        this.facade.stopModule(serverHandle, ref);
+    }
+
     private void setLaunch(org.eclipse.debug.core.ILaunch launch) {
         this.launch = new WstLaunchProxy(launch, this.facade.getAdapter());
     }

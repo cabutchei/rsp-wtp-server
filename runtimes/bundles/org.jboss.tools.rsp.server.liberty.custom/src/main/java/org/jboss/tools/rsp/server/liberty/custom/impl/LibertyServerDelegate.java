@@ -136,8 +136,8 @@ public class LibertyServerDelegate extends GenericServerBehavior implements ISer
 		}
 		try {
 			launchStreamAttacher.reset();
-			this.wstServerFacade.startAsync(mode);
 			launchStreamAttacher.attach();
+			this.wstServerFacade.startAsync(mode);
 		} catch (CoreException e) {
 			launchStreamAttacher.reset();
 			s = StatusConverter.convert(e.getStatus());

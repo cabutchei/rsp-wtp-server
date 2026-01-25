@@ -9,6 +9,9 @@
 package org.jboss.tools.rsp.server.liberty.custom.impl;
 
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import org.eclipse.debug.core.DebugPlugin;
@@ -23,7 +26,7 @@ final class LaunchStreamAttacher {
 	private final String serverId;
 	private final Consumer<ILaunch> onLaunchReady;
 	private ILaunchesListener2 launchListener;
-	private boolean attached;
+	private volatile CompletableFuture<ILaunch> launchWithProcessFuture = new CompletableFuture<>();
 
 	LaunchStreamAttacher(String serverId, Consumer<ILaunch> onLaunchReady) {
 		this.serverId = Objects.requireNonNull(serverId, "serverId");
@@ -31,23 +34,34 @@ final class LaunchStreamAttacher {
 	}
 
 	void attach() {
-		org.eclipse.debug.core.ILaunch wstLaunch = getWstLaunch();
-		if( tryAttachLaunch(wstLaunch) ) {
-			removeLaunchListener();
-			return;
-		}
 		registerLaunchListener();
+		org.eclipse.debug.core.ILaunch wstLaunch = getWstLaunch();
+		tryAttachLaunch(wstLaunch);
 	}
 
 	void reset() {
 		synchronized(lock) {
-			attached = false;
 			removeLaunchListenerLocked();
+			launchWithProcessFuture = new CompletableFuture<>();
 		}
 	}
 
 	void dispose() {
 		reset();
+	}
+
+	ILaunch awaitLaunchWithProcess(long timeoutMillis) {
+		CompletableFuture<ILaunch> future = launchWithProcessFuture;
+		try {
+			return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
+		} catch (TimeoutException e) {
+			return null;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return null;
+		} catch (Exception e) {
+			return null;
+		}
 	}
 
 	private org.eclipse.debug.core.ILaunch getWstLaunch() {
@@ -63,15 +77,10 @@ final class LaunchStreamAttacher {
 		if( processes == null || processes.length == 0 ) {
 			return false;
 		}
-		synchronized(lock) {
-			if( attached ) {
-				return true;
-			}
-			ILaunch launch = new WstLaunchProxy(wstLaunch, null);
-			onLaunchReady.accept(launch);
-			attached = true;
-			return true;
-		}
+		ILaunch launch = new WstLaunchProxy(wstLaunch, null);
+		onLaunchReady.accept(launch);
+		completeLaunchFuture(launch);
+		return true;
 	}
 
 	private void registerLaunchListener() {
@@ -112,10 +121,7 @@ final class LaunchStreamAttacher {
 			if( !isLaunchForServer(launch) ) {
 				continue;
 			}
-			if( tryAttachLaunch(launch) ) {
-				removeLaunchListener();
-				return;
-			}
+			tryAttachLaunch(launch);
 		}
 	}
 
@@ -128,6 +134,16 @@ final class LaunchStreamAttacher {
 			return wstServer != null && serverId.equals(wstServer.getId());
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			return false;
+		}
+	}
+
+	private void completeLaunchFuture(ILaunch launch) {
+		if( launch == null ) {
+			return;
+		}
+		CompletableFuture<ILaunch> future = launchWithProcessFuture;
+		if( future != null && !future.isDone() ) {
+			future.complete(launch);
 		}
 	}
 

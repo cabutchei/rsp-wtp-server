@@ -60,7 +60,6 @@ import org.jboss.tools.rsp.api.dao.ServerState;
 import org.jboss.tools.rsp.api.dao.ServerType;
 import org.jboss.tools.rsp.api.dao.StartServerResponse;
 import org.jboss.tools.rsp.api.dao.Status;
-import org.jboss.tools.rsp.api.dao.StopModuleAttributes;
 import org.jboss.tools.rsp.api.dao.StopServerAttributes;
 import org.jboss.tools.rsp.api.dao.UpdateServerRequest;
 import org.jboss.tools.rsp.api.dao.UpdateServerResponse;

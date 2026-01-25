@@ -31,6 +31,7 @@ import org.jboss.tools.rsp.api.dao.ClientCapabilitiesRequest;
 import org.jboss.tools.rsp.api.dao.CommandLineDetails;
 import org.jboss.tools.rsp.api.dao.CreateServerResponse;
 import org.jboss.tools.rsp.api.dao.CreateServerWorkflowRequest;
+import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.api.dao.DiscoveryPath;
 import org.jboss.tools.rsp.api.dao.DownloadRuntimeDescription;
@@ -86,6 +87,9 @@ import org.jboss.tools.rsp.server.spi.servertype.IModuleStateProvider;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 import org.jboss.tools.rsp.server.spi.util.AlphanumComparator;
 import org.jboss.tools.rsp.server.spi.util.StatusConverter;
+import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
+import org.jboss.tools.rsp.server.spi.workspace.IProjectsManager;
+import org.jboss.tools.rsp.server.workspace.WorkspaceFolderChangeHandler;
 
 public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	
@@ -656,14 +660,35 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 
 	@Override
 	public CompletableFuture<ListDeployableResourcesResponse> getDeployableResources() {
+		return createCompletableFuture(() -> getDeployableResourcesSync());
+	}
+
+	private ListDeployableResourcesResponse getDeployableResourcesSync() {
 		ListDeployableResourcesResponse resp = new ListDeployableResourcesResponse();
-		resp.setStatus(errorStatus("Not implemented"));
-		return CompletableFuture.completedFuture(resp);
+		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		if (projectsManager == null) {
+			resp.setStatus(errorStatus("Projects manager unavailable"));
+			return resp;
+		}
+		List<DeployableArtifact> resources = projectsManager.listDeployableResources();
+		List<DeployableReference> refs = new ArrayList<>();
+		if (resources != null) {
+			refs = resources.stream()
+					.filter(r -> r != null && r.getProjectName() != null)
+					.map(r -> new DeployableReference(r.getProjectName(),
+							r.getDeployPath() == null ? null : r.getDeployPath().toString()))
+					.distinct()
+					.collect(Collectors.toList());
+		}
+		resp.setResources(refs);
+		resp.setStatus(StatusConverter.convert(org.jboss.tools.rsp.eclipse.core.runtime.Status.OK_STATUS));
+		return resp;
 	}
 
 	@Override
 	public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params) {
-		// TODO: track workspace folders and re-evaluate deployable resources
+		WorkspaceFolderChangeHandler handler = new WorkspaceFolderChangeHandler(managementModel.getProjectsManager());
+		handler.update(params);
 	}
 
 	/*

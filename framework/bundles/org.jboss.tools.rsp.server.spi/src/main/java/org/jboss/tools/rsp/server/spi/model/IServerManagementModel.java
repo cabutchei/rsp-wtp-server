@@ -16,6 +16,7 @@ import org.jboss.tools.rsp.server.spi.discovery.IDiscoveryPathModel;
 import org.jboss.tools.rsp.server.spi.discovery.IServerBeanTypeManager;
 import org.jboss.tools.rsp.server.spi.filewatcher.IFileWatcherService;
 import org.jboss.tools.rsp.server.spi.jobs.IJobManager;
+import org.jboss.tools.rsp.server.spi.workspace.IProjectsManager;
 
 /**
  * This interface should probably be called IRSPModel instead. 
@@ -84,6 +85,12 @@ public interface IServerManagementModel {
 	 * @return
 	 */
 	public IJobManager getJobManager();
+
+	/**
+	 * Get the projects manager for tracking workspace folders and deployable resources.
+	 * @return
+	 */
+	public IProjectsManager getProjectsManager();
 	
 	/**
 	 * A client has been removed disconnected from the server 

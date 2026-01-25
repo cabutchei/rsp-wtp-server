@@ -9,7 +9,6 @@
 package org.jboss.tools.rsp.eclipse.wst;
 
 import org.eclipse.core.resources.IWorkspace;
-import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 import org.jboss.tools.rsp.server.LauncherSingleton;
 import org.jboss.tools.rsp.server.ServerManagementServerLauncher;
 import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
@@ -67,15 +66,6 @@ public class WstBootstrapActivator implements BundleActivator {
 		if (integration == null) {
 			LOG.warn("WST bootstrap skipped: integration service unavailable.");
 			return;
-		}
-		String workspaceProjects = System.getProperty("org.jboss.tools.rsp.workspace.projects");
-		if (workspaceProjects != null && !workspaceProjects.trim().isEmpty()) {
-			IStatus status = integration.getWorkspaceService().importAllWorkspaceProjects();
-			if (status != null && !status.isOK()) {
-				LOG.warn("Workspace import failed: {}", status.getMessage());
-			}
-		} else {
-			LOG.debug("Workspace project list not provided; skipping import.");
 		}
 
 		IServerManagementModel model = launcher.getModel();

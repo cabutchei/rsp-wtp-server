@@ -370,6 +370,7 @@ public class WSTServerModel implements IServerModel {
 
 	public void refreshServers() {
 		IServer[] servers = this.wstIntegrationService.getFacade().createServeProxies(managementModel);
+		this.wstIntegrationService.getFacade().updateServerStatus();
 		for (IServer server : servers) {
 			this.serverDelegates.put(server.getId(), server.getDelegate());
 			addServer(server);

@@ -12,10 +12,12 @@ import org.eclipse.core.resources.IProject;
 import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.ServerCore;
 import org.eclipse.wst.server.core.ServerUtil;
+import org.eclipse.wst.server.core.internal.UpdateServerJob;
 import org.eclipse.wst.server.core.IServer.IOperationListener;
 import org.jboss.tools.rsp.api.DefaultServerAttributes;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
@@ -399,5 +401,11 @@ public class WSTFacade {
 
 	public String getMode(ServerHandle handle) {
 		return getWstServer(handle.getId()).getMode();
+	}
+
+	public void updateServerStatus() {
+		org.eclipse.wst.server.core.IServer[] servers = ServerCore.getServers();
+		Job job = new UpdateServerJob(servers);
+		job.schedule();
 	}
 }

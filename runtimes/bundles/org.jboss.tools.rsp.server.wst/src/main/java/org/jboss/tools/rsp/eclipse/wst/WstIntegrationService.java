@@ -33,6 +33,9 @@ public final class WstIntegrationService implements IWstIntegrationService {
 		this.adapter = new WstModelAdapter();
 		this.workspaceService = new EclipseWorkspaceService();
 		this.facade = new WSTFacade(this.registry, this.adapter, this.workspaceService);
+		if (this.workspaceService instanceof EclipseWorkspaceService) {
+			((EclipseWorkspaceService) this.workspaceService).setWstFacade(this.facade);
+		}
 	}
 
 	@Override

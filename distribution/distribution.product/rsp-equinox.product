@@ -31,6 +31,7 @@
 		<plugin id="org.jboss.tools.rsp.server.liberty.custom"/>
 		<plugin id="org.jboss.tools.rsp.server.websphere"/>
 		<plugin id="org.eclipse.jface.text"/>
+		<plugin id="org.eclipse.emf.common"/>
 		<plugin id="com.ibm.ws.st.core"/>
 		<plugin id="com.ibm.ws.ast.st.common.core"/>
 		<plugin id="com.ibm.ws.st.was.core"/>

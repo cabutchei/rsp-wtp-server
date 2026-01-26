@@ -38,6 +38,12 @@ public interface IWorkspaceService {
 
 	List<DeployableArtifact> listDeployables();
 
+	List<DeploymentAssemblyEntry> getDeploymentAssembly(Path projectPath, String projectName);
+
+	IStatus addDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry);
+
+	IStatus removeDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry);
+
 	IStatus ensureFacets(String projectName, List<String> facetIds);
 
 	IStatus updateFacets(String projectName, List<String> add, List<String> remove);

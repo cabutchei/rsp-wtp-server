@@ -2,7 +2,11 @@ package org.jboss.tools.rsp.eclipse.wst;
 
 
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -11,9 +15,19 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.core.resources.IProject;
 import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.osgi.util.NLS;
+import org.eclipse.wst.common.componentcore.ComponentCore;
+import org.eclipse.wst.common.componentcore.internal.StructureEdit;
+import org.eclipse.wst.common.componentcore.internal.ComponentResource;
+import org.eclipse.wst.common.componentcore.internal.resources.VirtualArchiveComponent;
+import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
+import org.eclipse.wst.common.componentcore.resources.IVirtualFolder;
+import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
+import org.eclipse.wst.common.componentcore.internal.WorkbenchComponent;
 import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.ServerCore;
 import org.eclipse.wst.server.core.ServerUtil;
@@ -35,6 +49,7 @@ import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
 import org.jboss.tools.rsp.server.spi.servertype.IServerListener;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
+import org.jboss.tools.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 
 // import com.ibm.ws.st.core.internal.WebSphereRuntime;
 // import com.ibm.ws.st.core.internal.WebSphereServerBehaviour;
@@ -43,6 +58,10 @@ import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
 
 
 public class WSTFacade {
+
+	private static final String KIND_FOLDER = "folder";
+	private static final String KIND_PROJECT = "project";
+	private static final String KIND_ARCHIVE = "archive";
 
 	private final ServerHandleRegistry registry;
 	private final WstModelAdapter adapter;
@@ -64,6 +83,42 @@ public class WSTFacade {
 
 	public WstModelAdapter getAdapter() {
 		return adapter;
+	}
+
+	public List<DeploymentAssemblyEntry> getDeploymentAssembly(IProject project) {
+		if (project == null || !project.exists()) {
+			return null;
+		}
+		List<DeploymentAssemblyEntry> entries = new ArrayList<>();
+		addComponentResourceMappings(project, entries);
+		addComponentReferences(project, entries);
+		return Collections.unmodifiableList(entries);
+	}
+
+	public IStatus addDeploymentAssemblyEntry(IProject project, DeploymentAssemblyEntry entry) {
+		if (project == null || !project.exists()) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Project not found");
+		}
+		if (entry == null) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Entry is required");
+		}
+		if (isResourceMapping(entry)) {
+			return addResourceMapping(project, entry);
+		}
+		return addReference(project, entry);
+	}
+
+	public IStatus removeDeploymentAssemblyEntry(IProject project, DeploymentAssemblyEntry entry) {
+		if (project == null || !project.exists()) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Project not found");
+		}
+		if (entry == null) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Entry is required");
+		}
+		if (isResourceMapping(entry)) {
+			return removeResourceMapping(project, entry);
+		}
+		return removeReference(project, entry);
 	}
 
 	public IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer, IServerManagementModel managementModel) {
@@ -407,5 +462,256 @@ public class WSTFacade {
 		org.eclipse.wst.server.core.IServer[] servers = ServerCore.getServers();
 		Job job = new UpdateServerJob(servers);
 		job.schedule();
+	}
+
+	private void addComponentResourceMappings(IProject project, List<DeploymentAssemblyEntry> entries) {
+		StructureEdit structureEdit = null;
+		try {
+			structureEdit = StructureEdit.getStructureEditForRead(project);
+			WorkbenchComponent component = structureEdit.getComponent();
+			if (component == null) {
+				return;
+			}
+			Object[] resources = component.getResources().toArray();
+			for (Object resourceObj : resources) {
+				if (!(resourceObj instanceof ComponentResource)) {
+					continue;
+				}
+				ComponentResource resource = (ComponentResource) resourceObj;
+				IPath sourcePath = resource.getSourcePath();
+				IPath runtimePath = resource.getRuntimePath();
+				if (sourcePath == null || runtimePath == null) {
+					continue;
+				}
+				entries.add(new DeploymentAssemblyEntry(
+						sourcePath.toString(),
+						normalizeRuntimePath(runtimePath),
+						KIND_FOLDER,
+						KIND_FOLDER));
+			}
+		} catch (Exception e) {
+			return;
+		} catch (Throwable e) {
+			return;
+		} finally {
+			if (structureEdit != null) {
+				structureEdit.dispose();
+			}
+		}
+	}
+
+	private void addComponentReferences(IProject project, List<DeploymentAssemblyEntry> entries) {
+		IVirtualComponent component = ComponentCore.createComponent(project);
+		if (component == null) {
+			return;
+		}
+		HashMap<String, Object> options = new HashMap<>();
+		options.put(IVirtualComponent.REQUESTED_REFERENCE_TYPE, IVirtualComponent.DISPLAYABLE_REFERENCES_ALL);
+		IVirtualReference[] refs = component.getReferences(options);
+		if (refs == null) {
+			return;
+		}
+		for (IVirtualReference ref : refs) {
+			if (ref == null) {
+				continue;
+			}
+			String sourceText = resolveReferenceSource(ref.getReferencedComponent());
+			String runtimeText = normalizeRuntimePath(new Path(getSafeRuntimePath(ref)));
+			entries.add(new DeploymentAssemblyEntry(
+					sourceText,
+					runtimeText,
+					resolveReferenceSourceKind(ref.getReferencedComponent()),
+					KIND_ARCHIVE));
+		}
+	}
+
+	private String resolveReferenceSource(IVirtualComponent component) {
+		if (component == null) {
+			return "";
+		}
+		if (component.isBinary()) {
+			IPath componentPath = component.getAdapter(IPath.class);
+			return componentPath == null ? component.getName() : componentPath.toString();
+		}
+		IProject project = component.getProject();
+		return project == null ? component.getName() : project.getName();
+	}
+
+	private String resolveReferenceSourceKind(IVirtualComponent component) {
+		if (component != null && component.isBinary()) {
+			return KIND_ARCHIVE;
+		}
+		return KIND_PROJECT;
+	}
+
+	private String getSafeRuntimePath(IVirtualReference ref) {
+		String archiveName = ref.getDependencyType() == IVirtualReference.DEPENDENCY_TYPE_CONSUMES
+				? null
+				: ref.getArchiveName();
+		String value;
+		if (archiveName != null) {
+			IPath runtimePath = new Path(archiveName);
+			if (runtimePath.segmentCount() > 1) {
+				value = archiveName;
+			} else {
+				value = ref.getRuntimePath().append(archiveName).toString();
+			}
+		} else {
+			value = ref.getRuntimePath().toString();
+		}
+		return value == null ? "/" : value;
+	}
+
+	private String normalizeRuntimePath(IPath runtimePath) {
+		if (runtimePath.isRoot()) {
+			return runtimePath.toString();
+		}
+		return runtimePath.makeRelative().toString();
+	}
+
+	private boolean isResourceMapping(DeploymentAssemblyEntry entry) {
+		return KIND_FOLDER.equals(entry.getSourceKind()) && KIND_FOLDER.equals(entry.getDeployKind());
+	}
+
+	private IStatus addResourceMapping(IProject project, DeploymentAssemblyEntry entry) {
+		IVirtualComponent rootComponent = ComponentCore.createComponent(project);
+		if (rootComponent == null) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Component not available");
+		}
+		String deployPath = entry.getDeployPath() == null ? "/" : entry.getDeployPath();
+		IPath runtimePath = new Path(deployPath).makeAbsolute();
+		IPath sourcePath = new Path(entry.getSourcePath());
+		IVirtualFolder rootFolder = rootComponent.getRootFolder();
+		try {
+			rootFolder.getFolder(runtimePath).createLink(sourcePath, 0, null);
+			return Status.OK_STATUS;
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Failed to add resource mapping", e);
+		}
+	}
+
+	private IStatus removeResourceMapping(IProject project, DeploymentAssemblyEntry entry) {
+		StructureEdit structureEdit = null;
+		try {
+			structureEdit = StructureEdit.getStructureEditForWrite(project);
+			WorkbenchComponent component = structureEdit.getComponent();
+			if (component == null) {
+				return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Component not available");
+			}
+			String targetRuntimePath = normalizeRuntimePath(new Path(entry.getDeployPath() == null ? "/" : entry.getDeployPath()));
+			String targetSource = entry.getSourcePath();
+			List<?> resources = component.getResources();
+			for (int i = resources.size() - 1; i >= 0; i--) {
+				Object obj = resources.get(i);
+				if (!(obj instanceof ComponentResource)) {
+					continue;
+				}
+				ComponentResource resource = (ComponentResource) obj;
+				IPath sourcePath = resource.getSourcePath();
+				IPath runtimePath = resource.getRuntimePath();
+				if (sourcePath == null || runtimePath == null) {
+					continue;
+				}
+				String runtimeNormalized = normalizeRuntimePath(runtimePath);
+				if (sourcePath.toString().equals(targetSource) && runtimeNormalized.equals(targetRuntimePath)) {
+					resources.remove(i);
+				}
+			}
+			return Status.OK_STATUS;
+		} finally {
+			if (structureEdit != null) {
+				structureEdit.saveIfNecessary(new NullProgressMonitor());
+				structureEdit.dispose();
+			}
+		}
+	}
+
+	private IStatus addReference(IProject project, DeploymentAssemblyEntry entry) {
+		IVirtualComponent rootComponent = ComponentCore.createComponent(project);
+		if (rootComponent == null) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Component not available");
+		}
+		IVirtualComponent targetComponent = resolveReferencedComponent(project, entry);
+		if (targetComponent == null) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Referenced component not found");
+		}
+		IPath runtimePath = new Path(entry.getDeployPath() == null ? "/" : entry.getDeployPath()).makeAbsolute();
+		IVirtualReference reference = ComponentCore.createReference(rootComponent, targetComponent, runtimePath);
+		if (KIND_ARCHIVE.equals(entry.getSourceKind())) {
+			String sourcePath = entry.getSourcePath();
+			if (sourcePath != null && !sourcePath.isEmpty()) {
+				reference.setArchiveName(new File(sourcePath).getName());
+			}
+		}
+		rootComponent.addReferences(new IVirtualReference[] { reference });
+		return Status.OK_STATUS;
+	}
+
+	private IStatus removeReference(IProject project, DeploymentAssemblyEntry entry) {
+		IVirtualComponent rootComponent = ComponentCore.createComponent(project);
+		if (rootComponent == null) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Component not available");
+		}
+		String targetSource = entry.getSourcePath();
+		String targetDeploy = normalizeRuntimePath(new Path(entry.getDeployPath() == null ? "/" : entry.getDeployPath()));
+		IVirtualReference[] refs = rootComponent.getReferences();
+		if (refs == null || refs.length == 0) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Reference not found");
+		}
+		ArrayList<IVirtualReference> updated = new ArrayList<>(Arrays.asList(refs));
+		boolean removed = false;
+		for (IVirtualReference ref : refs) {
+			if (ref == null) {
+				continue;
+			}
+			if (!matchesReferenceSource(ref, targetSource, entry.getSourceKind())) {
+				continue;
+			}
+			String runtimeText = normalizeRuntimePath(new Path(getSafeRuntimePath(ref)));
+			if (runtimeText.equals(targetDeploy)) {
+				updated.remove(ref);
+				removed = true;
+			}
+		}
+		if (!removed) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Reference not found");
+		}
+		rootComponent.setReferences(updated.toArray(new IVirtualReference[0]));
+		return Status.OK_STATUS;
+	}
+
+	private IVirtualComponent resolveReferencedComponent(IProject project, DeploymentAssemblyEntry entry) {
+		if (KIND_PROJECT.equals(entry.getSourceKind())) {
+			if (workspaceService == null) {
+				return null;
+			}
+			IProject referenced = workspaceService.getProject(entry.getSourcePath());
+			return referenced == null ? null : ComponentCore.createComponent(referenced);
+		}
+		if (KIND_ARCHIVE.equals(entry.getSourceKind())) {
+			String sourcePath = entry.getSourcePath();
+			if (sourcePath == null || sourcePath.isEmpty()) {
+				return null;
+			}
+			String componentName = VirtualArchiveComponent.LIBARCHIVETYPE + IPath.SEPARATOR + sourcePath;
+			IPath runtimePath = new Path(entry.getDeployPath() == null ? "/" : entry.getDeployPath()).makeAbsolute();
+			return ComponentCore.createArchiveComponent(project, componentName, runtimePath);
+		}
+		return null;
+	}
+
+	private boolean matchesReferenceSource(IVirtualReference ref, String targetSource, String sourceKind) {
+		IVirtualComponent component = ref.getReferencedComponent();
+		if (component == null) {
+			return false;
+		}
+		if (KIND_PROJECT.equals(sourceKind)) {
+			return component.getProject() != null && component.getProject().getName().equals(targetSource);
+		}
+		IPath componentPath = component.getAdapter(IPath.class);
+		if (componentPath != null) {
+			return componentPath.toString().equals(targetSource);
+		}
+		return component.getName() != null && component.getName().equals(targetSource);
 	}
 }

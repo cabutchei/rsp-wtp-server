@@ -13,8 +13,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
+import org.jboss.tools.rsp.eclipse.core.runtime.Status;
 import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
+import org.jboss.tools.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 import org.jboss.tools.rsp.server.spi.workspace.IProjectsManager;
+import org.jboss.tools.rsp.server.spi.workspace.WorkspaceProject;
 
 public class DefaultProjectsManager implements IProjectsManager {
 	private boolean initialized;
@@ -32,6 +36,26 @@ public class DefaultProjectsManager implements IProjectsManager {
 	@Override
 	public List<DeployableArtifact> listDeployableResources() {
 		return Collections.emptyList();
+	}
+
+	@Override
+	public List<WorkspaceProject> listWorkspaceProjects() {
+		return Collections.emptyList();
+	}
+
+	@Override
+	public List<DeploymentAssemblyEntry> getDeploymentAssembly(Path projectPath, String projectName) {
+		return null;
+	}
+
+	@Override
+	public IStatus addDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry) {
+		return Status.OK_STATUS;
+	}
+
+	@Override
+	public IStatus removeDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry) {
+		return Status.OK_STATUS;
 	}
 
 	@Override

@@ -12,6 +12,8 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 
+import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
+
 public interface IProjectsManager {
 	/**
 	 * Initialize the workspace projects from the provided workspace roots.
@@ -32,6 +34,25 @@ public interface IProjectsManager {
 	 * List deployable resources available in the current workspace.
 	 */
 	List<DeployableArtifact> listDeployableResources();
+
+	/**
+	 * List workspace projects.
+	 */
+	List<WorkspaceProject> listWorkspaceProjects();
+
+	/**
+	 * Get deployment assembly mappings for a workspace project.
+	 * 
+	 * @param projectPath absolute path to a project or a path within it
+	 * @param projectName optional project name hint
+	 */
+	List<DeploymentAssemblyEntry> getDeploymentAssembly(Path projectPath, String projectName);
+
+	IStatus addDeploymentAssemblyEntry(Path projectPath, String projectName,
+			DeploymentAssemblyEntry entry);
+
+	IStatus removeDeploymentAssemblyEntry(Path projectPath, String projectName,
+			DeploymentAssemblyEntry entry);
 
 	/**
 	 * @return true if the workspace has been initialized

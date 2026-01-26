@@ -28,18 +28,24 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.wst.common.project.facet.core.ProjectFacetsManager;
-import org.eclipse.jst.j2ee.model.ModelProviderManager;
 import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.ServerUtil;
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.MultiStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.Status;
+import org.jboss.tools.rsp.eclipse.wst.WSTFacade;
 import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
+import org.jboss.tools.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
 import org.jboss.tools.rsp.server.spi.workspace.WorkspaceProject;
 
 public class EclipseWorkspaceService implements IWorkspaceService {
 	private static final String BUNDLE_ID = "org.jboss.tools.rsp.eclipse.workspace";
+	private WSTFacade wstFacade;
+
+	public void setWstFacade(WSTFacade wstFacade) {
+		this.wstFacade = wstFacade;
+	}
 
 	@Override
 	public java.nio.file.Path getWorkspaceRoot() {
@@ -239,6 +245,66 @@ public class EclipseWorkspaceService implements IWorkspaceService {
 	}
 
 	@Override
+	public List<DeploymentAssemblyEntry> getDeploymentAssembly(java.nio.file.Path projectPath, String projectName) {
+		IProject project = resolveProject(projectPath, projectName);
+		if (project == null || !project.exists()) {
+			return null;
+		}
+		try {
+			if (!project.isOpen()) {
+				project.open(new NullProgressMonitor());
+			}
+		} catch (CoreException ce) {
+			return null;
+		}
+		if (wstFacade == null) {
+			return null;
+		}
+		List<DeploymentAssemblyEntry> entries = wstFacade.getDeploymentAssembly(project);
+		return entries == null ? null : Collections.unmodifiableList(entries);
+	}
+
+	@Override
+	public IStatus addDeploymentAssemblyEntry(java.nio.file.Path projectPath, String projectName,
+			DeploymentAssemblyEntry entry) {
+		IProject project = resolveProject(projectPath, projectName);
+		if (project == null || !project.exists()) {
+			return errorStatus("Project not found", null);
+		}
+		try {
+			if (!project.isOpen()) {
+				project.open(new NullProgressMonitor());
+			}
+		} catch (CoreException ce) {
+			return errorStatus("Failed to open project " + project.getName(), ce);
+		}
+		if (wstFacade == null) {
+			return errorStatus("WST facade is unavailable", null);
+		}
+		return wstFacade.addDeploymentAssemblyEntry(project, entry);
+	}
+
+	@Override
+	public IStatus removeDeploymentAssemblyEntry(java.nio.file.Path projectPath, String projectName,
+			DeploymentAssemblyEntry entry) {
+		IProject project = resolveProject(projectPath, projectName);
+		if (project == null || !project.exists()) {
+			return errorStatus("Project not found", null);
+		}
+		try {
+			if (!project.isOpen()) {
+				project.open(new NullProgressMonitor());
+			}
+		} catch (CoreException ce) {
+			return errorStatus("Failed to open project " + project.getName(), ce);
+		}
+		if (wstFacade == null) {
+			return errorStatus("WST facade is unavailable", null);
+		}
+		return wstFacade.removeDeploymentAssemblyEntry(project, entry);
+	}
+
+	@Override
 	public IStatus ensureFacets(String projectName, List<String> facetIds) {
 		// ResourcesPlugin.getWorkspace().getRoot()
 		return errorStatus("Facet operations are not implemented", null);
@@ -260,5 +326,37 @@ public class EclipseWorkspaceService implements IWorkspaceService {
 		MultiStatus status = new MultiStatus(BUNDLE_ID, IStatus.ERROR,
 				failures.toArray(new IStatus[0]), "One or more projects failed to import", null);
 		return status;
+	}
+
+	private IProject resolveProject(java.nio.file.Path projectPath, String projectName) {
+		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		if (projectName != null && !projectName.isEmpty()) {
+			IProject project = root.getProject(projectName);
+			if (project != null && project.exists()) {
+				return project;
+			}
+		}
+		if (projectPath == null) {
+			return null;
+		}
+		java.nio.file.Path normalized = projectPath.toAbsolutePath().normalize();
+		IProject bestMatch = null;
+		int bestSegments = -1;
+		for (IProject project : root.getProjects()) {
+			IPath location = project.getLocation();
+			if (location == null) {
+				continue;
+			}
+			java.nio.file.Path projectLocation = location.toFile().toPath().toAbsolutePath().normalize();
+			if (!normalized.startsWith(projectLocation)) {
+				continue;
+			}
+			int segments = projectLocation.getNameCount();
+			if (segments > bestSegments) {
+				bestMatch = project;
+				bestSegments = segments;
+			}
+		}
+		return bestMatch;
 	}
 }

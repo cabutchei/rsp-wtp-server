@@ -17,9 +17,12 @@ import java.util.List;
 import java.util.Set;
 
 import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
+import org.jboss.tools.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 import org.jboss.tools.rsp.server.spi.workspace.IProjectImporter;
 import org.jboss.tools.rsp.server.spi.workspace.IProjectsManager;
 import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
+import org.jboss.tools.rsp.server.spi.workspace.WorkspaceProject;
+import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 
 public class ProjectsManager implements IProjectsManager {
 	private final IWorkspaceService workspaceService;
@@ -81,6 +84,39 @@ public class ProjectsManager implements IProjectsManager {
 			}
 		}
 		return filtered;
+	}
+
+	@Override
+	public List<WorkspaceProject> listWorkspaceProjects() {
+		if (workspaceService == null) {
+			return Collections.emptyList();
+		}
+		List<WorkspaceProject> projects = workspaceService.listProjects();
+		return projects == null ? Collections.emptyList() : projects;
+	}
+
+	@Override
+	public List<DeploymentAssemblyEntry> getDeploymentAssembly(Path projectPath, String projectName) {
+		if (workspaceService == null) {
+			return null;
+		}
+		return workspaceService.getDeploymentAssembly(projectPath, projectName);
+	}
+
+	@Override
+	public IStatus addDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry) {
+		if (workspaceService == null) {
+			return null;
+		}
+		return workspaceService.addDeploymentAssemblyEntry(projectPath, projectName, entry);
+	}
+
+	@Override
+	public IStatus removeDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry) {
+		if (workspaceService == null) {
+			return null;
+		}
+		return workspaceService.removeDeploymentAssemblyEntry(projectPath, projectName, entry);
 	}
 
 	@Override

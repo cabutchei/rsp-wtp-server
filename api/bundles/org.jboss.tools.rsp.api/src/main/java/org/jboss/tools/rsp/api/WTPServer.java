@@ -13,8 +13,13 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.services.JsonSegment;
+import org.jboss.tools.rsp.api.dao.DeploymentAssemblyRequest;
+import org.jboss.tools.rsp.api.dao.DeploymentAssemblyResponse;
+import org.jboss.tools.rsp.api.dao.DeploymentAssemblyUpdateRequest;
 import org.jboss.tools.rsp.api.dao.DidChangeWorkspaceFoldersParams;
 import org.jboss.tools.rsp.api.dao.ListDeployableResourcesResponse;
+import org.jboss.tools.rsp.api.dao.ListWorkspaceProjectsResponse;
+import org.jboss.tools.rsp.api.dao.Status;
 
 @JsonSegment("workspace")
 public interface WTPServer {
@@ -24,6 +29,34 @@ public interface WTPServer {
 	 */
 	@JsonRequest
 	CompletableFuture<ListDeployableResourcesResponse> getDeployableResources();
+
+	/**
+	 * The `workspace/listWorkspaceProjects` request is sent by the client to
+	 * fetch a list of known workspace projects.
+	 */
+	@JsonRequest
+	CompletableFuture<ListWorkspaceProjectsResponse> listWorkspaceProjects();
+
+	/**
+	 * The `workspace/getDeploymentAssembly` request is sent by the client to
+	 * fetch the deployment assembly mappings for a workspace project.
+	 */
+	@JsonRequest
+	CompletableFuture<DeploymentAssemblyResponse> getDeploymentAssembly(DeploymentAssemblyRequest request);
+
+	/**
+	 * The `workspace/addDeploymentAssemblyEntry` request is sent by the client to
+	 * add a new deployment assembly entry.
+	 */
+	@JsonRequest
+	CompletableFuture<Status> addDeploymentAssemblyEntry(DeploymentAssemblyUpdateRequest request);
+
+	/**
+	 * The `workspace/removeDeploymentAssemblyEntry` request is sent by the client to
+	 * remove an existing deployment assembly entry.
+	 */
+	@JsonRequest
+	CompletableFuture<Status> removeDeploymentAssemblyEntry(DeploymentAssemblyUpdateRequest request);
 
 	/**
 	 * The `workspace/didChangeWorkspaceFolders` notification is sent by the client

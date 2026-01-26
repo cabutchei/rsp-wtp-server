@@ -9,6 +9,8 @@
 package org.jboss.tools.rsp.server;
 
 import java.io.File;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -31,6 +33,9 @@ import org.jboss.tools.rsp.api.dao.ClientCapabilitiesRequest;
 import org.jboss.tools.rsp.api.dao.CommandLineDetails;
 import org.jboss.tools.rsp.api.dao.CreateServerResponse;
 import org.jboss.tools.rsp.api.dao.CreateServerWorkflowRequest;
+import org.jboss.tools.rsp.api.dao.DeploymentAssemblyRequest;
+import org.jboss.tools.rsp.api.dao.DeploymentAssemblyResponse;
+import org.jboss.tools.rsp.api.dao.DeploymentAssemblyUpdateRequest;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
 import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.api.dao.DiscoveryPath;
@@ -47,6 +52,7 @@ import org.jboss.tools.rsp.api.dao.ListDeployablesResponse;
 import org.jboss.tools.rsp.api.dao.ListDeploymentOptionsResponse;
 import org.jboss.tools.rsp.api.dao.ListDownloadRuntimeResponse;
 import org.jboss.tools.rsp.api.dao.ListServerActionResponse;
+import org.jboss.tools.rsp.api.dao.ListWorkspaceProjectsResponse;
 import org.jboss.tools.rsp.api.dao.ModuleState;
 import org.jboss.tools.rsp.api.dao.PublishServerRequest;
 import org.jboss.tools.rsp.api.dao.ServerActionRequest;
@@ -64,6 +70,7 @@ import org.jboss.tools.rsp.api.dao.Status;
 import org.jboss.tools.rsp.api.dao.StopServerAttributes;
 import org.jboss.tools.rsp.api.dao.UpdateServerRequest;
 import org.jboss.tools.rsp.api.dao.UpdateServerResponse;
+import org.jboss.tools.rsp.api.dao.WorkspaceProject;
 import org.jboss.tools.rsp.api.dao.WorkflowResponse;
 import org.jboss.tools.rsp.api.dao.util.CreateServerAttributesUtility;
 import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
@@ -87,6 +94,7 @@ import org.jboss.tools.rsp.server.spi.servertype.IModuleStateProvider;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
 import org.jboss.tools.rsp.server.spi.util.AlphanumComparator;
 import org.jboss.tools.rsp.server.spi.util.StatusConverter;
+import org.jboss.tools.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
 import org.jboss.tools.rsp.server.spi.workspace.IProjectsManager;
 import org.jboss.tools.rsp.server.workspace.WorkspaceFolderChangeHandler;
@@ -663,6 +671,11 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		return createCompletableFuture(() -> getDeployableResourcesSync());
 	}
 
+	@Override
+	public CompletableFuture<ListWorkspaceProjectsResponse> listWorkspaceProjects() {
+		return createCompletableFuture(() -> listWorkspaceProjectsSync());
+	}
+
 	private ListDeployableResourcesResponse getDeployableResourcesSync() {
 		ListDeployableResourcesResponse resp = new ListDeployableResourcesResponse();
 		IProjectsManager projectsManager = managementModel.getProjectsManager();
@@ -683,6 +696,125 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		resp.setResources(refs);
 		resp.setStatus(StatusConverter.convert(org.jboss.tools.rsp.eclipse.core.runtime.Status.OK_STATUS));
 		return resp;
+	}
+
+	private ListWorkspaceProjectsResponse listWorkspaceProjectsSync() {
+		ListWorkspaceProjectsResponse resp = new ListWorkspaceProjectsResponse();
+		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		if (projectsManager == null) {
+			resp.setStatus(errorStatus("Projects manager unavailable"));
+			return resp;
+		}
+		List<org.jboss.tools.rsp.server.spi.workspace.WorkspaceProject> projects = projectsManager.listWorkspaceProjects();
+		List<WorkspaceProject> mapped = new ArrayList<>();
+		if (projects != null) {
+			mapped = projects.stream()
+					.filter(p -> p != null && p.getName() != null)
+					.map(p -> new WorkspaceProject(p.getName(),
+							p.getLocation() == null ? null : p.getLocation().toString(),
+							p.isOpen()))
+					.collect(Collectors.toList());
+		}
+		resp.setProjects(mapped);
+		resp.setStatus(StatusConverter.convert(org.jboss.tools.rsp.eclipse.core.runtime.Status.OK_STATUS));
+		return resp;
+	}
+
+	@Override
+	public CompletableFuture<DeploymentAssemblyResponse> getDeploymentAssembly(DeploymentAssemblyRequest request) {
+		return createCompletableFuture(() -> getDeploymentAssemblySync(request));
+	}
+
+	@Override
+	public CompletableFuture<Status> addDeploymentAssemblyEntry(DeploymentAssemblyUpdateRequest request) {
+		return createCompletableFuture(() -> updateDeploymentAssemblyEntry(request, true));
+	}
+
+	@Override
+	public CompletableFuture<Status> removeDeploymentAssemblyEntry(DeploymentAssemblyUpdateRequest request) {
+		return createCompletableFuture(() -> updateDeploymentAssemblyEntry(request, false));
+	}
+
+	private DeploymentAssemblyResponse getDeploymentAssemblySync(DeploymentAssemblyRequest request) {
+		DeploymentAssemblyResponse resp = new DeploymentAssemblyResponse();
+		if (request == null) {
+			resp.setStatus(invalidParameterStatus());
+			return resp;
+		}
+		String pathString = request.getPath();
+		String projectName = request.getProjectName();
+		if ((pathString == null || pathString.isEmpty()) && (projectName == null || projectName.isEmpty())) {
+			resp.setStatus(invalidParameterStatus());
+			return resp;
+		}
+		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		if (projectsManager == null) {
+			resp.setStatus(errorStatus("Projects manager unavailable"));
+			return resp;
+		}
+		java.nio.file.Path projectPath = null;
+		if (pathString != null && !pathString.isEmpty()) {
+			try {
+				projectPath = Paths.get(pathString);
+			} catch (InvalidPathException e) {
+				resp.setStatus(errorStatus("Invalid project path: " + pathString, e));
+				return resp;
+			}
+		}
+		List<DeploymentAssemblyEntry> entries = projectsManager.getDeploymentAssembly(projectPath, projectName);
+		if (entries == null) {
+			resp.setEntries(new ArrayList<>());
+			resp.setStatus(errorStatus("Deployment assembly unavailable for project"));
+			return resp;
+		}
+		List<org.jboss.tools.rsp.api.dao.DeploymentAssemblyEntry> mapped = entries.stream()
+				.filter(entry -> entry != null)
+				.map(entry -> new org.jboss.tools.rsp.api.dao.DeploymentAssemblyEntry(
+						entry.getSourcePath(),
+						entry.getDeployPath(),
+						entry.getSourceKind(),
+						entry.getDeployKind()))
+				.collect(Collectors.toList());
+		resp.setEntries(mapped);
+		resp.setStatus(StatusConverter.convert(org.jboss.tools.rsp.eclipse.core.runtime.Status.OK_STATUS));
+		return resp;
+	}
+
+	private Status updateDeploymentAssemblyEntry(DeploymentAssemblyUpdateRequest request, boolean add) {
+		if (request == null) {
+			return invalidParameterStatus();
+		}
+		String pathString = request.getPath();
+		String projectName = request.getProjectName();
+		if ((pathString == null || pathString.isEmpty()) && (projectName == null || projectName.isEmpty())) {
+			return invalidParameterStatus();
+		}
+		if (request.getEntry() == null) {
+			return invalidParameterStatus();
+		}
+		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		if (projectsManager == null) {
+			return errorStatus("Projects manager unavailable");
+		}
+		java.nio.file.Path projectPath = null;
+		if (pathString != null && !pathString.isEmpty()) {
+			try {
+				projectPath = Paths.get(pathString);
+			} catch (InvalidPathException e) {
+				return errorStatus("Invalid project path: " + pathString, e);
+			}
+		}
+		DeploymentAssemblyEntry entry = new DeploymentAssemblyEntry(
+				request.getEntry().getSourcePath(),
+				request.getEntry().getDeployPath(),
+				request.getEntry().getSourceKind(),
+				request.getEntry().getDeployKind());
+		IStatus status = add
+				? projectsManager.addDeploymentAssemblyEntry(projectPath, projectName, entry)
+				: projectsManager.removeDeploymentAssemblyEntry(projectPath, projectName, entry);
+		return StatusConverter.convert(status == null
+				? new org.jboss.tools.rsp.eclipse.core.runtime.Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Operation failed")
+				: status);
 	}
 
 	@Override

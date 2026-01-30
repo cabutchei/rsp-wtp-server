@@ -18,6 +18,7 @@ import org.jboss.tools.rsp.api.dao.MessageBoxNotification;
 import org.jboss.tools.rsp.api.dao.JobHandle;
 import org.jboss.tools.rsp.api.dao.JobProgress;
 import org.jboss.tools.rsp.api.dao.JobRemoved;
+import org.jboss.tools.rsp.api.dao.JreContainerMappings;
 import org.jboss.tools.rsp.api.dao.ServerHandle;
 import org.jboss.tools.rsp.api.dao.ServerProcess;
 import org.jboss.tools.rsp.api.dao.ServerProcessOutput;
@@ -175,4 +176,10 @@ public interface RSPClient {
 	@JsonNotification
 	void jobChanged(JobProgress progress);
 
+	/**
+	 * The `client/jdtlsJreContainersDetected` notification is sent by the server
+	 * when non-standard JRE containers are detected and resolved to VM installs.
+	 */
+	@JsonNotification
+	void jdtlsJreContainersDetected(JreContainerMappings mappings);
 }

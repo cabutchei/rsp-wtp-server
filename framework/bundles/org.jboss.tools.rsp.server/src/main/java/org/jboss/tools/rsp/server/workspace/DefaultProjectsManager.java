@@ -18,6 +18,7 @@ import org.jboss.tools.rsp.eclipse.core.runtime.Status;
 import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
 import org.jboss.tools.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 import org.jboss.tools.rsp.server.spi.workspace.IProjectsManager;
+import org.jboss.tools.rsp.server.spi.workspace.JreContainerMapping;
 import org.jboss.tools.rsp.server.spi.workspace.WorkspaceProject;
 
 public class DefaultProjectsManager implements IProjectsManager {
@@ -56,6 +57,11 @@ public class DefaultProjectsManager implements IProjectsManager {
 	@Override
 	public IStatus removeDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry) {
 		return Status.OK_STATUS;
+	}
+
+	@Override
+	public List<JreContainerMapping> listNonStandardJreContainers() {
+		return Collections.emptyList();
 	}
 
 	@Override

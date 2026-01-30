@@ -45,6 +45,7 @@ import org.jboss.tools.rsp.api.dao.DidChangeWorkspaceFoldersParams;
 import org.jboss.tools.rsp.api.dao.GetServerJsonResponse;
 import org.jboss.tools.rsp.api.dao.JobHandle;
 import org.jboss.tools.rsp.api.dao.JobProgress;
+import org.jboss.tools.rsp.api.dao.JreContainerMappings;
 import org.jboss.tools.rsp.api.dao.LaunchAttributesRequest;
 import org.jboss.tools.rsp.api.dao.LaunchParameters;
 import org.jboss.tools.rsp.api.dao.ListDeployableResourcesResponse;
@@ -821,6 +822,40 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params) {
 		WorkspaceFolderChangeHandler handler = new WorkspaceFolderChangeHandler(managementModel.getProjectsManager());
 		handler.update(params);
+		notifyJdtlsJreContainers();
+	}
+
+	private void notifyJdtlsJreContainers() {
+		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		if (projectsManager == null) {
+			return;
+		}
+		List<org.jboss.tools.rsp.server.spi.workspace.JreContainerMapping> mappings = projectsManager
+				.listNonStandardJreContainers();
+		if (mappings == null || mappings.isEmpty()) {
+			return;
+		}
+		RSPClient client = ClientThreadLocal.getActiveClient();
+		if (client == null) {
+			return;
+		}
+		List<org.jboss.tools.rsp.api.dao.JreContainerMapping> apiMappings = new ArrayList<>();
+		for (org.jboss.tools.rsp.server.spi.workspace.JreContainerMapping mapping : mappings) {
+			if (mapping == null) {
+				continue;
+			}
+			String javaHome = mapping.getJavaHome() == null ? null : mapping.getJavaHome().toString();
+			apiMappings.add(new org.jboss.tools.rsp.api.dao.JreContainerMapping(
+					mapping.getProjectName(),
+					mapping.getProjectUri(),
+					mapping.getContainerPath(),
+					mapping.getVmName(),
+					javaHome));
+		}
+		if (apiMappings.isEmpty()) {
+			return;
+		}
+		client.jdtlsJreContainersDetected(new JreContainerMappings(apiMappings));
 	}
 
 	/*

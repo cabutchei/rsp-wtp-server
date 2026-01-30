@@ -9,18 +9,29 @@
 package org.jboss.tools.rsp.eclipse.wst;
 
 import java.nio.file.Path;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.launching.IVMInstall;
+import org.eclipse.jdt.launching.JavaRuntime;
 import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
 import org.jboss.tools.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 import org.jboss.tools.rsp.server.spi.workspace.IProjectImporter;
 import org.jboss.tools.rsp.server.spi.workspace.IProjectsManager;
 import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
+import org.jboss.tools.rsp.server.spi.workspace.JreContainerMapping;
 import org.jboss.tools.rsp.server.spi.workspace.WorkspaceProject;
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 
@@ -120,6 +131,77 @@ public class ProjectsManager implements IProjectsManager {
 	}
 
 	@Override
+	public List<JreContainerMapping> listNonStandardJreContainers() {
+		if (workspaceService == null) {
+			return Collections.emptyList();
+		}
+		List<WorkspaceProject> projects = workspaceService.listProjects();
+		if (projects == null || projects.isEmpty()) {
+			return Collections.emptyList();
+		}
+		Collection<Path> roots = getWorkspaceRootsSnapshot();
+		List<JreContainerMapping> mappings = new ArrayList<>();
+		Set<String> seen = new HashSet<>();
+		for (WorkspaceProject projectInfo : projects) {
+			if (projectInfo == null || !projectInfo.isOpen()) {
+				continue;
+			}
+			IProject project = workspaceService.getProject(projectInfo.getName());
+			if (project == null || !project.exists() || !project.isOpen()) {
+				continue;
+			}
+			IPath location = project.getLocation();
+			Path projectPath = location == null ? null : location.toFile().toPath().toAbsolutePath().normalize();
+			if (!roots.isEmpty() && (projectPath == null || !isContainedInAny(projectPath, roots))) {
+				continue;
+			}
+			IJavaProject javaProject = JavaCore.create(project);
+			if (javaProject == null) {
+				continue;
+			}
+			IClasspathEntry[] entries;
+			try {
+				entries = javaProject.getRawClasspath();
+			} catch (JavaModelException e) {
+				continue;
+			}
+			if (entries == null) {
+				continue;
+			}
+			for (IClasspathEntry entry : entries) {
+				if (entry == null || entry.getEntryKind() != IClasspathEntry.CPE_CONTAINER) {
+					continue;
+				}
+				IPath containerPath = entry.getPath();
+				if (!isNonStandardJreContainer(containerPath)) {
+					continue;
+				}
+				IVMInstall vm = JavaRuntime.getVMInstall(containerPath);
+				if (vm == null || vm.getInstallLocation() == null) {
+					continue;
+				}
+				String projectUri = null;
+				URI locationUri = project.getLocationURI();
+				if (locationUri != null) {
+					projectUri = locationUri.toString();
+				}
+				Path javaHome = vm.getInstallLocation().toPath();
+				String key = (projectUri == null ? project.getName() : projectUri) + "|" + containerPath.toString();
+				if (!seen.add(key)) {
+					continue;
+				}
+				mappings.add(new JreContainerMapping(
+						project.getName(),
+						projectUri,
+						containerPath.toString(),
+						vm.getName(),
+						javaHome));
+			}
+		}
+		return mappings;
+	}
+
+	@Override
 	public boolean isInitialized() {
 		return initialized;
 	}
@@ -176,5 +258,20 @@ public class ProjectsManager implements IProjectsManager {
 			}
 		}
 		return false;
+	}
+
+	private boolean isNonStandardJreContainer(IPath containerPath) {
+		if (containerPath == null || containerPath.segmentCount() < 1) {
+			return false;
+		}
+		String jreContainerId = String.valueOf(JavaRuntime.JRE_CONTAINER);
+		if (!jreContainerId.equals(containerPath.segment(0))) {
+			return false;
+		}
+		if (containerPath.segmentCount() < 2) {
+			return false;
+		}
+		String execEnv = JavaRuntime.getExecutionEnvironmentId(containerPath);
+		return execEnv == null || execEnv.trim().isEmpty();
 	}
 }

@@ -55,6 +55,12 @@ public interface IProjectsManager {
 			DeploymentAssemblyEntry entry);
 
 	/**
+	 * Scan workspace projects for non-standard JRE containers that resolve to a VM
+	 * install.
+	 */
+	List<JreContainerMapping> listNonStandardJreContainers();
+
+	/**
 	 * @return true if the workspace has been initialized
 	 */
 	boolean isInitialized();

@@ -20,6 +20,7 @@ import org.jboss.tools.rsp.api.dao.DiscoveryPath;
 import org.jboss.tools.rsp.api.dao.JobHandle;
 import org.jboss.tools.rsp.api.dao.JobProgress;
 import org.jboss.tools.rsp.api.dao.JobRemoved;
+import org.jboss.tools.rsp.api.dao.JreContainerMappings;
 import org.jboss.tools.rsp.api.dao.MessageBoxNotification;
 import org.jboss.tools.rsp.api.dao.ServerHandle;
 import org.jboss.tools.rsp.api.dao.ServerProcess;
@@ -131,5 +132,11 @@ public RSPWTPServer getProxy() {
 	public void jobChanged(JobProgress progress) {
 		JobHandle h = progress.getHandle();
 		System.out.println("Job " + h.getName() + " (" + h.getId() + ") is at " + progress.getPercent() + "%");
+	}
+
+	@Override
+	public void jdtlsJreContainersDetected(JreContainerMappings mappings) {
+		int count = mappings == null || mappings.getMappings() == null ? 0 : mappings.getMappings().size();
+		System.out.println("Detected " + count + " non-standard JRE container mappings.");
 	}
 }

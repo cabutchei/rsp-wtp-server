@@ -17,8 +17,6 @@ import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.api.dao.ModuleState;
 import org.jboss.tools.rsp.api.dao.ServerState;
 import org.jboss.tools.rsp.api.dao.StartServerResponse;
-import org.jboss.tools.rsp.launching.memento.JSONMemento;
-import org.jboss.tools.rsp.server.generic.servertype.GenericServerBehavior;
 import org.jboss.tools.rsp.server.modeeel.WSTServerStreamListener;
 import org.jboss.tools.rsp.server.publishing.WSTServerPublishStateModel;
 import org.jboss.tools.rsp.server.spi.servertype.IServer;
@@ -37,23 +35,15 @@ import org.jboss.tools.rsp.eclipse.debug.core.model.IProcess;
 import org.jboss.tools.rsp.eclipse.wst.WSTServerContext;
 
 
-import com.ibm.ws.st.core.internal.WebSphereRuntime;
-import com.ibm.ws.st.core.internal.WebSphereServer;
-import com.ibm.ws.st.core.internal.WebSphereServerInfo;
-import com.ibm.ws.st.core.internal.WebSphereServerBehaviour;
-
-
-
-
-public class LibertyServerDelegate extends GenericServerBehavior implements IServerDelegate, IModuleStateProvider {
+public class LibertyServerDelegate extends AbstractLibertyServerDelegate implements IServerDelegate, IModuleStateProvider {
 
 	private static final String PROCESS_ID_KEY = "process.id.key";
 	// private static final Logger LOG = LoggerFactory.getLogger(LibertyServerDelegate.class);
 	private WSTServerContext wstServerFacade;
 	private final LaunchStreamAttacher launchStreamAttacher;
 
-	public LibertyServerDelegate(IServer server, JSONMemento behaviorMemento, WSTServerContext wstServerFacade) {
-		super(server, behaviorMemento);
+	public LibertyServerDelegate(IServer server, WSTServerContext wstServerFacade) {
+		super(server);
 		this.wstServerFacade = wstServerFacade;
 		this.launchStreamAttacher = new LaunchStreamAttacher(server.getId(), this::handleLaunchReady);
 	}

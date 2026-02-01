@@ -26,6 +26,7 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
+import org.jboss.tools.rsp.api.dao.ServerHandle;
 import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
 import org.jboss.tools.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 import org.jboss.tools.rsp.server.spi.workspace.IProjectImporter;
@@ -37,12 +38,18 @@ import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 
 public class ProjectsManager implements IProjectsManager {
 	private final IWorkspaceService workspaceService;
+	private final WSTFacade wstFacade;
 	private final List<IProjectImporter> projectImporters;
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
 	private boolean initialized;
 
 	public ProjectsManager(IWorkspaceService workspaceService, List<IProjectImporter> projectImporters) {
+		this(workspaceService, null, projectImporters);
+	}
+
+	public ProjectsManager(IWorkspaceService workspaceService, WSTFacade wstFacade, List<IProjectImporter> projectImporters) {
 		this.workspaceService = workspaceService;
+		this.wstFacade = wstFacade;
 		this.projectImporters = projectImporters == null ? Collections.emptyList() : new ArrayList<>(projectImporters);
 	}
 
@@ -69,10 +76,15 @@ public class ProjectsManager implements IProjectsManager {
 	}
 
 	@Override
-	public List<DeployableArtifact> listDeployableResources() {
-		List<DeployableArtifact> deployables = workspaceService == null
-				? Collections.emptyList()
-				: workspaceService.listDeployables();
+	public List<DeployableArtifact> listDeployableResources(ServerHandle server) {
+		List<DeployableArtifact> deployables;
+		if (wstFacade != null && server != null) {
+			deployables = wstFacade.listDeployableResources(server);
+		} else if (workspaceService != null) {
+			deployables = workspaceService.listDeployables();
+		} else {
+			deployables = Collections.emptyList();
+		}
 		if (deployables == null || deployables.isEmpty()) {
 			return Collections.emptyList();
 		}
@@ -104,6 +116,27 @@ public class ProjectsManager implements IProjectsManager {
 		}
 		List<WorkspaceProject> projects = workspaceService.listProjects();
 		return projects == null ? Collections.emptyList() : projects;
+	}
+
+	@Override
+	public List<WorkspaceProject> listDeploymentAssemblyProjects(Path projectPath, String projectName) {
+		if (wstFacade == null) {
+			return Collections.emptyList();
+		}
+		List<IProject> projects = wstFacade.listDeploymentAssemblyProjects(projectPath, projectName);
+		if (projects == null || projects.isEmpty()) {
+			return Collections.emptyList();
+		}
+		List<WorkspaceProject> mapped = new ArrayList<>();
+		for (IProject project : projects) {
+			if (project == null) {
+				continue;
+			}
+			IPath location = project.getLocation();
+			Path path = location == null ? null : location.toFile().toPath();
+			mapped.add(new WorkspaceProject(project.getName(), path, project.isOpen()));
+		}
+		return mapped;
 	}
 
 	@Override

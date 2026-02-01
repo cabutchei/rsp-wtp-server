@@ -8,31 +8,17 @@
  ******************************************************************************/
 package org.jboss.tools.rsp.server.liberty.custom.impl;
 
-import java.io.InputStream;
-
-import org.jboss.tools.rsp.launching.memento.JSONMemento;
+import org.jboss.tools.rsp.server.spi.RSPExtensionBundle;
 import org.jboss.tools.rsp.server.LauncherSingleton;
 import org.jboss.tools.rsp.server.ServerCoreActivator;
-import org.jboss.tools.rsp.server.ServerManagementServerLauncher;
-import org.jboss.tools.rsp.eclipse.wst.WSTServerContext;
 import org.jboss.tools.rsp.eclipse.wst.IWstIntegrationService;
-import org.jboss.tools.rsp.eclipse.wst.WstServerManagementModelFactory;
-import org.jboss.tools.rsp.server.generic.GenericServerActivator;
-import org.jboss.tools.rsp.server.generic.IServerBehaviorFromJSONProvider;
-import org.jboss.tools.rsp.server.generic.IServerBehaviorProvider;
-import org.jboss.tools.rsp.server.spi.servertype.IServer;
-import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
-import org.jboss.tools.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
-import org.jboss.tools.rsp.server.spi.servertype.IServerType;
-import org.jboss.tools.rsp.api.dao.ServerHandle;
-import org.jboss.tools.rsp.api.dao.ServerType;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.ServiceReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Activator extends GenericServerActivator {
+public class Activator extends RSPExtensionBundle {
 	public static final String BUNDLE_ID = "org.jboss.tools.rsp.server.liberty.custom";
 	private static final Logger LOG = LoggerFactory.getLogger(Activator.class);
 	private static volatile IWstIntegrationService wstIntegration;
@@ -78,49 +64,17 @@ public class Activator extends GenericServerActivator {
 	}
 
 	@Override
-	protected String getBundleId() {
-		return BUNDLE_ID;
+	protected void addExtensions() {
+		if (LauncherSingleton.getDefault() != null && LauncherSingleton.getDefault().getLauncher() != null) {
+			ExtensionHandler.addExtensions(LauncherSingleton.getDefault().getLauncher().getModel());
+		}
 	}
 
 	@Override
-	protected InputStream getServerTypeModelStream() {
-		return getServerTypeModelStreamImpl();
-	}
-
-	public static final InputStream getServerTypeModelStreamImpl() {
-		return Activator.class.getResourceAsStream("/servers.json");
-	}
-
-	protected IServerBehaviorFromJSONProvider getDelegateProvider() {
-		return getDelegateProviderImpl();
-	}
-
-	public static IServerBehaviorFromJSONProvider getDelegateProviderImpl() {
-		return new IServerBehaviorFromJSONProvider() {
-			@Override
-			public IServerBehaviorProvider loadBehaviorFromJSON(String serverTypeId, JSONMemento behaviorMemento) {
-				return new IServerBehaviorProvider() {
-					private ServerHandle toHandle(IServer s) {
-						IServerType st = s.getServerType();
-						return new ServerHandle(s.getId(), new ServerType(st.getId(), st.getName(), st.getDescription()));
-					}
-					@Override
-					public IServerDelegate createServerDelegate(String typeId, IServer server) {
-						IWstIntegrationService integration = getWstIntegrationService();
-						if (integration == null) {
-							LOG.error("WST integration service not available.");
-							return null;
-						}
-						if (typeId != null && typeId.startsWith(ILibertyServerAttributes.LIBERTY_SERVER_TYPE_PREFIX)) {
-							LibertyServerDelegate del = new LibertyServerDelegate(server, behaviorMemento, new WSTServerContext(toHandle(server), integration.getFacade()));
-							// del.setWSTServerFacade(new WSTServerFacade(toHandle(server), integration.getFacade()));
-							return del;
-						}
-						return null;
-					}
-				};
-			}
-		};
+	protected void removeExtensions() {
+		if (LauncherSingleton.getDefault() != null && LauncherSingleton.getDefault().getLauncher() != null) {
+			ExtensionHandler.removeExtensions(LauncherSingleton.getDefault().getLauncher().getModel());
+		}
 	}
 
 }

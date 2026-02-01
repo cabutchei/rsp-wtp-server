@@ -7,11 +7,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.resources.IProject;
 import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -23,12 +26,15 @@ import org.eclipse.osgi.util.NLS;
 import org.eclipse.wst.common.componentcore.ComponentCore;
 import org.eclipse.wst.common.componentcore.internal.StructureEdit;
 import org.eclipse.wst.common.componentcore.internal.ComponentResource;
+import org.eclipse.wst.common.componentcore.internal.IModuleHandler;
 import org.eclipse.wst.common.componentcore.internal.resources.VirtualArchiveComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualFolder;
 import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
 import org.eclipse.wst.common.componentcore.internal.WorkbenchComponent;
+import org.eclipse.jst.j2ee.internal.componentcore.JavaEEModuleHandler;
 import org.eclipse.wst.server.core.IModule;
+import org.eclipse.wst.server.core.IModuleType;
 import org.eclipse.wst.server.core.ServerCore;
 import org.eclipse.wst.server.core.ServerUtil;
 import org.eclipse.wst.server.core.internal.UpdateServerJob;
@@ -48,6 +54,7 @@ import org.jboss.tools.rsp.server.spi.servertype.IServer;
 import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
 import org.jboss.tools.rsp.server.spi.servertype.IServerListener;
 import org.jboss.tools.rsp.server.spi.servertype.IServerType;
+import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
 import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
 import org.jboss.tools.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 
@@ -93,6 +100,93 @@ public class WSTFacade {
 		addComponentResourceMappings(project, entries);
 		addComponentReferences(project, entries);
 		return Collections.unmodifiableList(entries);
+	}
+
+	public List<DeployableArtifact> listDeployableResources(ServerHandle server) {
+		if (workspaceService == null || server == null) {
+			return Collections.emptyList();
+		}
+		org.eclipse.wst.server.core.IServer wstServer = getWstServer(server.getId());
+		if (wstServer == null || wstServer.getServerType() == null || wstServer.getServerType().getRuntimeType() == null) {
+			return Collections.emptyList();
+		}
+		IModule[] deployedModules = wstServer.getModules();
+		Set<IModule> deployed = deployedModules == null
+				? Collections.emptySet()
+				: new HashSet<>(Arrays.asList(deployedModules));
+		IModuleType[] moduleTypes = wstServer.getServerType().getRuntimeType().getModuleTypes();
+		IModule[] modules = moduleTypes == null ? new IModule[0] : ServerUtil.getModules(moduleTypes);
+		List<DeployableArtifact> results = new ArrayList<>();
+		Set<String> seenProjects = new HashSet<>();
+		if (modules != null) {
+			for (IModule module : modules) {
+				if (module == null || deployed.contains(module)) {
+					continue;
+				}
+				IModule[] parents;
+				try {
+					parents = wstServer.getRootModules(module, null);
+				} catch (org.eclipse.core.runtime.CoreException ce) {
+					continue;
+				}
+				if (parents == null || parents.length == 0) {
+					continue;
+				}
+				boolean isRoot = false;
+				for (IModule parent : parents) {
+					if (module.equals(parent)) {
+						isRoot = true;
+						break;
+					}
+				}
+				if (!isRoot) {
+					continue;
+				}
+				org.eclipse.core.runtime.IStatus status = wstServer.canModifyModules(new IModule[] { module }, null, null);
+				if (status != null && !status.isOK()) {
+					continue;
+				}
+				IProject project = module.getProject();
+				if (project == null || !seenProjects.add(project.getName())) {
+					continue;
+				}
+				IPath location = project.getLocation();
+				java.nio.file.Path deployPath = location == null ? null : location.toFile().toPath();
+				String typeId = module.getModuleType() == null ? null : module.getModuleType().getId();
+				results.add(new DeployableArtifact(project.getName(),
+						ServerUtil.getModuleDisplayName(module),
+						deployPath,
+						typeId));
+			}
+		}
+		return results;
+	}
+
+	public List<IProject> listDeploymentAssemblyProjects(java.nio.file.Path projectPath, String projectName) {
+		IProject project = resolveProject(projectPath, projectName);
+		if (project == null || !project.exists()) {
+			return Collections.emptyList();
+		}
+		try {
+			if (!project.isOpen()) {
+				project.open(new NullProgressMonitor());
+			}
+		} catch (org.eclipse.core.runtime.CoreException ce) {
+			return Collections.emptyList();
+		}
+		IVirtualComponent rootComponent = ComponentCore.createComponent(project);
+		if (rootComponent == null) {
+			return Collections.emptyList();
+		}
+		IVirtualReference[] refs = rootComponent.getReferences();
+		ArrayList<IVirtualReference> currentRefs = refs == null
+				? new ArrayList<>()
+				: new ArrayList<>(Arrays.asList(refs));
+		IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+		ArrayList<IProject> availableList = getAvailableProjects(projects, currentRefs);
+		IModuleHandler handler = resolveModuleHandler(rootComponent);
+		List<IProject> filtered = handler.getFilteredProjectListForAdd(rootComponent, availableList);
+		return filtered == null ? Collections.emptyList() : filtered;
 	}
 
 	public IStatus addDeploymentAssemblyEntry(IProject project, DeploymentAssemblyEntry entry) {
@@ -713,5 +807,75 @@ public class WSTFacade {
 			return componentPath.toString().equals(targetSource);
 		}
 		return component.getName() != null && component.getName().equals(targetSource);
+	}
+
+	private ArrayList<IProject> getAvailableProjects(IProject[] projects, ArrayList<IVirtualReference> currentRefs) {
+		if (projects == null || projects.length == 0) {
+			return new ArrayList<>();
+		}
+		if (currentRefs == null || currentRefs.isEmpty()) {
+			return new ArrayList<>(Arrays.asList(projects));
+		}
+		ArrayList<IProject> available = new ArrayList<>();
+		for (IProject proj : projects) {
+			if (proj == null) {
+				continue;
+			}
+			boolean matches = false;
+			for (int j = 0; j < currentRefs.size() && !matches; j++) {
+				IVirtualReference ref = currentRefs.get(j);
+				if (ref == null) {
+					continue;
+				}
+				IVirtualComponent referenced = ref.getReferencedComponent();
+				IProject referencedProject = referenced == null ? null : referenced.getProject();
+				if (proj.equals(referencedProject) || available.contains(proj)) {
+					matches = true;
+				}
+			}
+			if (!matches) {
+				available.add(proj);
+			}
+		}
+		return available;
+	}
+
+	private IModuleHandler resolveModuleHandler(IVirtualComponent component) {
+		if (component == null) {
+			return new JavaEEModuleHandler();
+		}
+		IModuleHandler handler = component.getAdapter(IModuleHandler.class);
+		return handler == null ? new JavaEEModuleHandler() : handler;
+	}
+
+	private IProject resolveProject(java.nio.file.Path projectPath, String projectName) {
+		if (workspaceService != null && projectName != null && !projectName.isEmpty()) {
+			IProject project = workspaceService.getProject(projectName);
+			if (project != null && project.exists()) {
+				return project;
+			}
+		}
+		if (projectPath == null) {
+			return null;
+		}
+		java.nio.file.Path normalized = projectPath.toAbsolutePath().normalize();
+		IProject bestMatch = null;
+		int bestSegments = -1;
+		for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+			IPath location = project.getLocation();
+			if (location == null) {
+				continue;
+			}
+			java.nio.file.Path projectLocation = location.toFile().toPath().toAbsolutePath().normalize();
+			if (!normalized.startsWith(projectLocation)) {
+				continue;
+			}
+			int segments = projectLocation.getNameCount();
+			if (segments > bestSegments) {
+				bestMatch = project;
+				bestSegments = segments;
+			}
+		}
+		return bestMatch;
 	}
 }

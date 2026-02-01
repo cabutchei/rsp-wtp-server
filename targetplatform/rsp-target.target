@@ -119,6 +119,7 @@
       		<unit id="org.eclipse.jst.j2ee.webservice" />
       		<unit id="org.eclipse.emf.converter" />
       		<unit id="org.eclipse.emf.codegen.ecore" />
+      		<unit id="org.apache.commons.io" />
 		</location>
 
     	<location

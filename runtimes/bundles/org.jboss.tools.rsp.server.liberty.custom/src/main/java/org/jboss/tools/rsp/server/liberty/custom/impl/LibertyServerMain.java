@@ -8,15 +8,10 @@
  ******************************************************************************/
 package org.jboss.tools.rsp.server.liberty.custom.impl;
 
-import java.io.IOException;
-
-import org.eclipse.equinox.app.IApplication;
-import org.eclipse.equinox.app.IApplicationContext;
 import org.jboss.tools.rsp.eclipse.wst.WstServerManagementModelFactory;
 import org.jboss.tools.rsp.server.LauncherSingleton;
 import org.jboss.tools.rsp.server.RSPFlags;
 import org.jboss.tools.rsp.server.ServerManagementServerLauncher;
-import org.jboss.tools.rsp.server.generic.GenericServerExtensionModel;
 
 
 /** We are now skipping ServerCoreActivator and using our own Launcher. This allows us to have control over the server management model instance.*/
@@ -37,10 +32,7 @@ public class LibertyServerMain extends ServerManagementServerLauncher {
 
 	@Override
 	public void launch(int port) throws Exception {
-		GenericServerExtensionModel model = new GenericServerExtensionModel(serverImpl.getModel(), 
-				Activator.getDelegateProviderImpl(),
-				Activator.getServerTypeModelStreamImpl());
-		model.registerExtensions();
+		ExtensionHandler.addExtensions(serverImpl.getModel());
 		super.launch(port);
 	}
 

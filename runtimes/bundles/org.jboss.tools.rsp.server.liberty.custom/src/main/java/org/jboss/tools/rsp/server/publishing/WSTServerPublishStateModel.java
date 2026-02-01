@@ -223,7 +223,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 
 	@Override
 	public synchronized IStatus removeDeployable(DeployableReference reference) {
-		DeployableState ds = getStates().get(getKey(reference));
+		DeployableState ds = getDeployableState(reference);
 		if (ds == null) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, IStatus.ERROR, 
 					NLS.bind("Could not remove deploybale with path {0}: it doesn't exist", getKey(reference)),

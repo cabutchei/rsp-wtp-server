@@ -19,6 +19,7 @@ import org.jboss.tools.rsp.api.dao.DeploymentAssemblyUpdateRequest;
 import org.jboss.tools.rsp.api.dao.DidChangeWorkspaceFoldersParams;
 import org.jboss.tools.rsp.api.dao.ListDeployableResourcesResponse;
 import org.jboss.tools.rsp.api.dao.ListWorkspaceProjectsResponse;
+import org.jboss.tools.rsp.api.dao.ServerHandle;
 import org.jboss.tools.rsp.api.dao.Status;
 
 @JsonSegment("workspace")
@@ -28,7 +29,7 @@ public interface WTPServer {
 	 * fetch a list of deployable resources from the current workspace.
 	 */
 	@JsonRequest
-	CompletableFuture<ListDeployableResourcesResponse> getDeployableResources();
+	CompletableFuture<ListDeployableResourcesResponse> getDeployableResources(ServerHandle server);
 
 	/**
 	 * The `workspace/listWorkspaceProjects` request is sent by the client to
@@ -36,6 +37,14 @@ public interface WTPServer {
 	 */
 	@JsonRequest
 	CompletableFuture<ListWorkspaceProjectsResponse> listWorkspaceProjects();
+
+	/**
+	 * The `workspace/listDeploymentAssemblyProjects` request is sent by the client
+	 * to fetch a filtered list of projects that can be added to a deployment
+	 * assembly.
+	 */
+	@JsonRequest
+	CompletableFuture<ListWorkspaceProjectsResponse> listDeploymentAssemblyProjects(DeploymentAssemblyRequest request);
 
 	/**
 	 * The `workspace/getDeploymentAssembly` request is sent by the client to

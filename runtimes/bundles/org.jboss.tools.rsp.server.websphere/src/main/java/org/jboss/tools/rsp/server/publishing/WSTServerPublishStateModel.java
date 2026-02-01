@@ -20,7 +20,6 @@ import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.Status;
 import org.jboss.tools.rsp.eclipse.wst.WSTServerContext;
 import org.jboss.tools.rsp.server.ServerCoreActivator;
-import org.jboss.tools.rsp.server.websphere.impl.WebSphereServerDelegate;
 import org.jboss.tools.rsp.server.model.AbstractServerDelegate;
 import org.jboss.tools.rsp.server.model.internal.publishing.AutoPublishThread;
 import org.jboss.tools.rsp.server.model.internal.publishing.DeployableDelta;

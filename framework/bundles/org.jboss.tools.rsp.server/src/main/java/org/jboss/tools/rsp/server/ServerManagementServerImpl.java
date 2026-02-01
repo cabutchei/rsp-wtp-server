@@ -37,7 +37,6 @@ import org.jboss.tools.rsp.api.dao.DeploymentAssemblyRequest;
 import org.jboss.tools.rsp.api.dao.DeploymentAssemblyResponse;
 import org.jboss.tools.rsp.api.dao.DeploymentAssemblyUpdateRequest;
 import org.jboss.tools.rsp.api.dao.DeployableReference;
-import org.jboss.tools.rsp.api.dao.DeployableState;
 import org.jboss.tools.rsp.api.dao.DiscoveryPath;
 import org.jboss.tools.rsp.api.dao.DownloadRuntimeDescription;
 import org.jboss.tools.rsp.api.dao.DownloadSingleRuntimeRequest;
@@ -668,8 +667,8 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	}
 
 	@Override
-	public CompletableFuture<ListDeployableResourcesResponse> getDeployableResources() {
-		return createCompletableFuture(() -> getDeployableResourcesSync());
+	public CompletableFuture<ListDeployableResourcesResponse> getDeployableResources(ServerHandle server) {
+		return createCompletableFuture(() -> getDeployableResourcesSync(server));
 	}
 
 	@Override
@@ -677,14 +676,19 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		return createCompletableFuture(() -> listWorkspaceProjectsSync());
 	}
 
-	private ListDeployableResourcesResponse getDeployableResourcesSync() {
+	@Override
+	public CompletableFuture<ListWorkspaceProjectsResponse> listDeploymentAssemblyProjects(DeploymentAssemblyRequest request) {
+		return createCompletableFuture(() -> listDeploymentAssemblyProjectsSync(request));
+	}
+
+	private ListDeployableResourcesResponse getDeployableResourcesSync(ServerHandle server) {
 		ListDeployableResourcesResponse resp = new ListDeployableResourcesResponse();
 		IProjectsManager projectsManager = managementModel.getProjectsManager();
 		if (projectsManager == null) {
 			resp.setStatus(errorStatus("Projects manager unavailable"));
 			return resp;
 		}
-		List<DeployableArtifact> resources = projectsManager.listDeployableResources();
+		List<DeployableArtifact> resources = projectsManager.listDeployableResources(server);
 		List<DeployableReference> refs = new ArrayList<>();
 		if (resources != null) {
 			refs = resources.stream()
@@ -707,6 +711,48 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			return resp;
 		}
 		List<org.jboss.tools.rsp.server.spi.workspace.WorkspaceProject> projects = projectsManager.listWorkspaceProjects();
+		List<WorkspaceProject> mapped = new ArrayList<>();
+		if (projects != null) {
+			mapped = projects.stream()
+					.filter(p -> p != null && p.getName() != null)
+					.map(p -> new WorkspaceProject(p.getName(),
+							p.getLocation() == null ? null : p.getLocation().toString(),
+							p.isOpen()))
+					.collect(Collectors.toList());
+		}
+		resp.setProjects(mapped);
+		resp.setStatus(StatusConverter.convert(org.jboss.tools.rsp.eclipse.core.runtime.Status.OK_STATUS));
+		return resp;
+	}
+
+	private ListWorkspaceProjectsResponse listDeploymentAssemblyProjectsSync(DeploymentAssemblyRequest request) {
+		ListWorkspaceProjectsResponse resp = new ListWorkspaceProjectsResponse();
+		if (request == null) {
+			resp.setStatus(invalidParameterStatus());
+			return resp;
+		}
+		String pathString = request.getPath();
+		String projectName = request.getProjectName();
+		if ((pathString == null || pathString.isEmpty()) && (projectName == null || projectName.isEmpty())) {
+			resp.setStatus(invalidParameterStatus());
+			return resp;
+		}
+		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		if (projectsManager == null) {
+			resp.setStatus(errorStatus("Projects manager unavailable"));
+			return resp;
+		}
+		java.nio.file.Path projectPath = null;
+		if (pathString != null && !pathString.isEmpty()) {
+			try {
+				projectPath = Paths.get(pathString);
+			} catch (InvalidPathException e) {
+				resp.setStatus(errorStatus("Invalid project path: " + pathString, e));
+				return resp;
+			}
+		}
+		List<org.jboss.tools.rsp.server.spi.workspace.WorkspaceProject> projects =
+				projectsManager.listDeploymentAssemblyProjects(projectPath, projectName);
 		List<WorkspaceProject> mapped = new ArrayList<>();
 		if (projects != null) {
 			mapped = projects.stream()

@@ -40,7 +40,7 @@ public class WstServerManagementModel extends ServerManagementModel {
 		if (integration == null) {
 			throw new IllegalStateException("WstIntegrationService must be provided before createProjectsManager()");
 		}
-		return new ProjectsManager(integration.getWorkspaceService(),
+		return new ProjectsManager(integration.getWorkspaceService(), integration.getFacade(),
 				Collections.singletonList(new EclipseProjectImporter(integration.getWorkspaceService())));
 	}
 

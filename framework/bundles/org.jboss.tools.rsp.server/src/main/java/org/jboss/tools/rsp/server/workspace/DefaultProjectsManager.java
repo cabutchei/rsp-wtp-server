@@ -13,6 +13,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.jboss.tools.rsp.api.dao.ServerHandle;
 import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
 import org.jboss.tools.rsp.eclipse.core.runtime.Status;
 import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
@@ -35,12 +36,17 @@ public class DefaultProjectsManager implements IProjectsManager {
 	}
 
 	@Override
-	public List<DeployableArtifact> listDeployableResources() {
+	public List<DeployableArtifact> listDeployableResources(ServerHandle server) {
 		return Collections.emptyList();
 	}
 
 	@Override
 	public List<WorkspaceProject> listWorkspaceProjects() {
+		return Collections.emptyList();
+	}
+
+	@Override
+	public List<WorkspaceProject> listDeploymentAssemblyProjects(Path projectPath, String projectName) {
 		return Collections.emptyList();
 	}
 

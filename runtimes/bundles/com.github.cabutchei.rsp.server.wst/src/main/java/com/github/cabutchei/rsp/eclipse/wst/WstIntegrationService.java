@@ -1,0 +1,58 @@
+package com.github.cabutchei.rsp.eclipse.wst;
+
+import java.util.Objects;
+
+import org.jboss.tools.rsp.server.spi.model.IServerModel;
+import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
+
+import com.github.cabutchei.rsp.eclipse.workspace.EclipseWorkspaceService;
+
+/**
+ * Owns WST integration components
+ */
+public final class WstIntegrationService implements IWstIntegrationService {
+
+	private final ServerHandleRegistry registry;
+	private final WSTFacade facade;
+	private final WstModelAdapter adapter;
+	private final IWorkspaceService workspaceService;
+
+	public WstIntegrationService() {
+		this(new ServerHandleRegistry());
+	}
+
+	public WstIntegrationService(ServerHandleRegistry registry) {
+		this.registry = Objects.requireNonNull(registry, "registry");
+		this.adapter = new WstModelAdapter();
+		this.workspaceService = new EclipseWorkspaceService();
+		this.facade = new WSTFacade(this.registry, this.adapter, this.workspaceService);
+		if (this.workspaceService instanceof EclipseWorkspaceService) {
+			((EclipseWorkspaceService) this.workspaceService).setWstFacade(this.facade);
+		}
+	}
+
+	@Override
+	public WSTFacade getFacade() {
+		return facade;
+	}
+
+	@Override
+	public ServerHandleRegistry getRegistry() {
+		return registry;
+	}
+
+	@Override
+	public WstModelAdapter getAdapter() {
+		return adapter;
+	}
+
+	@Override
+	public IWorkspaceService getWorkspaceService() {
+		return workspaceService;
+	}
+
+	@Override
+	public void dispose(IServerModel model) {
+		facade.dispose();
+	}
+}

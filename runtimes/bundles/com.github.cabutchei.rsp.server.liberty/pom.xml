@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.jboss.tools.rsp.runtimes</groupId>
+    <artifactId>bundles</artifactId>
+    <version>0.26.18-SNAPSHOT</version>
+  </parent>
+
+  <groupId>com.github.cabutchei.rsp.runtimes.bundles</groupId>
+  <artifactId>com.github.cabutchei.rsp.server.liberty.custom</artifactId>
+  <packaging>eclipse-plugin</packaging>
+  <name>Runtime Server Protocol : WebSphere Liberty Implementation</name>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.codehaus.mojo</groupId>
+					<artifactId>exec-maven-plugin</artifactId>
+					<version>1.6.0</version>
+					<executions>
+						<execution>
+							<goals>
+								<goal>java</goal>
+							</goals>
+						</execution>
+    					<execution>
+      						<id>debug</id>
+      						<goals>
+        						<goal>exec</goal>
+      						</goals>
+      						<configuration>
+        						<executable>${java.home}/bin/java</executable>
+        						<arguments>
+          						<argument>-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005</argument>
+          						<argument>-cp</argument>
+								<classpath/>
+          						<argument>org.jboss.tools.rsp.server.liberty.custom.impl.LibertyServerMain</argument>
+          						<argument>27511</argument>
+        						</arguments>
+      						</configuration>
+    					</execution>
+					</executions>
+					<configuration>
+						<mainClass>org.jboss.tools.rsp.server.liberty.impl.LibertyServerMain</mainClass>
+						<arguments>
+							<argument>27511</argument>
+						</arguments>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
+</project>

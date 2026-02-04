@@ -6,9 +6,9 @@
  * 
  * Contributors: Red Hat, Inc.
  ******************************************************************************/
-package org.jboss.tools.rsp.server.tomcat.servertype.impl;
+package com.github.cabutchei.rsp.server.tomcat.servertype.impl;
 
-import org.jboss.tools.rsp.api.DefaultServerAttributes;
+import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 
 public interface ILibertyServerAttributes extends DefaultServerAttributes {
 	public static final String LIBERTY_SERVER_TYPE_PREFIX = "org.jboss.ide.eclipse.as.server.liberty.";

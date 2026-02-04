@@ -9,11 +9,11 @@ import org.eclipse.wst.server.core.IServer;
 import org.eclipse.wst.server.core.IServerType;
 import org.eclipse.wst.server.core.ServerCore;
 import org.eclipse.wst.server.core.ServerEvent;
-import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
-import org.jboss.tools.rsp.api.dao.DeployableReference;
-import org.jboss.tools.rsp.eclipse.core.runtime.MultiStatus;
-import org.jboss.tools.rsp.eclipse.core.runtime.Status;
-import org.jboss.tools.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
+import com.github.cabutchei.rsp.api.dao.DeployableReference;
+import com.github.cabutchei.rsp.eclipse.core.runtime.MultiStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 
 
 
@@ -23,13 +23,13 @@ import org.jboss.tools.rsp.server.spi.model.IServerModel;
 public class WstModelAdapter {
 	private static final String UNKNOWN_PLUGIN_ID = "unknown";
 
-	public org.jboss.tools.rsp.eclipse.core.runtime.IStatus toRspStatus(IStatus status) {
+	public com.github.cabutchei.rsp.eclipse.core.runtime.IStatus toRspStatus(IStatus status) {
 		if (status == null) {
 			return new Status(Status.ERROR, UNKNOWN_PLUGIN_ID, "WST status was null");
 		}
 		String pluginId = normalizePluginId(status.getPlugin());
 		if (status.isMultiStatus()) {
-			org.jboss.tools.rsp.eclipse.core.runtime.IStatus[] children = convertChildren(status.getChildren());
+			com.github.cabutchei.rsp.eclipse.core.runtime.IStatus[] children = convertChildren(status.getChildren());
 			return new MultiStatus(pluginId, status.getCode(), children, status.getMessage(), status.getException());
 		}
 		return new Status(status.getSeverity(), pluginId, status.getCode(), status.getMessage(), status.getException());
@@ -137,21 +137,21 @@ public class WstModelAdapter {
 		}
 	}
 
-	public org.jboss.tools.rsp.server.spi.servertype.IServerType toRspServerType(IServerType wstType, IServerModel model) {
+	public com.github.cabutchei.rsp.server.spi.servertype.IServerType toRspServerType(IServerType wstType, IServerModel model) {
 		if (wstType == null || model == null) {
 			return null;
 		}
 		return model.getIServerType(wstType.getId());
 	}
 
-	public org.jboss.tools.rsp.server.spi.servertype.IServerType toRspServerType(String typeId, IServerModel model) {
+	public com.github.cabutchei.rsp.server.spi.servertype.IServerType toRspServerType(String typeId, IServerModel model) {
 		if (typeId == null || model == null) {
 			return null;
 		}
 		return model.getIServerType(typeId);
 	}
 
-	public IServerType toWstServerType(org.jboss.tools.rsp.server.spi.servertype.IServerType rspType) {
+	public IServerType toWstServerType(com.github.cabutchei.rsp.server.spi.servertype.IServerType rspType) {
 		if (rspType == null) {
 			return null;
 		}
@@ -170,20 +170,20 @@ public class WstModelAdapter {
 		return null;
 	}
 
-	public org.jboss.tools.rsp.server.spi.servertype.ServerEvent toRspServerEvent(ServerEvent event,
-			org.jboss.tools.rsp.server.spi.servertype.IServer rspServer) {
+	public com.github.cabutchei.rsp.server.spi.servertype.ServerEvent toRspServerEvent(ServerEvent event,
+			com.github.cabutchei.rsp.server.spi.servertype.IServer rspServer) {
 		if (event == null || rspServer == null) {
 			return null;
 		}
 		DeployableReference[] deployables = toDeployableReferences(event.getModule());
 		int state = toRspServerState(event.getState());
 		int publishState = toRspPublishState(event.getPublishState());
-		org.jboss.tools.rsp.eclipse.core.runtime.IStatus status = toRspStatusOrNull(event.getStatus());
-		return new org.jboss.tools.rsp.server.spi.servertype.ServerEvent(event.getKind(), rspServer, deployables,
+		com.github.cabutchei.rsp.eclipse.core.runtime.IStatus status = toRspStatusOrNull(event.getStatus());
+		return new com.github.cabutchei.rsp.server.spi.servertype.ServerEvent(event.getKind(), rspServer, deployables,
 				state, publishState, event.getRestartState(), status);
 	}
 
-	public ServerEvent toWstServerEvent(org.jboss.tools.rsp.server.spi.servertype.ServerEvent event,
+	public ServerEvent toWstServerEvent(com.github.cabutchei.rsp.server.spi.servertype.ServerEvent event,
 			org.eclipse.wst.server.core.IServer wstServer) {
 		if (event == null || wstServer == null) {
 			return null;
@@ -274,14 +274,14 @@ public class WstModelAdapter {
 		return path != null && path.equals(module.getName());
 	}
 
-	private org.jboss.tools.rsp.eclipse.core.runtime.IStatus toRspStatusOrNull(IStatus status) {
+	private com.github.cabutchei.rsp.eclipse.core.runtime.IStatus toRspStatusOrNull(IStatus status) {
 		if (status == null) {
 			return null;
 		}
 		return toRspStatus(status);
 	}
 
-	private org.eclipse.core.runtime.IStatus toWstStatus(org.jboss.tools.rsp.eclipse.core.runtime.IStatus status) {
+	private org.eclipse.core.runtime.IStatus toWstStatus(com.github.cabutchei.rsp.eclipse.core.runtime.IStatus status) {
 		if (status == null) {
 			return null;
 		}
@@ -295,7 +295,7 @@ public class WstModelAdapter {
 				status.getException());
 	}
 
-	private org.eclipse.core.runtime.IStatus[] toWstChildren(org.jboss.tools.rsp.eclipse.core.runtime.IStatus[] children) {
+	private org.eclipse.core.runtime.IStatus[] toWstChildren(com.github.cabutchei.rsp.eclipse.core.runtime.IStatus[] children) {
 		if (children == null || children.length == 0) {
 			return new org.eclipse.core.runtime.IStatus[0];
 		}
@@ -306,11 +306,11 @@ public class WstModelAdapter {
 		return converted;
 	}
 
-	private org.jboss.tools.rsp.eclipse.core.runtime.IStatus[] convertChildren(IStatus[] children) {
+	private com.github.cabutchei.rsp.eclipse.core.runtime.IStatus[] convertChildren(IStatus[] children) {
 		if (children == null || children.length == 0) {
-			return new org.jboss.tools.rsp.eclipse.core.runtime.IStatus[0];
+			return new com.github.cabutchei.rsp.eclipse.core.runtime.IStatus[0];
 		}
-		org.jboss.tools.rsp.eclipse.core.runtime.IStatus[] converted = new org.jboss.tools.rsp.eclipse.core.runtime.IStatus[children.length];
+		com.github.cabutchei.rsp.eclipse.core.runtime.IStatus[] converted = new com.github.cabutchei.rsp.eclipse.core.runtime.IStatus[children.length];
 		for (int i = 0; i < children.length; i++) {
 			converted[i] = toRspStatus(children[i]);
 		}

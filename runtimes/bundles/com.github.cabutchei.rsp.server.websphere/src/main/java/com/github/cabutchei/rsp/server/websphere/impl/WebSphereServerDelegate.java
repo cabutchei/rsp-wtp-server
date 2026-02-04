@@ -1,7 +1,7 @@
 package com.github.cabutchei.rsp.server.websphere.impl;
 
-import org.jboss.tools.rsp.api.dao.DeployableState;
-import org.jboss.tools.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.api.dao.DeployableState;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;
 import com.github.cabutchei.rsp.server.servertype.impl.WebSphereContextRootSupport;
 

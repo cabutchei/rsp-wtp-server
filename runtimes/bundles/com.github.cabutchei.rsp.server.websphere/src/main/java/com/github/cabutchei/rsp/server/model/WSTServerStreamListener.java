@@ -4,10 +4,10 @@ import java.util.function.IntConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.jboss.tools.rsp.eclipse.debug.core.IStreamListener;
-import org.jboss.tools.rsp.eclipse.debug.core.model.IStreamMonitor;
-import org.jboss.tools.rsp.server.spi.model.IServerModel;
-import org.jboss.tools.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.eclipse.debug.core.IStreamListener;
+import com.github.cabutchei.rsp.eclipse.debug.core.model.IStreamMonitor;
+import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 
 public class WSTServerStreamListener implements IStreamListener {
 

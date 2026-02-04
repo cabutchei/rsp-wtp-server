@@ -1,0 +1,237 @@
+/*******************************************************************************
+ * Copyright (c) 2015-2019 Red Hat 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v2.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v20.html
+ *
+ * Contributors:
+ *     JBoss by Red Hat
+ *******************************************************************************/
+package com.github.cabutchei.rsp.runtime.core.model.installer.internal;
+
+import java.io.File;
+import java.util.HashMap;
+
+import com.github.cabutchei.rsp.api.dao.CommandLineDetails;
+import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IPath;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Path;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.eclipse.core.runtime.SubProgressMonitor;
+import com.github.cabutchei.rsp.eclipse.debug.core.ArgumentUtils;
+import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
+import com.github.cabutchei.rsp.eclipse.debug.core.Launch;
+import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
+import com.github.cabutchei.rsp.eclipse.jdt.launching.IVMInstall;
+import com.github.cabutchei.rsp.eclipse.jdt.launching.IVMInstallRegistry;
+import com.github.cabutchei.rsp.eclipse.jdt.launching.VMInstallRegistry;
+import com.github.cabutchei.rsp.foundation.core.launchers.CommandConfig;
+import com.github.cabutchei.rsp.foundation.core.launchers.GenericProcessRunner;
+import com.github.cabutchei.rsp.foundation.core.tasks.TaskModel;
+import com.github.cabutchei.rsp.launching.utils.NativeEnvironmentUtils;
+import com.github.cabutchei.rsp.launching.utils.OSUtils;
+import com.github.cabutchei.rsp.runtime.core.RuntimeCoreActivator;
+import com.github.cabutchei.rsp.runtime.core.model.DownloadRuntime;
+import com.github.cabutchei.rsp.runtime.core.model.IDownloadRuntimeWorkflowConstants;
+import com.github.cabutchei.rsp.runtime.core.model.IDownloadRuntimesModel;
+import com.github.cabutchei.rsp.runtime.core.model.IRuntimeInstaller;
+import com.github.cabutchei.rsp.runtime.core.util.internal.DownloadRuntimeOperationUtility;
+
+/**
+ * A runtime installer that launches the java -jar command on the downloaded file
+ * 
+ */
+public class JavaJarRuntimeInstaller implements IRuntimeInstaller {
+
+	public static final String ID = IRuntimeInstaller.JAVA_JAR_INSTALLER;
+	private IDownloadRuntimesModel downloadRuntimesModel;
+	
+	public JavaJarRuntimeInstaller() {
+		// for debugging
+	}
+	
+	public JavaJarRuntimeInstaller(IDownloadRuntimesModel downloadRuntimesModel) {
+		this.downloadRuntimesModel = downloadRuntimesModel;
+	}
+
+	@Override
+	public IStatus installRuntime(DownloadRuntime downloadRuntime, String unzipDirectory, String downloadDirectory,
+			boolean deleteOnExit, TaskModel taskModel, IProgressMonitor monitor) {
+
+		String user = (String) taskModel.getObject(IDownloadRuntimeWorkflowConstants.USERNAME_KEY);
+		String pass = (String) taskModel.getObject(IDownloadRuntimeWorkflowConstants.PASSWORD_KEY);
+		
+		monitor.beginTask("Install Runtime '" + downloadRuntime.getName() + "' ...", 100);//$NON-NLS-1$ //$NON-NLS-2$
+		monitor.worked(1);
+		try {
+			DownloadRuntimeOperationUtility opUtil = DownloadRuntimeOperationUtilFactory
+					.createDownloadRuntimeOperationUtility(taskModel, downloadRuntimesModel);
+			File f = opUtil.download(unzipDirectory, downloadDirectory, 
+					getDownloadUrl(downloadRuntime, taskModel), deleteOnExit, user, pass, new SubProgressMonitor(monitor, 80));
+						
+			ILaunch launch = createExternalToolsLaunchConfiguration(f, unzipDirectory);
+			if (launch == null) {
+				return new Status(IStatus.ERROR, RuntimeCoreActivator.PLUGIN_ID, "Unable to launch external command java -jar " + f.getAbsolutePath());
+			}
+			
+			IProcess[] processes = launch.getProcesses();
+			boolean finished = false;
+			while(!monitor.isCanceled() && !finished) {
+				boolean checkFinished = true;
+				for( int i = 0; i < processes.length; i++ ) {
+					checkFinished &= processes[i].isTerminated();
+				}
+				finished = checkFinished;
+				safeSleep(500);
+				if( Thread.interrupted()) {
+					monitor.setCanceled(true);
+				}
+			}
+		} catch(CoreException ce) {
+			return ce.getStatus();
+		}
+		return Status.OK_STATUS;
+	}
+
+
+
+	private void safeSleep(long duration) {
+		try { 
+			Thread.sleep(duration);
+		} catch(InterruptedException ie) {
+			Thread.currentThread().interrupt();
+		}
+	}
+
+	private String getDownloadUrl(DownloadRuntime downloadRuntime, TaskModel taskModel) {
+		if( downloadRuntime != null ) {
+			String dlUrl = downloadRuntime.getUrl();
+			if( dlUrl == null ) {
+				return (String)taskModel.getObject(IDownloadRuntimeWorkflowConstants.DL_RUNTIME_URL);
+			}
+			return dlUrl;
+		}
+		return null;
+	}
+	
+	
+	static final String JAVA_HOME_PROPERTY_KEY = "java.home";
+	private ILaunch createExternalToolsLaunchConfiguration(File downloadedFile, 
+			String unzipDirectory) throws CoreException {
+		
+		IVMInstall install = createVMRegistry().getDefaultVMInstall();
+		IPath javaBin = getJavaBin(install);
+		IPath workingDir = new Path(downloadedFile.getParentFile().getAbsolutePath());
+		JavaJarInstallationLauncher launcher = new JavaJarInstallationLauncher(javaBin, workingDir, 
+				new Path(downloadedFile.getAbsolutePath()), new Path(unzipDirectory));
+		return launcher.launch("run");
+	}
+	
+	private IVMInstallRegistry createVMRegistry() {
+		// This would be better if there were a singleton stored somewhere.
+		// Creating this object yet again is kinda resource intensive :|
+		VMInstallRegistry reg = new VMInstallRegistry();
+		reg.addActiveVM();
+		return reg;
+	}
+	private IPath getJavaBin(IVMInstall install) {
+		File javaHome = null;
+		if( install != null ) {
+			javaHome = install.getInstallLocation();
+		} else {
+			String jHome = System.getProperty(JAVA_HOME_PROPERTY_KEY);
+			javaHome = new File(jHome);
+		}
+		IPath path = new Path(javaHome.getAbsolutePath());
+		if( OSUtils.isWindows()) {
+			path = path.append("bin").append("java.exe");
+		} else {
+			path = path.append("bin").append("java");
+		}
+		return path;
+	}
+
+	private static class JavaJarInstallationLauncher {
+		private ILaunch launch;
+		private CommandLineDetails launchedDetails = null;
+		private GenericProcessRunner runner;
+		private IPath javaBin;
+		private IPath workingDirectory;
+		private IPath unzipDir;
+		private IPath downloadedFile;
+		
+		public JavaJarInstallationLauncher(IPath javaBin, IPath workingDirectory, 
+				IPath downloadedFile, IPath unzipDir) {
+			this.workingDirectory = workingDirectory;
+			this.javaBin = javaBin;
+			this.downloadedFile = downloadedFile;
+			this.unzipDir = unzipDir;
+		}
+
+		public ILaunch launch(String mode) throws CoreException {
+			getLaunchCommand(mode);
+			configureRunner();
+			runner.run(launch, new NullProgressMonitor());
+			return launch;
+		}
+
+		public CommandLineDetails getLaunchCommand(String mode) throws CoreException {
+			IStatus preReqs = checkPrereqs(mode);
+			if (!preReqs.isOK())
+				throw new CoreException(preReqs);
+
+			launch = createLaunch(mode);
+			configureRunner();
+			launchedDetails = runner.getCommandLineDetails(launch, new NullProgressMonitor());
+			return launchedDetails;
+		}
+
+		public CommandLineDetails getLaunchedDetails() {
+			return launchedDetails;
+		}
+
+		public ILaunch getLaunch() {
+			return launch;
+		}
+
+		private ILaunch createLaunch(String mode) {
+			return new Launch(this, mode, null);
+		}
+
+		protected IStatus checkPrereqs(String mode) {
+			return Status.OK_STATUS;
+		}
+
+		public String getProgramArguments() {
+			return "-DINSTALL_PATH=\"" + unzipDir + "\"  -jar " 
+						+ downloadedFile.toOSString();
+		}
+		
+		
+		public GenericProcessRunner configureRunner() {
+			if( runner == null ) {
+				runner = new GenericProcessRunner(getCommandConfig());
+			}
+			return runner;
+		}
+		
+		protected CommandConfig getCommandConfig() {
+			String cmd = javaBin.toOSString();
+			String args = getProgramArguments();
+			String[] parsed = ArgumentUtils.parseArguments(args);
+			String wd = getWorkingDirectory();
+			String[] env =	NativeEnvironmentUtils.getDefault().getEnvironment(new HashMap<>(), true);
+			CommandConfig details = new CommandConfig(cmd, wd, parsed, env);
+			return details;
+		}
+
+		public String getWorkingDirectory() {
+			return workingDirectory.toOSString();
+		}
+
+	}
+}

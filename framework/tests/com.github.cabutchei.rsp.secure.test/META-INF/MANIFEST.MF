@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Secure Storage Test
+Bundle-SymbolicName: com.github.cabutchei.rsp.secure.test
+Bundle-Version: 0.1.0.qualifier
+Bundle-Activator: com.github.cabutchei.rsp.secure.test.Activator
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Automatic-Module-Name: com.github.cabutchei.rsp.secure.test
+Import-Package: org.osgi.framework
+Require-Bundle: org.junit;bundle-version="4.8.1",
+ com.github.cabutchei.rsp.secure;bundle-version="0.1.0",
+ javax.annotation;bundle-version="1.2.0"

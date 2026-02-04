@@ -4,24 +4,24 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jboss.tools.rsp.api.DefaultServerAttributes;
-import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
-import org.jboss.tools.rsp.api.dao.DeployableState;
-import org.jboss.tools.rsp.api.dao.ListServerActionResponse;
-import org.jboss.tools.rsp.api.dao.ServerActionRequest;
-import org.jboss.tools.rsp.api.dao.ServerActionWorkflow;
-import org.jboss.tools.rsp.api.dao.WorkflowResponse;
-import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
-import org.jboss.tools.rsp.eclipse.core.runtime.Status;
-import org.jboss.tools.rsp.server.discovery.serverbeans.ServerBeanLoader;
-import org.jboss.tools.rsp.server.model.AbstractServerDelegate;
-import org.jboss.tools.rsp.server.spi.servertype.CreateServerValidation;
-import org.jboss.tools.rsp.server.spi.servertype.IServer;
-import org.jboss.tools.rsp.server.spi.servertype.IServerWorkingCopy;
-import org.jboss.tools.rsp.server.spi.util.StatusConverter;
-import org.jboss.tools.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
-import org.jboss.tools.rsp.eclipse.debug.core.ILaunch;
-import org.jboss.tools.rsp.server.liberty.custom.servertype.LibertyServerType;
+import com.github.cabutchei.rsp.api.DefaultServerAttributes;
+import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
+import com.github.cabutchei.rsp.api.dao.DeployableState;
+import com.github.cabutchei.rsp.api.dao.ListServerActionResponse;
+import com.github.cabutchei.rsp.api.dao.ServerActionRequest;
+import com.github.cabutchei.rsp.api.dao.ServerActionWorkflow;
+import com.github.cabutchei.rsp.api.dao.WorkflowResponse;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.server.discovery.serverbeans.ServerBeanLoader;
+import com.github.cabutchei.rsp.server.model.AbstractServerDelegate;
+import com.github.cabutchei.rsp.server.spi.servertype.CreateServerValidation;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
+import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
+import com.github.cabutchei.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
+import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
+import com.github.cabutchei.rsp.server.liberty.servertype.LibertyServerType;
 
 public abstract class AbstractLibertyServerDelegate extends AbstractServerDelegate {
 	private static final String DEFAULT_LIBERTY_ID = "defaultServer";
@@ -187,14 +187,14 @@ public abstract class AbstractLibertyServerDelegate extends AbstractServerDelega
 	}
 
 	protected void setJavaLaunchDependentDefaults(IServerWorkingCopy server) {
-		server.setAttribute(org.jboss.tools.rsp.server.generic.servertype.GenericServerType.LAUNCH_OVERRIDE_BOOLEAN, false);
-		server.setAttribute(org.jboss.tools.rsp.server.generic.servertype.GenericServerType.LAUNCH_OVERRIDE_PROGRAM_ARGS,
+		server.setAttribute(com.github.cabutchei.rsp.server.generic.servertype.GenericServerType.LAUNCH_OVERRIDE_BOOLEAN, false);
+		server.setAttribute(com.github.cabutchei.rsp.server.generic.servertype.GenericServerType.LAUNCH_OVERRIDE_PROGRAM_ARGS,
 				emptyStringDefault(resolveTemplate(server, START_PROGRAM_ARGS)));
-		server.setAttribute(org.jboss.tools.rsp.server.generic.servertype.GenericServerType.JAVA_LAUNCH_OVERRIDE_VM_ARGS,
+		server.setAttribute(com.github.cabutchei.rsp.server.generic.servertype.GenericServerType.JAVA_LAUNCH_OVERRIDE_VM_ARGS,
 				emptyStringDefault(resolveTemplate(server, VM_ARGS)));
-		server.setAttribute(org.jboss.tools.rsp.server.generic.servertype.GenericServerType.LAUNCH_OVERRIDE_SHUTDOWN_PROGRAM_ARGS,
+		server.setAttribute(com.github.cabutchei.rsp.server.generic.servertype.GenericServerType.LAUNCH_OVERRIDE_SHUTDOWN_PROGRAM_ARGS,
 				emptyStringDefault(resolveTemplate(server, STOP_PROGRAM_ARGS)));
-		server.setAttribute(org.jboss.tools.rsp.server.generic.servertype.GenericServerType.JAVA_LAUNCH_OVERRIDE_SHUTDOWN_VM_ARGS,
+		server.setAttribute(com.github.cabutchei.rsp.server.generic.servertype.GenericServerType.JAVA_LAUNCH_OVERRIDE_SHUTDOWN_VM_ARGS,
 				emptyStringDefault(resolveTemplate(server, VM_ARGS)));
 	}
 

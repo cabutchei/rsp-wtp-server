@@ -5,15 +5,15 @@
                              http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.jboss.tools.rsp</groupId>
+    <groupId>com.github.cabutchei.rsp</groupId>
     <artifactId>api</artifactId>
-    <version>0.26.18-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
   </parent>
-  <groupId>org.jboss.tools.rsp.api</groupId>
+  <groupId>com.github.cabutchei.rsp.api</groupId>
   <artifactId>docs</artifactId>
   <packaging>pom</packaging>
 
   <modules>
-    <module>org.jboss.tools.rsp.schema</module>
+    <module>com.github.cabutchei.rsp.schema</module>
   </modules>
 </project>

@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Runtime Core Test
+Bundle-SymbolicName: com.github.cabutchei.rsp.runtime.core.test
+Bundle-Version: 0.1.0.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Automatic-Module-Name: com.github.cabutchei.rsp.runtime.core.test
+Import-Package: org.osgi.framework
+Require-Bundle: com.github.cabutchei.rsp.runtime.core;bundle-version="0.1.0",
+ com.github.cabutchei.rsp.api;bundle-version="0.1.0",
+ com.github.cabutchei.rsp.launching;bundle-version="0.1.0",
+ org.junit;bundle-version="4.8.1",
+ org.assertj;bundle-version="3.20.2",
+ javax.annotation;bundle-version="1.2.0",
+ org.mockito;bundle-version="2.23.0"

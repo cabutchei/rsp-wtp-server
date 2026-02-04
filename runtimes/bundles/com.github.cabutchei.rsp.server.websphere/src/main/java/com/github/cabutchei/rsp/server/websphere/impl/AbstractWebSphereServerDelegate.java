@@ -10,31 +10,31 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.jboss.tools.rsp.api.DefaultServerAttributes;
-import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
-import org.jboss.tools.rsp.api.dao.CommandLineDetails;
-import org.jboss.tools.rsp.api.dao.DeployableReference;
-import org.jboss.tools.rsp.api.dao.DeployableState;
-import org.jboss.tools.rsp.api.dao.ListServerActionResponse;
-import org.jboss.tools.rsp.api.dao.ModuleState;
-import org.jboss.tools.rsp.api.dao.ServerActionRequest;
-import org.jboss.tools.rsp.api.dao.ServerActionWorkflow;
-import org.jboss.tools.rsp.api.dao.StartServerResponse;
-import org.jboss.tools.rsp.api.dao.WorkflowResponse;
-import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
-import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
-import org.jboss.tools.rsp.eclipse.core.runtime.Status;
-import org.jboss.tools.rsp.eclipse.debug.core.ILaunch;
-import org.jboss.tools.rsp.eclipse.debug.core.IStreamListener;
-import org.jboss.tools.rsp.eclipse.debug.core.model.IProcess;
-import org.jboss.tools.rsp.launching.java.ILaunchModes;
-import org.jboss.tools.rsp.launching.utils.LaunchingDebugProperties;
-import org.jboss.tools.rsp.server.model.AbstractServerDelegate;
-import org.jboss.tools.rsp.server.spi.servertype.IModuleStateProvider;
-import org.jboss.tools.rsp.server.spi.servertype.IServer;
-import org.jboss.tools.rsp.server.spi.servertype.IServerPublishModel;
-import org.jboss.tools.rsp.server.spi.servertype.IServerWorkingCopy;
-import org.jboss.tools.rsp.server.spi.util.StatusConverter;
+import com.github.cabutchei.rsp.api.DefaultServerAttributes;
+import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
+import com.github.cabutchei.rsp.api.dao.CommandLineDetails;
+import com.github.cabutchei.rsp.api.dao.DeployableReference;
+import com.github.cabutchei.rsp.api.dao.DeployableState;
+import com.github.cabutchei.rsp.api.dao.ListServerActionResponse;
+import com.github.cabutchei.rsp.api.dao.ModuleState;
+import com.github.cabutchei.rsp.api.dao.ServerActionRequest;
+import com.github.cabutchei.rsp.api.dao.ServerActionWorkflow;
+import com.github.cabutchei.rsp.api.dao.StartServerResponse;
+import com.github.cabutchei.rsp.api.dao.WorkflowResponse;
+import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
+import com.github.cabutchei.rsp.eclipse.debug.core.IStreamListener;
+import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
+import com.github.cabutchei.rsp.launching.java.ILaunchModes;
+import com.github.cabutchei.rsp.launching.utils.LaunchingDebugProperties;
+import com.github.cabutchei.rsp.server.model.AbstractServerDelegate;
+import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerPublishModel;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
+import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
 
 import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;
 import com.github.cabutchei.rsp.server.model.WSTServerStreamListener;
@@ -134,7 +134,7 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractServerDele
 	@Override
 	public StartServerResponse start(String mode) {
 		IStatus stat = canStart(mode);
-		org.jboss.tools.rsp.api.dao.Status s;
+		com.github.cabutchei.rsp.api.dao.Status s;
 		if (!stat.isOK()) {
 			s = StatusConverter.convert(stat);
 			return new StartServerResponse(s, null);
@@ -175,14 +175,14 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractServerDele
 	}
 
 	protected void setJavaLaunchDependentDefaults(IServerWorkingCopy server) {
-		server.setAttribute(org.jboss.tools.rsp.server.generic.servertype.GenericServerType.LAUNCH_OVERRIDE_BOOLEAN, false);
-		server.setAttribute(org.jboss.tools.rsp.server.generic.servertype.GenericServerType.LAUNCH_OVERRIDE_PROGRAM_ARGS,
+		server.setAttribute(com.github.cabutchei.rsp.server.generic.servertype.GenericServerType.LAUNCH_OVERRIDE_BOOLEAN, false);
+		server.setAttribute(com.github.cabutchei.rsp.server.generic.servertype.GenericServerType.LAUNCH_OVERRIDE_PROGRAM_ARGS,
 				emptyStringDefault(resolveTemplate(server, START_PROGRAM_ARGS)));
-		server.setAttribute(org.jboss.tools.rsp.server.generic.servertype.GenericServerType.JAVA_LAUNCH_OVERRIDE_VM_ARGS,
+		server.setAttribute(com.github.cabutchei.rsp.server.generic.servertype.GenericServerType.JAVA_LAUNCH_OVERRIDE_VM_ARGS,
 				emptyStringDefault(resolveTemplate(server, VM_ARGS)));
-		server.setAttribute(org.jboss.tools.rsp.server.generic.servertype.GenericServerType.LAUNCH_OVERRIDE_SHUTDOWN_PROGRAM_ARGS,
+		server.setAttribute(com.github.cabutchei.rsp.server.generic.servertype.GenericServerType.LAUNCH_OVERRIDE_SHUTDOWN_PROGRAM_ARGS,
 				emptyStringDefault(resolveTemplate(server, STOP_PROGRAM_ARGS)));
-		server.setAttribute(org.jboss.tools.rsp.server.generic.servertype.GenericServerType.JAVA_LAUNCH_OVERRIDE_SHUTDOWN_VM_ARGS,
+		server.setAttribute(com.github.cabutchei.rsp.server.generic.servertype.GenericServerType.JAVA_LAUNCH_OVERRIDE_SHUTDOWN_VM_ARGS,
 				emptyStringDefault(resolveTemplate(server, VM_ARGS)));
 	}
 
@@ -346,7 +346,7 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractServerDele
 			return null;
 		}
 		CommandLineDetails details = new CommandLineDetails();
-		details.setCmdLine(org.jboss.tools.rsp.eclipse.debug.core.ArgumentUtils.parseArguments(cmdline));
+		details.setCmdLine(com.github.cabutchei.rsp.eclipse.debug.core.ArgumentUtils.parseArguments(cmdline));
 		addDebugDetails(mode, details);
 		return details;
 	}

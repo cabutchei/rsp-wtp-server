@@ -22,19 +22,19 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.wst.common.project.facet.core.ProjectFacetsManager;
 import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.ServerUtil;
-import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
-import org.jboss.tools.rsp.eclipse.core.runtime.MultiStatus;
-import org.jboss.tools.rsp.eclipse.core.runtime.Status;
-import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
-import org.jboss.tools.rsp.server.spi.workspace.DeploymentAssemblyEntry;
-import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
-import org.jboss.tools.rsp.server.spi.workspace.WorkspaceProject;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.MultiStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
+import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
+import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
+import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject;
 
 import com.github.cabutchei.rsp.eclipse.wst.WSTFacade;
 
 // TODO: clean obsolete methods
 public class EclipseWorkspaceService implements IWorkspaceService {
-	private static final String BUNDLE_ID = "org.jboss.tools.rsp.eclipse.workspace";
+	private static final String BUNDLE_ID = "com.github.cabutchei.rsp.eclipse.workspace";
 	private WSTFacade wstFacade;
 
 	public void setWstFacade(WSTFacade wstFacade) {
@@ -144,7 +144,7 @@ public class EclipseWorkspaceService implements IWorkspaceService {
 		/* we're now reading the project paths from a property passed to the process by the client
 		Good enough for now, but I feel like they should be passed to the server via json/rpc request as part of
 		the initialization process*/
-		String[] workspaceProjectsPaths = System.getProperty("org.jboss.tools.rsp.workspace.projects").split(",");
+		String[] workspaceProjectsPaths = System.getProperty("com.github.cabutchei.workspace.projects").split(",");
 		java.nio.file.Path[] paths = Arrays.asList(workspaceProjectsPaths).stream().map(p -> java.nio.file.Paths.get(p)).toArray(java.nio.file.Path[]::new);
 		return importProjects(paths);
 	}

@@ -1,6 +1,6 @@
 package com.github.cabutchei.rsp.server.liberty.servertype;
 
-import org.jboss.tools.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
+import com.github.cabutchei.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
 
 public class LibertyServerTypes {
 	public static final String LIBERTY_ID = ILibertyServerAttributes.LIBERTY_SERVER_TYPE_PREFIX;

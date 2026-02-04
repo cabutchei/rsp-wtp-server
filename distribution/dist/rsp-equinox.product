@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<product name="Runtime Server Protocol Equinox"
+	uid="com.github.cabutchei.rsp.server.product"
+	id="com.github.cabutchei.rsp.server.product"
+	application="com.github.cabutchei.rsp.server.application"
+	version="0.1.0.qualifier"
+	useFeatures="false"
+	includeLaunchers="true">
+	<configIni use="default"/>
+	<launcherArgs>
+		<vmArgs>-Dosgi.instance.area.default=@user.home/workspace</vmArgs>
+	</launcherArgs>
+	<plugins>
+		<plugin id="com.github.cabutchei.rsp.api"/>
+		<plugin id="com.github.cabutchei.rsp.secure"/>
+		<plugin id="com.github.cabutchei.rsp.logging"/>
+		<plugin id="com.github.cabutchei.rsp.launching"/>
+		<plugin id="com.github.cabutchei.rsp.launching.java"/>
+		<plugin id="com.github.cabutchei.rsp.foundation.core"/>
+		<plugin id="com.github.cabutchei.rsp.stacks.core"/>
+		<plugin id="com.github.cabutchei.rsp.runtime.core"/>
+		<plugin id="com.github.cabutchei.rsp.server.spi"/>
+		<plugin id="com.github.cabutchei.rsp.server"/>
+		<plugin id="com.github.cabutchei.rsp.server.generic"/>
+		<!-- <plugin id="com.github.cabutchei.rsp.server.redhat.download"/> -->
+		<plugin id="com.github.cabutchei.rsp.server.wst"/>
+		<plugin id="com.github.cabutchei.rsp.server.websphere"/>
+		<plugin id="com.github.cabutchei.rsp.server.liberty"/>
+		<plugin id="org.eclipse.jface.text"/>
+		<plugin id="org.eclipse.emf.common"/>
+		<plugin id="com.ibm.ws.st.core"/>
+		<plugin id="com.ibm.ws.ast.st.common.core"/>
+		<plugin id="com.ibm.ws.st.was.core"/>
+		<plugin id="com.ibm.ws.ast.st.v85.core"/>
+		<plugin id="com.ibm.websphere.v85.core"/>
+		<plugin id="com.ibm.websphere.v9.core"/>
+		<plugin id="javax.annotation"/>
+		<plugin id="org.eclipse.jdt.launching.macosx"/>
+	</plugins>
+	<configurations>
+		<plugin id="com.github.cabutchei.rsp.server.liberty" autoStart="true" startLevel="3"/>
+		<plugin id="com.github.cabutchei.rsp.server.wst" autoStart="true" startLevel="2"/>
+		<plugin id="com.github.cabutchei.rsp.server.websphere" autoStart="true" startLevel="3"/>
+		<plugin id="org.eclipse.core.runtime" autoStart="true" startLevel="0"/>
+		<plugin id="org.eclipse.core.resources" autoStart="true" startLevel="0"/>
+		<plugin id="org.eclipse.equinox.simpleconfigurator" autoStart="true" startLevel="1"/>
+		<plugin id="com.github.cabutchei.rsp.server" autoStart="true" startLevel="4"/>
+	</configurations>
+</product>

@@ -18,15 +18,15 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
-import org.jboss.tools.rsp.api.dao.ServerHandle;
-import org.jboss.tools.rsp.server.spi.workspace.DeployableArtifact;
-import org.jboss.tools.rsp.server.spi.workspace.DeploymentAssemblyEntry;
-import org.jboss.tools.rsp.server.spi.workspace.IProjectImporter;
-import org.jboss.tools.rsp.server.spi.workspace.IProjectsManager;
-import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
-import org.jboss.tools.rsp.server.spi.workspace.JreContainerMapping;
-import org.jboss.tools.rsp.server.spi.workspace.WorkspaceProject;
-import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.api.dao.ServerHandle;
+import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
+import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
+import com.github.cabutchei.rsp.server.spi.workspace.IProjectImporter;
+import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
+import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
+import com.github.cabutchei.rsp.server.spi.workspace.JreContainerMapping;
+import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 
 import com.github.cabutchei.rsp.eclipse.wst.WSTFacade;
 

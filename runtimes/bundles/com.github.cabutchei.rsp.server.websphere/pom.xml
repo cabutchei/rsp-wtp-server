@@ -2,86 +2,83 @@
 <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
+
   <parent>
-    <groupId>org.jboss.tools.rsp.runtimes</groupId>
+    <groupId>com.github.cabutchei.rsp.runtimes</groupId>
     <artifactId>bundles</artifactId>
-    <version>0.26.18-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
   </parent>
-  <groupId>org.jboss.tools.rsp.runtimes.bundles</groupId>
+
+  <groupId>com.github.cabutchei.rsp.runtimes.bundles</groupId>
   <artifactId>com.github.cabutchei.rsp.server.websphere</artifactId>
+
   <packaging>eclipse-plugin</packaging>
   <name>Runtime Server Protocol : WebSphere Traditional Implementation</name>
 
 	<dependencies>
-  		<dependency>
-    		<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-    		<artifactId>org.jboss.tools.rsp.server</artifactId>
+  		<!-- <dependency>
+    		<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+    		<artifactId>com.github.cabutchei.rsp.server</artifactId>
     		<version>${project.version}</version>
     		<type>eclipse-plugin</type>
   		</dependency>
   		<dependency>
-    		<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-    		<artifactId>org.jboss.tools.rsp.launching</artifactId>
+    		<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+    		<artifactId>com.github.cabutchei.rsp.launching</artifactId>
     		<version>${project.version}</version>
     		<type>eclipse-plugin</type>
   		</dependency>
   		<dependency>
-    		<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-    		<artifactId>org.jboss.tools.rsp.logging</artifactId>
+    		<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+    		<artifactId>com.github.cabutchei.rsp.logging</artifactId>
     		<version>${project.version}</version>
     		<type>eclipse-plugin</type>
   		</dependency>
   		<dependency>
-    		<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-    		<artifactId>org.jboss.tools.rsp.runtime.core</artifactId>
+    		<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+    		<artifactId>com.github.cabutchei.rsp.runtime.core</artifactId>
     		<version>${project.version}</version>
     		<type>eclipse-plugin</type>
   		</dependency>
 		<dependency>
-    		<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-    		<artifactId>org.jboss.tools.rsp.secure</artifactId>
+    		<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+    		<artifactId>com.github.cabutchei.rsp.secure</artifactId>
     		<version>${project.version}</version>
     		<type>eclipse-plugin</type>
   		</dependency>
 		<dependency>
-    		<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-    		<artifactId>org.jboss.tools.rsp.server.generic</artifactId>
+    		<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+    		<artifactId>com.github.cabutchei.rsp.server.generic</artifactId>
     		<version>${project.version}</version>
     		<type>eclipse-plugin</type>
   		</dependency>
 		<dependency>
-    		<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-    		<artifactId>org.jboss.tools.rsp.server.spi</artifactId>
+    		<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+    		<artifactId>com.github.cabutchei.rsp.server.spi</artifactId>
     		<version>${project.version}</version>
     		<type>eclipse-plugin</type>
   		</dependency>
 		<dependency>
-    		<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-    		<artifactId>org.jboss.tools.rsp.stacks.core</artifactId>
+    		<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+    		<artifactId>com.github.cabutchei.rsp.stacks.core</artifactId>
     		<version>${project.version}</version>
     		<type>eclipse-plugin</type>
   		</dependency>
 		<dependency>
-    		<groupId>org.jboss.tools.rsp.api.bundles</groupId>
-    		<artifactId>org.jboss.tools.rsp.api</artifactId>
+    		<groupId>com.github.cabutchei.rsp.api.bundles</groupId>
+    		<artifactId>com.github.cabutchei.rsp.api</artifactId>
     		<version>${project.version}</version>
     		<type>eclipse-plugin</type>
   		</dependency>
 		<dependency>
-    		<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-    		<artifactId>org.jboss.tools.rsp.foundation.core</artifactId>
+    		<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+    		<artifactId>com.github.cabutchei.rsp.foundation.core</artifactId>
     		<version>${project.version}</version>
     		<type>eclipse-plugin</type>
   		</dependency>
 		<dependency>
-    		<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-    		<artifactId>org.jboss.tools.rsp.launching</artifactId>
-    		<version>${project.version}</version>
-    		<type>eclipse-plugin</type>
-  		</dependency>
-		<dependency>
-    		<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-    		<artifactId>org.jboss.tools.rsp.launching.java</artifactId>
+    		<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+    		<artifactId>com.github.cabutchei.rsp.launching.java</artifactId>
     		<version>${project.version}</version>
     		<type>eclipse-plugin</type>
   		</dependency>
@@ -90,8 +87,8 @@
     		<artifactId>com.github.cabutchei.rsp.server.wst</artifactId>
     		<version>${project.version}</version>
     		<type>eclipse-plugin</type>
-  		</dependency>
-		<dependency>
+  		</dependency> -->
+		<!-- <dependency>
     		<groupId>org.eclipse.lsp4j</groupId>
     		<artifactId>org.eclipse.lsp4j.jsonrpc</artifactId>
     		<version>0.24.0</version>
@@ -105,7 +102,7 @@
     		<groupId>org.osgi</groupId>
     		<artifactId>org.osgi.framework</artifactId>
     		<version>1.10.0</version>
-		</dependency>
+		</dependency> -->
 
 	</dependencies>
 
@@ -133,14 +130,14 @@
           						<argument>-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005</argument>
           						<argument>-cp</argument>
 								<classpath/>
-          						<argument>org.jboss.tools.rsp.server.liberty.custom.impl.LibertyServerMain</argument>
+          						<argument>com.github.cabutchei.rsp.server.liberty.custom.impl.LibertyServerMain</argument>
           						<argument>27511</argument>
         						</arguments>
       						</configuration>
     					</execution>
 					</executions>
 					<configuration>
-						<mainClass>org.jboss.tools.rsp.server.liberty.impl.LibertyServerMain</mainClass>
+						<mainClass>com.github.cabutchei.rsp.server.liberty.impl.LibertyServerMain</mainClass>
 						<arguments>
 							<argument>27511</argument>
 						</arguments>

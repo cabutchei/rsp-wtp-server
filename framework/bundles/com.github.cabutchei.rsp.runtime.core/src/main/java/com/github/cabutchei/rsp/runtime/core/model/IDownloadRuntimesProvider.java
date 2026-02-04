@@ -1,0 +1,54 @@
+/*************************************************************************************
+ * Copyright (c) 2013 Red Hat, Inc. and others.
+ * All rights reserved. This program and the accompanying materials 
+ * are made available under the terms of the Eclipse Public License v2.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v20.html
+ * 
+ * Contributors:
+ *     JBoss by Red Hat - Initial implementation.
+ ************************************************************************************/
+package com.github.cabutchei.rsp.runtime.core.model;
+
+import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
+
+/**
+ * An interface representing an entity that wishes
+ * to provide downloadable runtimes.
+ * 
+ * This interface reserves the right to add static final 
+ * property strings with the PROPERTY prefix. Implementers
+ * of this interface should be aware of this. 
+ */
+public interface IDownloadRuntimesProvider {
+
+	/**
+	 * A generic request for all of the provider's available downloadRuntimes
+	 */
+	public static final String PROPERTY_GENERIC_REQUEST = "IDownloadRuntimesProvider.GENERIC_REQUEST"; //$NON-NLS-1$
+	
+	/**
+	 * A unique id to reference this provider of runtimes
+	 * @return
+	 */
+	public String getId();
+	
+	
+	/**
+	 * A method to return the provider's list of downloadable runtimes.
+	 * This returned array may be customized according to the value of requestType
+	 * 
+	 * @param monitor A progress Monitor
+	 * @return
+	 */
+	public DownloadRuntime[] getDownloadableRuntimes(IProgressMonitor monitor);
+	
+	/**
+	 * Get the workflow executor capable of running the download-runtime workflow
+	 * for this specific download runtime type
+	 * 
+	 * @param dr
+	 * @return
+	 */
+	public IDownloadRuntimeRunner getDownloadRunner(DownloadRuntime dr);
+}

@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import org.jboss.tools.rsp.eclipse.debug.core.DebugException;
-import org.jboss.tools.rsp.eclipse.debug.core.ILaunch;
-import org.jboss.tools.rsp.eclipse.debug.core.model.IProcess;
+import com.github.cabutchei.rsp.eclipse.debug.core.DebugException;
+import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
+import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
 
 
 

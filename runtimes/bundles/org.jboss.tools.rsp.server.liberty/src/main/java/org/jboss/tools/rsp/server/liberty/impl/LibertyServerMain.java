@@ -6,11 +6,11 @@
  * 
  * Contributors: Red Hat, Inc.
  ******************************************************************************/
-package org.jboss.tools.rsp.server.liberty.impl;
+package com.github.cabutchei.rsp.server.liberty.impl;
 
-import org.jboss.tools.rsp.server.LauncherSingleton;
-import org.jboss.tools.rsp.server.ServerManagementServerLauncher;
-import org.jboss.tools.rsp.server.generic.GenericServerExtensionModel;
+import com.github.cabutchei.rsp.server.LauncherSingleton;
+import com.github.cabutchei.rsp.server.ServerManagementServerLauncher;
+import com.github.cabutchei.rsp.server.generic.GenericServerExtensionModel;
 
 public class LibertyServerMain extends ServerManagementServerLauncher {
 

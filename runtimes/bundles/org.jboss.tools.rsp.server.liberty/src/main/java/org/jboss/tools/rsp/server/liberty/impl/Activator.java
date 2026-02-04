@@ -6,24 +6,24 @@
  * 
  * Contributors: Red Hat, Inc.
  ******************************************************************************/
-package org.jboss.tools.rsp.server.liberty.impl;
+package com.github.cabutchei.rsp.server.liberty.impl;
 
 import java.io.InputStream;
 
-import org.jboss.tools.rsp.launching.memento.JSONMemento;
-import org.jboss.tools.rsp.server.ServerCoreActivator;
-import org.jboss.tools.rsp.server.generic.GenericServerActivator;
-import org.jboss.tools.rsp.server.generic.IServerBehaviorFromJSONProvider;
-import org.jboss.tools.rsp.server.generic.IServerBehaviorProvider;
-import org.jboss.tools.rsp.server.spi.servertype.IServer;
-import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
-import org.jboss.tools.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
+import com.github.cabutchei.rsp.launching.memento.JSONMemento;
+import com.github.cabutchei.rsp.server.ServerCoreActivator;
+import com.github.cabutchei.rsp.server.generic.GenericServerActivator;
+import com.github.cabutchei.rsp.server.generic.IServerBehaviorFromJSONProvider;
+import com.github.cabutchei.rsp.server.generic.IServerBehaviorProvider;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
+import com.github.cabutchei.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Activator extends GenericServerActivator {
-	public static final String BUNDLE_ID = "org.jboss.tools.rsp.server.liberty";
+	public static final String BUNDLE_ID = "com.github.cabutchei.rsp.server.liberty";
 	private static final Logger LOG = LoggerFactory.getLogger(Activator.class);
 
 	@Override

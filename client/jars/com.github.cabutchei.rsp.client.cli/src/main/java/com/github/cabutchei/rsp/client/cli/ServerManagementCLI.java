@@ -1,0 +1,186 @@
+/*******************************************************************************
+ * Copyright (c) 2018 Red Hat, Inc. Distributed under license by Red Hat, Inc.
+ * All rights reserved. This program is made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is
+ * available at http://www.eclipse.org/legal/epl-v20.html
+ * 
+ * Contributors: Red Hat, Inc.
+ ******************************************************************************/
+package com.github.cabutchei.rsp.client.cli;
+
+import java.io.Console;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+
+import com.github.cabutchei.rsp.api.ICapabilityKeys;
+import com.github.cabutchei.rsp.api.dao.ClientCapabilitiesRequest;
+import com.github.cabutchei.rsp.client.bindings.IClientConnectionClosedListener;
+import com.github.cabutchei.rsp.client.bindings.ServerManagementClientLauncher;
+
+public class ServerManagementCLI implements InputProvider, IClientConnectionClosedListener {
+	
+	public static void main(String[] args) {
+		ServerManagementCLI cli = new ServerManagementCLI();
+		try {
+			cli.connect(args[0], args[1]);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return;
+		}
+
+		System.out.println("Connected to: " + args[0] + ":" + args[1]);
+		cli.readInputs();
+	}
+	
+	private Console console = System.console();
+	private Scanner scanner = null;
+	private ServerManagementClientLauncher launcher;
+	private ConcurrentLinkedQueue<InputHandler> queue = new ConcurrentLinkedQueue<>();
+	private boolean isComplete = false;
+	
+	private void connect(String host, String port) throws Exception {
+		if (host == null) {
+			System.out.print("Enter server host: ");
+			host = getUserInput();
+		}
+		if (port == null) {
+			System.out.print("Enter server port: ");
+			port = getUserInput();
+		}
+
+		this.launcher = launch(host, port);
+	}
+
+	private ServerManagementClientLauncher launch(String host, String port) throws IOException, InterruptedException, ExecutionException {
+		ServerManagementClientLauncher launcher = new ServerManagementClientLauncher(host, Integer.parseInt(port), this);
+		launcher.setListener(this);
+		launcher.launch();
+		ClientCapabilitiesRequest clientCapRequest = createClientCapabilitiesRequest();
+		launcher.getServerProxy().registerClientCapabilities(clientCapRequest).get();
+		return launcher;
+	}
+
+	private ClientCapabilitiesRequest createClientCapabilitiesRequest() {
+		Map<String, String> clientCap = new HashMap<>();
+		clientCap.put(ICapabilityKeys.STRING_PROTOCOL_VERSION, ICapabilityKeys.PROTOCOL_VERSION_0_10_0);
+		clientCap.put(ICapabilityKeys.BOOLEAN_STRING_PROMPT, Boolean.toString(true));
+		return new ClientCapabilitiesRequest(clientCap);
+	}
+
+	@Override
+	public void addInputRequest(InputHandler handler) {
+		if (queue.peek() == null || (queue.peek().isDone() && queue.size() == 1)) {
+			printUserPrompt(handler);
+		}
+		queue.add(handler);
+	}
+
+	private void waitForReadyConsole() {
+		try {
+			// We're done when the console reader is ready (has a newline)
+			// We're done when the queue isn't empty and the first item is secret
+			boolean done = false;
+			while( !done) {
+					boolean hasNewline = console.reader().ready();
+					boolean queueHasSecret = queue.peek() != null && queue.peek().isSecret();
+					done = hasNewline || queueHasSecret;
+					if( !done ) {
+						try {
+							Thread.sleep(500);
+						} catch(InterruptedException ie) {
+							// Do nothing
+							Thread.currentThread().interrupt();
+						}
+					}
+			}
+		} catch(IOException ioe) {
+			ioe.printStackTrace();
+		}
+	}
+	protected String getUserInput() {
+		if( console != null ) {
+			waitForReadyConsole();
+			boolean queueHasSecret = queue.peek() != null && queue.peek().isSecret();
+			if( queueHasSecret) {
+				char[] secret = console.readPassword("");
+				return new String(secret);
+			} else {
+				return console.readLine("");
+			}
+		}
+		if (scanner == null) {
+			scanner = new Scanner(System.in);
+		}
+		return scanner.nextLine();
+	}
+	
+	private synchronized boolean isComplete() {
+		return isComplete;
+	}
+	
+	private synchronized void setComplete(boolean val) {
+		this.isComplete = val;
+	}
+	
+	private void readInputs() {
+		while (!isComplete()) {
+			if (queue.peek() != null) {
+				printUserPrompt(queue.peek());
+			}
+			String content = getUserInput();
+			InputHandler handler = getInputHandler();
+			final String content2 = content;
+			if (!launcher.isConnectionActive()) {
+				setComplete(true);
+			} else {
+				new Thread("Handle input") {
+					@Override
+					public void run() {
+						try {
+							handler.handleInput(content2);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+				}.start();
+			}
+		}
+		if( isComplete()) {
+			close();
+		}
+	}
+
+	private InputHandler getInputHandler() {
+		InputHandler h = queue.peek();
+		if (h != null && h.isDone()) {
+			queue.remove();
+			h = queue.peek();
+		}
+		if( h == null ) {
+			h = new StandardCommandHandler(launcher, this);
+		}
+		return h;
+	}
+
+	private void printUserPrompt(InputHandler handler) {
+		String prompt = handler.getPrompt();
+		if (prompt != null && !prompt.isEmpty() && !handler.isPromptShown()) {
+			handler.setPromptShown();
+			System.out.println(prompt);
+		}
+	}
+
+	@Override
+	public void connectionClosed() {
+		close();
+	}
+	
+	private void close() {
+		System.out.println("Connection with remote server has terminated.");
+		System.exit(0);
+	}
+}

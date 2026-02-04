@@ -5,13 +5,13 @@ package com.github.cabutchei.rsp.eclipse.wst;
 import java.util.List;
 import java.util.Objects;
 
-import org.jboss.tools.rsp.api.dao.DeployableReference;
-import org.jboss.tools.rsp.api.dao.DeployableState;
-import org.jboss.tools.rsp.api.dao.ModuleState;
-import org.jboss.tools.rsp.api.dao.ServerHandle;
-import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
-import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
-import org.jboss.tools.rsp.eclipse.debug.core.ILaunch;
+import com.github.cabutchei.rsp.api.dao.DeployableReference;
+import com.github.cabutchei.rsp.api.dao.DeployableState;
+import com.github.cabutchei.rsp.api.dao.ModuleState;
+import com.github.cabutchei.rsp.api.dao.ServerHandle;
+import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 
 
 

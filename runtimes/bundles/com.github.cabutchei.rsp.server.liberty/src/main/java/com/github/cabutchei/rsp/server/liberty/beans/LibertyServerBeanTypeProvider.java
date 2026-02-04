@@ -8,8 +8,8 @@
  */
 package com.github.cabutchei.rsp.server.liberty.beans;
 
-import org.jboss.tools.rsp.server.spi.discovery.IServerBeanTypeProvider;
-import org.jboss.tools.rsp.server.spi.discovery.ServerBeanType;
+import com.github.cabutchei.rsp.server.spi.discovery.IServerBeanTypeProvider;
+import com.github.cabutchei.rsp.server.spi.discovery.ServerBeanType;
 
 public class LibertyServerBeanTypeProvider implements IServerBeanTypeProvider {
 	private static final ServerBeanType[] TYPES = new ServerBeanType[] {

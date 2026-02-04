@@ -4,20 +4,17 @@
 	To install these features, point Eclipse at this site.
 	</description>
 
-   <bundle id="org.jboss.tools.rsp.api"/>
-   <bundle id="org.jboss.tools.rsp.logging"/>
-   <bundle id="org.jboss.tools.rsp.launching.java"/>
-   <bundle id="org.jboss.tools.rsp.launching"/>
-   <bundle id="org.jboss.tools.rsp.stacks.core"/>
-   <bundle id="org.jboss.tools.rsp.secure"/>
-   <bundle id="org.jboss.tools.rsp.server.spi"/>
-   <bundle id="org.jboss.tools.rsp.foundation.core"/>
-   <bundle id="org.jboss.tools.rsp.runtime.core"/>
-   <bundle id="org.jboss.tools.rsp.server"/>
-   <bundle id="org.jboss.tools.rsp.server.generic"/>
-   <bundle id="org.jboss.tools.rsp.server.minishift"/>
-   <bundle id="org.jboss.tools.rsp.server.redhat.download"/>
-   <bundle id="org.jboss.tools.rsp.server.wildfly"/>
+   <bundle id="com.github.cabutchei.rsp.api"/>
+   <bundle id="com.github.cabutchei.rsp.logging"/>
+   <bundle id="com.github.cabutchei.rsp.launching.java"/>
+   <bundle id="com.github.cabutchei.rsp.launching"/>
+   <bundle id="com.github.cabutchei.rsp.stacks.core"/>
+   <bundle id="com.github.cabutchei.rsp.secure"/>
+   <bundle id="com.github.cabutchei.rsp.server.spi"/>
+   <bundle id="com.github.cabutchei.rsp.foundation.core"/>
+   <bundle id="com.github.cabutchei.rsp.runtime.core"/>
+   <bundle id="com.github.cabutchei.rsp.server"/>
+   <bundle id="com.github.cabutchei.rsp.server.redhat.download"/>
 
 </site>
 

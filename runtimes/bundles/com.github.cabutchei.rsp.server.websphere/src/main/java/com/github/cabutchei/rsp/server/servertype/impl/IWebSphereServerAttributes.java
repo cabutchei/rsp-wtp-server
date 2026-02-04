@@ -1,6 +1,6 @@
 package com.github.cabutchei.rsp.server.servertype.impl;
 
-import org.jboss.tools.rsp.api.DefaultServerAttributes;
+import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 
 public interface IWebSphereServerAttributes extends DefaultServerAttributes {
 	// this property defines what delegate will be bound to server object

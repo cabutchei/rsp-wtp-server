@@ -7,9 +7,9 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.wst.server.core.IRuntimeWorkingCopy;
 import org.eclipse.wst.server.core.IServerWorkingCopy;
 
-import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
-import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
-import org.jboss.tools.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 
 import com.github.cabutchei.rsp.eclipse.wst.WstServerTypeHandler;
 import com.github.cabutchei.rsp.server.servertype.impl.IWebSphereServerAttributes;

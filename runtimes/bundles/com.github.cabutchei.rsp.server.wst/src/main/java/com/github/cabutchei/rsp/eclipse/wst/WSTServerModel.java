@@ -17,44 +17,44 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.ResourcesPlugin;
-import org.jboss.tools.rsp.api.RSPClient;
-import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
-import org.jboss.tools.rsp.api.dao.Attributes;
-import org.jboss.tools.rsp.api.dao.CreateServerResponse;
-import org.jboss.tools.rsp.api.dao.DeployableReference;
-import org.jboss.tools.rsp.api.dao.DeployableState;
-import org.jboss.tools.rsp.api.dao.ServerHandle;
-import org.jboss.tools.rsp.api.dao.ServerLaunchMode;
-import org.jboss.tools.rsp.api.dao.ServerState;
-import org.jboss.tools.rsp.api.dao.ServerType;
-import org.jboss.tools.rsp.api.dao.UpdateServerRequest;
-import org.jboss.tools.rsp.api.dao.UpdateServerResponse;
-import org.jboss.tools.rsp.api.dao.util.CreateServerAttributesUtility;
-import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
-import org.jboss.tools.rsp.eclipse.core.runtime.IProgressMonitor;
-import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
-import org.jboss.tools.rsp.eclipse.core.runtime.MultiStatus;
-import org.jboss.tools.rsp.eclipse.core.runtime.NullProgressMonitor;
-import org.jboss.tools.rsp.eclipse.core.runtime.Status;
-import org.jboss.tools.rsp.eclipse.osgi.util.NLS;
-import org.jboss.tools.rsp.launching.utils.IStatusRunnableWithProgress;
-import org.jboss.tools.rsp.secure.model.ISecureStorageProvider;
-import org.jboss.tools.rsp.server.ServerCoreActivator;
-import org.jboss.tools.rsp.server.model.internal.DaoUtilities;
-import org.jboss.tools.rsp.server.model.internal.DummyServer;
-import org.jboss.tools.rsp.server.model.internal.Server;
-import org.jboss.tools.rsp.server.spi.client.ClientThreadLocal;
-import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
-import org.jboss.tools.rsp.server.spi.model.IServerModel;
-import org.jboss.tools.rsp.server.spi.model.IServerModelListener;
-import org.jboss.tools.rsp.server.spi.servertype.CreateServerValidation;
-import org.jboss.tools.rsp.server.spi.servertype.IServer;
-import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
-import org.jboss.tools.rsp.server.spi.servertype.IServerListener;
-import org.jboss.tools.rsp.server.spi.servertype.IServerType;
-import org.jboss.tools.rsp.server.spi.servertype.IServerWorkingCopy;
-import org.jboss.tools.rsp.server.spi.servertype.ServerEvent;
-import org.jboss.tools.rsp.server.spi.util.StatusConverter;
+import com.github.cabutchei.rsp.api.RSPWTPClient;
+import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
+import com.github.cabutchei.rsp.api.dao.Attributes;
+import com.github.cabutchei.rsp.api.dao.CreateServerResponse;
+import com.github.cabutchei.rsp.api.dao.DeployableReference;
+import com.github.cabutchei.rsp.api.dao.DeployableState;
+import com.github.cabutchei.rsp.api.dao.ServerHandle;
+import com.github.cabutchei.rsp.api.dao.ServerLaunchMode;
+import com.github.cabutchei.rsp.api.dao.ServerState;
+import com.github.cabutchei.rsp.api.dao.ServerType;
+import com.github.cabutchei.rsp.api.dao.UpdateServerRequest;
+import com.github.cabutchei.rsp.api.dao.UpdateServerResponse;
+import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
+import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.MultiStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
+import com.github.cabutchei.rsp.launching.utils.IStatusRunnableWithProgress;
+import com.github.cabutchei.rsp.secure.model.ISecureStorageProvider;
+import com.github.cabutchei.rsp.server.ServerCoreActivator;
+import com.github.cabutchei.rsp.server.model.internal.DaoUtilities;
+import com.github.cabutchei.rsp.server.model.internal.DummyServer;
+import com.github.cabutchei.rsp.server.model.internal.Server;
+import com.github.cabutchei.rsp.server.spi.client.ClientThreadLocal;
+import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.model.IServerModelListener;
+import com.github.cabutchei.rsp.server.spi.servertype.CreateServerValidation;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
+import com.github.cabutchei.rsp.server.spi.servertype.ServerEvent;
+import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -231,7 +231,7 @@ public class WSTServerModel implements IServerModel {
 			return new CreateServerResponse(createDaoErrorStatus("Server Type " + serverType + " not found"), 
 					Collections.emptyList());
 		}
-		// TODO: how do we validate if we don't have access to org.jboss.tools.rsp.server.model.internal.DaoUtilities?
+		// TODO: how do we validate if we don't have access to com.github.cabutchei.rsp.server.model.internal.DaoUtilities?
 
 		// IStatus validAttributes = validateAttributes(type, attributes, true, false);
 		// if( !validAttributes.isOK()) {
@@ -628,7 +628,7 @@ public class WSTServerModel implements IServerModel {
 		if( !canPublish.isOK())
 			return canPublish;
 		
-		final RSPClient rspc = ClientThreadLocal.getActiveClient();
+		final RSPWTPClient rspc = ClientThreadLocal.getActiveClient();
 		IStatusRunnableWithProgress irwp = new IStatusRunnableWithProgress() {
 			@Override
 			public IStatus run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
@@ -670,14 +670,14 @@ public class WSTServerModel implements IServerModel {
 
 		return Status.OK_STATUS;
 	}
-	private org.jboss.tools.rsp.api.dao.Status createDaoErrorStatus(String message) {
-		return new org.jboss.tools.rsp.api.dao.Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, message, null);
+	private com.github.cabutchei.rsp.api.dao.Status createDaoErrorStatus(String message) {
+		return new com.github.cabutchei.rsp.api.dao.Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, message, null);
 	}
-	private org.jboss.tools.rsp.api.dao.Status errorStatus(String msg) {
+	private com.github.cabutchei.rsp.api.dao.Status errorStatus(String msg) {
 		return errorStatus(msg, null);
 	}
-	private org.jboss.tools.rsp.api.dao.Status errorStatus(String msg, Throwable t) {
-		IStatus is = new org.jboss.tools.rsp.eclipse.core.runtime.Status(IStatus.ERROR, 
+	private com.github.cabutchei.rsp.api.dao.Status errorStatus(String msg, Throwable t) {
+		IStatus is = new com.github.cabutchei.rsp.eclipse.core.runtime.Status(IStatus.ERROR, 
 				ServerCoreActivator.BUNDLE_ID, 
 				msg, t);
 		return StatusConverter.convert(is);
@@ -766,7 +766,7 @@ public class WSTServerModel implements IServerModel {
 		
 		if( resp.getValidation().getStatus() == null ) {
 			resp.getValidation().setStatus(StatusConverter.convert(
-					org.jboss.tools.rsp.eclipse.core.runtime.Status.OK_STATUS));
+					com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS));
 		}
 		return resp;
 	}

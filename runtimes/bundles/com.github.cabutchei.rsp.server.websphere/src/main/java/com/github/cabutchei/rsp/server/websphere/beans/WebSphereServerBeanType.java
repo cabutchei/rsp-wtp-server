@@ -9,7 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.github.cabutchei.rsp.server.servertype.impl.IWebSphereServerAttributes;
-import org.jboss.tools.rsp.server.spi.discovery.ServerBeanType;
+import com.github.cabutchei.rsp.server.spi.discovery.ServerBeanType;
 
 public class WebSphereServerBeanType extends ServerBeanType {
 	private static final String PLATFORM_WEBSHERE_PATH = "properties/version/platform.websphere";

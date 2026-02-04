@@ -1,8 +1,8 @@
 package com.github.cabutchei.rsp.server.websphere.impl;
 
-import org.jboss.tools.rsp.server.spi.discovery.IServerBeanTypeProvider;
-import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
-import org.jboss.tools.rsp.server.spi.servertype.IServerType;
+import com.github.cabutchei.rsp.server.spi.discovery.IServerBeanTypeProvider;
+import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 
 import com.github.cabutchei.rsp.server.websphere.beans.WebSphereServerBeanTypeProvider;
 import com.github.cabutchei.rsp.server.websphere.servertype.WebSphereServerTypes;

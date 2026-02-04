@@ -4,9 +4,11 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                              http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>org.jboss.tools.rsp</groupId>
+
+	<groupId>com.github.cabutchei.rsp</groupId>
 	<artifactId>parent</artifactId>
-	<version>0.26.18-SNAPSHOT</version>
+	<version>0.1.0-SNAPSHOT</version>
+
 	<packaging>pom</packaging>
 	<name>Runtime Server Protocol</name>
 	<description>A runtime-server protocol based on LSP</description>
@@ -15,12 +17,12 @@
 		<url>https://github.com/redhat-developer/rsp-server</url>
 	</scm>
 	<organization>
-		<name>Red Hat, Inc</name>
-		<url>http://www.redhat.com</url>
+		<name>Luan Paz</name>
+		<url>https://github.com/cabutchei</url>
 	</organization>
 	<issueManagement>
 		<system>GitHub Issues</system>
-		<url>https://github.com/redhat-developer/rsp-server/issues</url>
+		<url>https://github.com/cabutchei/rsp-wtp-client/issues</url>
 	</issueManagement>
 	<licenses>
 		<license>
@@ -31,22 +33,10 @@
 	</licenses>
 	<developers>
 		<developer>
-			<name>Rob Stryker</name>
-			<email>rstryker@redhat.com</email>
-			<url>https://github.com/robstryker</url>
-			<id>robstryker</id>
-		</developer>
-		<developer>
-			<name>Andre Dietisheim</name>
-			<email>adietish@redhat.com</email>
-			<url>https://github.com/adietish</url>
-			<id>adietish</id>
-		</developer>
-		<developer>
-			<name>Jeff MAURY</name>
-			<email>jeffmaury.github@jeffmaury.com</email>
-			<url>https://github.com/jeffmaury</url>
-			<id>jeffmaury</id>
+			<id>cabutchei</id>
+			<name>Luan Paz</name>
+			<email>luropa_paz@hotmail.com</email>
+			<url>https://github.com/cabutchei</url>
 		</developer>
 	</developers>
 
@@ -113,8 +103,8 @@
 				<configuration>
 					<target>
 						<artifact>
-							<groupId>org.jboss.tools.rsp</groupId>
-							<artifactId>rsp-target</artifactId>
+							<groupId>com.github.cabutchei.rsp</groupId>
+							<artifactId>_rsp-target</artifactId>
 							<version>${project.version}</version>
 						</artifact>
 					</target>
@@ -177,12 +167,6 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- Lock sonar maven plugin version -->
-			<plugin>
-				<groupId>org.sonarsource.scanner.maven</groupId>
-				<artifactId>sonar-maven-plugin</artifactId>
-				<version>3.6.0.1398</version>
-			</plugin>
 		</plugins>
 
 	</build>
@@ -197,36 +181,6 @@
 				<moduleProperties>--add-modules=ALL-SYSTEM</moduleProperties>
 			</properties>
 		</profile>
-		<profile>
-			<id>sonar</id>
-			<properties>
-				<sonar.host.url>https://sonarcloud.io</sonar.host.url>
-				<sonar.organization>redhat-developer</sonar.organization>
-			</properties>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.jacoco</groupId>
-						<artifactId>jacoco-maven-plugin</artifactId>
-						<version>${jacoco.version}</version>
-						<executions>
-							<execution>
-								<id>prepare-agent</id>
-								<goals>
-									<goal>prepare-agent</goal>
-								</goals>
-							</execution>
-							<execution>
-								<id>report</id>
-								<goals>
-									<goal>report</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
 	</profiles>
 
 	<pluginRepositories>
@@ -236,16 +190,4 @@
 		</pluginRepository>
 	</pluginRepositories>
 
-	<distributionManagement>
- 		<repository>
-			<id>${jboss.releases.repo.id}</id>
-			<name>JBoss Releases Repository</name>
- 			<url>${jboss.releases.repo.url}</url>
-		</repository>
-		<snapshotRepository>
-			<id>${jboss.snapshots.repo.id}</id>
-			<name>JBoss Snapshots Repository</name>
-			<url>${jboss.snapshots.repo.url}</url>
-		</snapshotRepository>
-	</distributionManagement>
 </project>

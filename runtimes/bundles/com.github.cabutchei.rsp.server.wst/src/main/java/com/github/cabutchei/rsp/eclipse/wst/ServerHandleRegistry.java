@@ -8,22 +8,22 @@ import java.util.concurrent.ConcurrentMap;
 
 public class ServerHandleRegistry {
 
-    private final ConcurrentMap<String, org.jboss.tools.rsp.server.spi.servertype.IServer> rspById = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, com.github.cabutchei.rsp.server.spi.servertype.IServer> rspById = new ConcurrentHashMap<>();
 
     /**
      * Register or refresh the WST server and (optionally) its RSP projection.
      * WST is always the source of truth.
      */
 
-    public void register(org.jboss.tools.rsp.server.spi.servertype.IServer rsp) {
+    public void register(com.github.cabutchei.rsp.server.spi.servertype.IServer rsp) {
         rspById.put(rsp.getId(), rsp);
     }
 
-    public org.jboss.tools.rsp.server.spi.servertype.IServer getRsp(String id) {
+    public com.github.cabutchei.rsp.server.spi.servertype.IServer getRsp(String id) {
         return rspById.get(id);
     }
 
-    public Map<String, org.jboss.tools.rsp.server.spi.servertype.IServer> getAllRspServers() {
+    public Map<String, com.github.cabutchei.rsp.server.spi.servertype.IServer> getAllRspServers() {
         return new ConcurrentHashMap<>(rspById);
     }
 

@@ -2,9 +2,9 @@ package com.github.cabutchei.rsp.eclipse.wst;
 
 import java.util.Objects;
 
-import org.jboss.tools.rsp.server.spi.model.IDataStoreModel;
-import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
-import org.jboss.tools.rsp.server.spi.model.IServerManagementModelFactory;
+import com.github.cabutchei.rsp.server.spi.model.IDataStoreModel;
+import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.model.IServerManagementModelFactory;
 
 public class WstServerManagementModelFactory implements IServerManagementModelFactory {
 	private final IWstIntegrationService integrationService;

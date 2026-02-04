@@ -1,15 +1,15 @@
 package com.github.cabutchei.rsp.server.websphere.servertype;
 
-import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
-import org.jboss.tools.rsp.api.dao.Attributes;
-import org.jboss.tools.rsp.api.dao.ServerHandle;
-import org.jboss.tools.rsp.api.dao.ServerLaunchMode;
-import org.jboss.tools.rsp.api.dao.ServerType;
-import org.jboss.tools.rsp.api.dao.util.CreateServerAttributesUtility;
-import org.jboss.tools.rsp.launching.java.ILaunchModes;
-import org.jboss.tools.rsp.server.spi.servertype.AbstractServerType;
-import org.jboss.tools.rsp.server.spi.servertype.IServer;
-import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
+import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
+import com.github.cabutchei.rsp.api.dao.Attributes;
+import com.github.cabutchei.rsp.api.dao.ServerHandle;
+import com.github.cabutchei.rsp.api.dao.ServerLaunchMode;
+import com.github.cabutchei.rsp.api.dao.ServerType;
+import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
+import com.github.cabutchei.rsp.launching.java.ILaunchModes;
+import com.github.cabutchei.rsp.server.spi.servertype.AbstractServerType;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 
 import com.github.cabutchei.rsp.server.websphere.impl.Activator;
 import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;

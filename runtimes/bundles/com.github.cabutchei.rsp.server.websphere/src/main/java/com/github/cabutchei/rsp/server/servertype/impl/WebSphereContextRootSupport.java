@@ -1,7 +1,7 @@
 package com.github.cabutchei.rsp.server.servertype.impl;
 
-import org.jboss.tools.rsp.api.dao.DeployableState;
-import org.jboss.tools.rsp.server.generic.jee.ContextRootSupport;
+import com.github.cabutchei.rsp.api.dao.DeployableState;
+import com.github.cabutchei.rsp.server.generic.jee.ContextRootSupport;
 
 public class WebSphereContextRootSupport extends ContextRootSupport {
 

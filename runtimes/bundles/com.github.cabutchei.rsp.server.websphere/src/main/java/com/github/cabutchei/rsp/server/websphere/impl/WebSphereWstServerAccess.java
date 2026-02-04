@@ -5,9 +5,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
-import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
-import org.jboss.tools.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 
 import com.github.cabutchei.rsp.eclipse.wst.IWstIntegrationService;
 import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;

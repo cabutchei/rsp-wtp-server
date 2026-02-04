@@ -4,10 +4,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import org.jboss.tools.rsp.eclipse.debug.core.IStreamListener;
-import org.jboss.tools.rsp.eclipse.debug.core.model.IFlushableStreamMonitor;
-import org.jboss.tools.rsp.eclipse.core.runtime.SafeRunner;
-import org.jboss.tools.rsp.eclipse.core.runtime.ISafeRunnable;
+import com.github.cabutchei.rsp.eclipse.debug.core.IStreamListener;
+import com.github.cabutchei.rsp.eclipse.debug.core.model.IFlushableStreamMonitor;
+import com.github.cabutchei.rsp.eclipse.core.runtime.SafeRunner;
+import com.github.cabutchei.rsp.eclipse.core.runtime.ISafeRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,7 +106,7 @@ public class WstStreamMonitorProxy implements IFlushableStreamMonitor {
 		private String fText;
 
 		/**
-		 * @see org.jboss.tools.rsp.eclipse.core.runtime.ISafeRunnable#handleException(java.lang.Throwable)
+		 * @see com.github.cabutchei.rsp.eclipse.core.runtime.ISafeRunnable#handleException(java.lang.Throwable)
 		 */
 		@Override
 		public void handleException(Throwable exception) {
@@ -114,7 +114,7 @@ public class WstStreamMonitorProxy implements IFlushableStreamMonitor {
 		}
 
 		/**
-		 * @see org.jboss.tools.rsp.eclipse.core.runtime.ISafeRunnable#run()
+		 * @see com.github.cabutchei.rsp.eclipse.core.runtime.ISafeRunnable#run()
 		 */
 		@Override
 		public void run() throws Exception {

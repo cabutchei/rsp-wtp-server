@@ -1,0 +1,53 @@
+/*************************************************************************************
+ * Copyright (c) 2014 Red Hat, Inc. and others.
+ * All rights reserved. This program and the accompanying materials 
+ * are made available under the terms of the Eclipse Public License v2.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v20.html
+ * 
+ * Contributors:
+ *     JBoss by Red Hat - Initial implementation.
+ ************************************************************************************/
+package com.github.cabutchei.rsp.runtime.core.extract.internal;
+
+import java.io.File;
+import java.io.IOException;
+
+import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.runtime.core.extract.IOverwrite;
+
+/**
+ * An internal interface for an abstraction that can extract a given
+ * compressed file and be aware of what the new root is.
+ * This object should already know what file is to be extracted
+ * via its constructor or other setter mechanism.
+ */
+public interface IExtractUtility {
+	/**
+	 * Extract to the given destination
+	 * @param destination
+	 * @param overwriteQuery  A query mechanism to verify whether to overwrite files
+	 * @param monitor
+	 * @return
+	 * @throws CoreException
+	 */
+	public IStatus extract(File destination, 
+			IOverwrite overwriteQuery, IProgressMonitor monitor) throws CoreException;
+	
+	/**
+	 * Get the root folder inside the zip, if available, or null. 
+	 * 
+	 * This method may return null if called before extract()
+	 * depending on the underlying implementation, so it
+	 * is suggested to call getRoot() after an extraction, 
+	 * not before.  
+	 * 
+	 * @param monitor
+	 * @return
+	 * @throws IOException
+	 */
+	public String getRoot(IProgressMonitor monitor) throws CoreException;
+
+}

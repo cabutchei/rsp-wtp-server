@@ -3,10 +3,10 @@ package com.github.cabutchei.rsp.eclipse.wst;
 import java.util.Collections;
 import java.util.Objects;
 
-import org.jboss.tools.rsp.server.model.ServerManagementModel;
-import org.jboss.tools.rsp.server.spi.model.IDataStoreModel;
-import org.jboss.tools.rsp.server.spi.model.IServerModel;
-import org.jboss.tools.rsp.server.spi.workspace.IProjectsManager;
+import com.github.cabutchei.rsp.server.model.ServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.model.IDataStoreModel;
+import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 
 import com.github.cabutchei.rsp.eclipse.workspace.EclipseProjectImporter;
 import com.github.cabutchei.rsp.eclipse.workspace.ProjectsManager;

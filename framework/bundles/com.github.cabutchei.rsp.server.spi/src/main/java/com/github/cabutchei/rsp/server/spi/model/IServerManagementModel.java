@@ -1,0 +1,112 @@
+/*******************************************************************************
+ * Copyright (c) 2018 Red Hat, Inc. Distributed under license by Red Hat, Inc.
+ * All rights reserved. This program is made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is
+ * available at http://www.eclipse.org/legal/epl-v20.html
+ * 
+ * Contributors: Red Hat, Inc.
+ ******************************************************************************/
+package com.github.cabutchei.rsp.server.spi.model;
+
+import com.github.cabutchei.rsp.api.RSPClient;
+import com.github.cabutchei.rsp.eclipse.jdt.launching.IVMInstallRegistry;
+import com.github.cabutchei.rsp.runtime.core.model.IDownloadRuntimesModel;
+import com.github.cabutchei.rsp.secure.model.ISecureStorageProvider;
+import com.github.cabutchei.rsp.server.spi.discovery.IDiscoveryPathModel;
+import com.github.cabutchei.rsp.server.spi.discovery.IServerBeanTypeManager;
+import com.github.cabutchei.rsp.server.spi.filewatcher.IFileWatcherService;
+import com.github.cabutchei.rsp.server.spi.jobs.IJobManager;
+import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
+
+/**
+ * This interface should probably be called IRSPModel instead. 
+ * It's not limited to just the server adapters. Lame. 
+ * @author rob
+ *
+ */
+public interface IServerManagementModel {
+	/**
+	 * Get the sub-model relating to server beans 
+	 * @return
+	 */
+	public IServerBeanTypeManager getServerBeanTypeManager();
+	
+	/**
+	 * Get the sub-model relating to servers
+	 * @return
+	 */
+	public IServerModel getServerModel();
+	
+	/**
+	 * Get the sub-model for the file-watcher service
+	 * @return
+	 */
+	public IFileWatcherService getFileWatcherService();
+	
+	/**
+	 * Get the sub-model for discovery paths
+	 * @return
+	 */
+	public IDiscoveryPathModel getDiscoveryPathModel();
+	
+	/**
+	 * Get the sub-model for VMs
+	 * @return
+	 */
+	public IVMInstallRegistry getVMInstallModel();
+	
+	/**
+	 * Get the sub-model for client capability management
+	 * @return
+	 */
+	public ICapabilityManagement getCapabilityManagement();
+	
+	/**
+	 * Get the secure storage model
+	 * @return
+	 */
+	public ISecureStorageProvider getSecureStorageProvider();
+	
+	/**
+	 * Get the sub model for downloading runtimes
+	 * @return
+	 */
+	public IDownloadRuntimesModel getDownloadRuntimeModel();
+	
+	/**
+	 * Get the sub model for where to store things
+	 * @return
+	 */
+	public IDataStoreModel getDataStoreModel();
+	
+	
+	/**
+	 * Get the sub-model for managing long-running tasks
+	 * @return
+	 */
+	public IJobManager getJobManager();
+
+	/**
+	 * Get the projects manager for tracking workspace folders and deployable resources.
+	 * @return
+	 */
+	public IProjectsManager getProjectsManager();
+	
+	/**
+	 * A client has been removed disconnected from the server 
+	 * @param client
+	 */
+	public void clientRemoved(RSPClient client);
+	
+	/**
+	 * A client has been added / connected to the server
+	 * @param client
+	 */
+	public void clientAdded(RSPClient client);
+	
+	/**
+	 * Dispose all sub-models
+	 */
+	public void dispose();
+
+}

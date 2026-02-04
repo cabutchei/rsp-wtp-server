@@ -3,9 +3,9 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.jboss.tools.rsp.runtimes</groupId>
+    <groupId>com.github.cabutchei.rsp.runtimes</groupId>
     <artifactId>bundles</artifactId>
-    <version>0.26.18-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
   </parent>
   <groupId>com.github.cabutchei.rsp.runtimes.bundles</groupId>
   <artifactId>com.github.cabutchei.rsp.server.wst</artifactId>

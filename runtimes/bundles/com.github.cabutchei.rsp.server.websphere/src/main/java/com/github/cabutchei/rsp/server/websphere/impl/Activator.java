@@ -1,8 +1,8 @@
 package com.github.cabutchei.rsp.server.websphere.impl;
 
-import org.jboss.tools.rsp.server.ServerCoreActivator;
-import org.jboss.tools.rsp.server.LauncherSingleton;
-import org.jboss.tools.rsp.server.spi.RSPExtensionBundle;
+import com.github.cabutchei.rsp.server.ServerCoreActivator;
+import com.github.cabutchei.rsp.server.LauncherSingleton;
+import com.github.cabutchei.rsp.server.spi.RSPExtensionBundle;
 
 import com.github.cabutchei.rsp.eclipse.wst.IWstIntegrationService;
 import com.github.cabutchei.rsp.eclipse.wst.WstServerTypeHandlerRegistry;
@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 
 
 public class Activator extends RSPExtensionBundle {
-	public static final String BUNDLE_ID = "org.jboss.tools.rsp.server.websphere";
+	public static final String BUNDLE_ID = "com.github.cabutchei.rsp.server.websphere";
 	private static final Logger LOG = LoggerFactory.getLogger(Activator.class);
 	private static volatile IWstIntegrationService wstIntegration;
 	private static volatile BundleContext bundleContext;

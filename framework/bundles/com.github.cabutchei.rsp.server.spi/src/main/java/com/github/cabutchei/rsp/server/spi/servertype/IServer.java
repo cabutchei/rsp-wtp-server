@@ -1,0 +1,38 @@
+/*******************************************************************************
+ * Copyright (c) 2018 Red Hat, Inc. Distributed under license by Red Hat, Inc.
+ * All rights reserved. This program is made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is
+ * available at http://www.eclipse.org/legal/epl-v20.html
+ * 
+ * Contributors: Red Hat, Inc.
+ ******************************************************************************/
+package com.github.cabutchei.rsp.server.spi.servertype;
+
+import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
+import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+
+public interface IServer extends IServerAttributes {
+	
+	String getId();
+	
+	String getTypeId();
+	
+	IServerType getServerType();
+	
+	IServerDelegate getDelegate();
+	
+	IServerWorkingCopy createWorkingCopy();
+	
+	String asJson(IProgressMonitor monitor) throws CoreException;
+	
+	void load(IProgressMonitor monitor) throws CoreException;
+	
+	void delete() throws CoreException;
+
+	IServerManagementModel getServerManagementModel();
+
+	IServerModel getServerModel();
+
+}

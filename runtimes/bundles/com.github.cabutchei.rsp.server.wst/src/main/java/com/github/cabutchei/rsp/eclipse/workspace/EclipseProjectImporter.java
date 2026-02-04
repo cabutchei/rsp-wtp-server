@@ -15,9 +15,9 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
-import org.jboss.tools.rsp.server.spi.workspace.IProjectImporter;
-import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.server.spi.workspace.IProjectImporter;
+import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

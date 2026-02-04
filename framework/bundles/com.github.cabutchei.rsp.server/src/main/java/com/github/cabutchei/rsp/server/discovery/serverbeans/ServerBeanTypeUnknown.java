@@ -1,0 +1,43 @@
+/******************************************************************************* 
+ * Copyright (c) 2013 Red Hat, Inc. 
+ * Distributed under license by Red Hat, Inc. All rights reserved. 
+ * This program is made available under the terms of the 
+ * Eclipse Public License v2.0 which accompanies this distribution, 
+ * and is available at http://www.eclipse.org/legal/epl-v20.html 
+ * 
+ * Contributors: 
+ * Red Hat, Inc. - initial API and implementation 
+ ******************************************************************************/ 
+package com.github.cabutchei.rsp.server.discovery.serverbeans;
+
+import java.io.File;
+
+import com.github.cabutchei.rsp.server.spi.discovery.ServerBeanType;
+
+public class ServerBeanTypeUnknown extends ServerBeanType {
+
+	protected ServerBeanTypeUnknown() {
+		super( UNKNOWN_STR, UNKNOWN_STR);
+	}
+
+	@Override
+	public boolean isServerRoot(File location) {
+		return false;
+	}
+
+	@Override
+	public String getFullVersion(File root) {
+		return null;
+	}
+
+	@Override
+	public String getUnderlyingTypeId(File root) {
+		return null;
+	}
+
+	@Override
+	public String getServerAdapterTypeId(String version) {
+		return null;
+	}
+
+}

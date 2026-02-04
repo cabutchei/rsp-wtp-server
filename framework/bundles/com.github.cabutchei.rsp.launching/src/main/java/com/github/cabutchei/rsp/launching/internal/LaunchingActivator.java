@@ -1,0 +1,40 @@
+/*******************************************************************************
+ * Copyright (c) 2018 Red Hat, Inc. Distributed under license by Red Hat, Inc.
+ * All rights reserved. This program is made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is
+ * available at http://www.eclipse.org/legal/epl-v20.html
+ * 
+ * Contributors: Red Hat, Inc.
+ ******************************************************************************/
+package com.github.cabutchei.rsp.launching.internal;
+
+import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleActivator;
+import org.osgi.framework.BundleContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class LaunchingActivator implements BundleActivator {
+
+	public static final String BUNDLE_ID = "com.github.cabutchei.rsp.launching";
+	private static final Logger LOG = LoggerFactory.getLogger(LaunchingActivator.class);
+
+	private BundleContext bc = null;
+
+	@Override
+	public void start(BundleContext context) throws Exception {
+		this.bc = context;
+		LOG.debug(NLS.bind("{0} bundle started.", BUNDLE_ID));
+	}
+
+	@Override
+	public void stop(BundleContext context) throws Exception {
+		this.bc = null;
+		LOG.debug(NLS.bind("{0} bundle stopped.", BUNDLE_ID));
+	}
+	
+	public Bundle getBundle() {
+		return this.bc == null ? null : this.bc.getBundle();
+	}
+}

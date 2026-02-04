@@ -1,10 +1,10 @@
 package com.github.cabutchei.rsp.eclipse.wst;
 
 import org.eclipse.core.resources.IWorkspace;
-import org.jboss.tools.rsp.server.LauncherSingleton;
-import org.jboss.tools.rsp.server.ServerManagementServerLauncher;
-import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
-import org.jboss.tools.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.LauncherSingleton;
+import com.github.cabutchei.rsp.server.ServerManagementServerLauncher;
+import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;

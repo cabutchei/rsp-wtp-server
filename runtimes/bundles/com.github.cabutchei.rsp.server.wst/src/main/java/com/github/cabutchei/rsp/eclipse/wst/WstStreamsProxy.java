@@ -3,8 +3,8 @@ package com.github.cabutchei.rsp.eclipse.wst;
 import java.io.IOException;
 import java.util.Objects;
 
-import org.jboss.tools.rsp.eclipse.debug.core.model.IStreamMonitor;
-import org.jboss.tools.rsp.eclipse.debug.core.model.IStreamsProxy;
+import com.github.cabutchei.rsp.eclipse.debug.core.model.IStreamMonitor;
+import com.github.cabutchei.rsp.eclipse.debug.core.model.IStreamsProxy;
 
 public class WstStreamsProxy implements IStreamsProxy {
 	private final org.eclipse.debug.core.model.IStreamsProxy wstProxy;

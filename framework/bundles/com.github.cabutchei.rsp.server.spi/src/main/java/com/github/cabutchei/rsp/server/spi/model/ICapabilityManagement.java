@@ -1,0 +1,23 @@
+/*******************************************************************************
+ * Copyright (c) 2018 Red Hat, Inc. Distributed under license by Red Hat, Inc.
+ * All rights reserved. This program is made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is
+ * available at http://www.eclipse.org/legal/epl-v20.html
+ * 
+ * Contributors: Red Hat, Inc.
+ ******************************************************************************/
+package com.github.cabutchei.rsp.server.spi.model;
+
+import java.util.Map;
+
+import com.github.cabutchei.rsp.api.RSPClient;
+import com.github.cabutchei.rsp.api.dao.ClientCapabilitiesRequest;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+
+public interface ICapabilityManagement {
+	public void clientAdded(RSPClient client);
+	public void clientRemoved(RSPClient client);
+	public String getCapabilityProperty(RSPClient c, String key);
+	public IStatus registerClientCapabilities(RSPClient c, ClientCapabilitiesRequest response);
+	public Map<String,String> getServerCapabilities();
+}

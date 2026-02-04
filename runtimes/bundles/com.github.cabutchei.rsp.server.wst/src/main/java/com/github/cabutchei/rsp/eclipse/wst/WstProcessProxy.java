@@ -2,11 +2,11 @@ package com.github.cabutchei.rsp.eclipse.wst;
 
 import java.util.Objects;
 
-import org.jboss.tools.rsp.eclipse.debug.core.DebugException;
-import org.jboss.tools.rsp.eclipse.debug.core.DebugPluginConstants;
-import org.jboss.tools.rsp.eclipse.debug.core.ILaunch;
-import org.jboss.tools.rsp.eclipse.debug.core.model.IProcess;
-import org.jboss.tools.rsp.eclipse.debug.core.model.IStreamsProxy;
+import com.github.cabutchei.rsp.eclipse.debug.core.DebugException;
+import com.github.cabutchei.rsp.eclipse.debug.core.DebugPluginConstants;
+import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
+import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
+import com.github.cabutchei.rsp.eclipse.debug.core.model.IStreamsProxy;
 
 public class WstProcessProxy implements IProcess {
 	private final org.eclipse.debug.core.model.IProcess wstProcess;

@@ -4,22 +4,24 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                              http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
   <parent>
-    <groupId>org.jboss.tools.rsp</groupId>
+    <groupId>com.github.cabutchei.rsp</groupId>
     <artifactId>framework</artifactId>
-    <version>0.26.18-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
   </parent>
-  <groupId>org.jboss.tools.rsp.framework</groupId>
+
+  <groupId>com.github.cabutchei.rsp.framework</groupId>
   <artifactId>tests</artifactId>
   <packaging>pom</packaging>
 
   <modules>
-    <module>org.jboss.tools.rsp.launching.test</module>
-    <module>org.jboss.tools.rsp.launching.java.test</module>
-    <module>org.jboss.tools.rsp.runtime.core.test</module>
-    <module>org.jboss.tools.rsp.secure.test</module>
-    <module>org.jboss.tools.rsp.server.test</module>
-    <module>org.jboss.tools.rsp.server.spi.test</module>
-    <module>org.jboss.tools.rsp.server.generic.test</module>
+    <module>com.github.cabutchei.rsp.launching.test</module>
+    <module>com.github.cabutchei.rsp.launching.java.test</module>
+    <module>com.github.cabutchei.rsp.runtime.core.test</module>
+    <module>com.github.cabutchei.rsp.secure.test</module>
+    <module>com.github.cabutchei.rsp.server.test</module>
+    <module>com.github.cabutchei.rsp.server.spi.test</module>
+    <module>com.github.cabutchei.rsp.server.generic.test</module>
   </modules>
 </project>

@@ -7,7 +7,7 @@
 	<parent>
 		<groupId>org.jboss.tools.rsp</groupId>
 		<artifactId>distribution</artifactId>
-		<version>0.26.18-SNAPSHOT</version>
+		<version>0.1.0-SNAPSHOT</version>
 	</parent>
 	<groupId>org.jboss.tools.rsp.distribution</groupId>
 	<artifactId>org.jboss.tools.rsp.distribution.itests</artifactId>
@@ -440,70 +440,80 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>org.jboss.tools.rsp.api.bundles</groupId>
-			<artifactId>org.jboss.tools.rsp.api</artifactId>
+			<groupId>com.github.cabutchei.rsp.api.bundles</groupId>
+			<artifactId>com.github.cabutchei.rsp.api</artifactId>
+			<version>${project.version}</version>
+			<type>eclipse-plugin</type>
+		</dependency>
+		<dependency>
+			<groupId>com.github.cabutchei.rsp.client.jars</groupId>
+			<artifactId>com.github.cabutchei.rsp.client.cli</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.jboss.tools.rsp.client.jars</groupId>
-			<artifactId>org.jboss.tools.rsp.client.cli</artifactId>
+			<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+			<artifactId>com.github.cabutchei.rsp.secure</artifactId>
 			<version>${project.version}</version>
+			<type>eclipse-plugin</type>
 		</dependency>
 		<dependency>
-			<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-			<artifactId>org.jboss.tools.rsp.secure</artifactId>
+			<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+			<artifactId>com.github.cabutchei.rsp.logging</artifactId>
 			<version>${project.version}</version>
+			<type>eclipse-plugin</type>
 		</dependency>
 		<dependency>
-			<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-			<artifactId>org.jboss.tools.rsp.logging</artifactId>
+			<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+			<artifactId>com.github.cabutchei.rsp.launching</artifactId>
 			<version>${project.version}</version>
+			<type>eclipse-plugin</type>
 		</dependency>
 		<dependency>
-			<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-			<artifactId>org.jboss.tools.rsp.launching</artifactId>
+			<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+			<artifactId>com.github.cabutchei.rsp.launching.java</artifactId>
 			<version>${project.version}</version>
+			<type>eclipse-plugin</type>
 		</dependency>
 		<dependency>
-			<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-			<artifactId>org.jboss.tools.rsp.launching.java</artifactId>
+			<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+			<artifactId>com.github.cabutchei.rsp.server.spi</artifactId>
 			<version>${project.version}</version>
+			<type>eclipse-plugin</type>
 		</dependency>
 		<dependency>
-			<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-			<artifactId>org.jboss.tools.rsp.server.spi</artifactId>
+			<groupId>com.github.cabutchei.rsp.framework.bundles</groupId>
+			<artifactId>com.github.cabutchei.rsp.server</artifactId>
 			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.jboss.tools.rsp.framework.bundles</groupId>
-			<artifactId>org.jboss.tools.rsp.server</artifactId>
-			<version>${project.version}</version>
+			<type>eclipse-plugin</type>
 		</dependency>
 
 		<dependency>
-			<groupId>org.jboss.tools.rsp.runtimes.bundles</groupId>
-			<artifactId>org.jboss.tools.rsp.server.redhat.download</artifactId>
+			<groupId>com.github.cabutchei.rsp.runtimes.bundles</groupId>
+			<artifactId>com.github.cabutchei.rsp.server.redhat.download</artifactId>
 			<version>${project.version}</version>
+			<type>eclipse-plugin</type>
 		</dependency>
 		<dependency>
-			<groupId>org.jboss.tools.rsp.runtimes.bundles</groupId>
-			<artifactId>org.jboss.tools.rsp.server.wildfly</artifactId>
+			<groupId>com.github.cabutchei.rsp.runtimes.bundles</groupId>
+			<artifactId>com.github.cabutchei.rsp.server.wildfly</artifactId>
 			<version>${project.version}</version>
+			<type>eclipse-plugin</type>
 		</dependency>
 		<dependency>
-			<groupId>org.jboss.tools.rsp.runtimes.bundles</groupId>
-			<artifactId>org.jboss.tools.rsp.server.minishift</artifactId>
+			<groupId>com.github.cabutchei.rsp.runtimes.bundles</groupId>
+			<artifactId>com.github.cabutchei.rsp.server.minishift</artifactId>
 			<version>${project.version}</version>
+			<type>eclipse-plugin</type>
 		</dependency>
 		<dependency>
-			<groupId>org.jboss.tools.rsp.framework.tests</groupId>
-			<artifactId>org.jboss.tools.rsp.launching.java.test</artifactId>
+			<groupId>com.github.cabutchei.rsp.framework.tests</groupId>
+			<artifactId>com.github.cabutchei.rsp.launching.java.test</artifactId>
 			<version>${project.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.jboss.tools.rsp.framework.tests</groupId>
-			<artifactId>org.jboss.tools.rsp.server.test</artifactId>
+			<groupId>com.github.cabutchei.rsp.framework.tests</groupId>
+			<artifactId>com.github.cabutchei.rsp.server.test</artifactId>
 			<version>${project.version}</version>
 			<scope>test</scope>
 		</dependency>

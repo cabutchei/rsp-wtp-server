@@ -1,7 +1,7 @@
 package com.github.cabutchei.rsp.eclipse.wst;
 
-import org.jboss.tools.rsp.server.spi.model.IServerModel;
-import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
+import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
 
 public interface IWstIntegrationService {
 	WSTFacade getFacade();

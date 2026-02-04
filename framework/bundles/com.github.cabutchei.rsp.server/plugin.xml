@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.core.runtime.applications"
+         id="com.github.cabutchei.rsp.server.application">
+      <application
+            cardinality="singleton-global"
+            thread="main"
+            visible="true">
+         <run class="com.github.cabutchei.rsp.server.application.RSPProductApplication"/>
+      </application>
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.products"
+         id="com.github.cabutchei.rsp.server.product">
+      <product
+            name="Runtime Server Protocol Equinox Server"
+            application="com.github.cabutchei.rsp.server.application">
+         <property
+               name="aboutText"
+               value="Runtime Server Protocol server packaged for the Equinox runtime."/>
+      </product>
+   </extension>
+</plugin>

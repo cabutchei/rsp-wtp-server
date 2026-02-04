@@ -1,10 +1,10 @@
 package com.github.cabutchei.rsp.server.liberty.impl;
 
-import org.jboss.tools.rsp.server.liberty.custom.beans.LibertyServerBeanTypeProvider;
-import org.jboss.tools.rsp.server.liberty.custom.servertype.LibertyServerTypes;
-import org.jboss.tools.rsp.server.spi.discovery.IServerBeanTypeProvider;
-import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
-import org.jboss.tools.rsp.server.spi.servertype.IServerType;
+import com.github.cabutchei.rsp.server.liberty.beans.LibertyServerBeanTypeProvider;
+import com.github.cabutchei.rsp.server.liberty.servertype.LibertyServerTypes;
+import com.github.cabutchei.rsp.server.spi.discovery.IServerBeanTypeProvider;
+import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 
 public class ExtensionHandler {
 	private static final IServerType[] TYPES = {

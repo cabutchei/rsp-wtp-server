@@ -6,15 +6,15 @@
  * 
  * Contributors: Red Hat, Inc.
  ******************************************************************************/
-package org.jboss.tools.rsp.server.liberty.impl;
+package com.github.cabutchei.rsp.server.liberty.impl;
 
-import org.jboss.tools.rsp.api.dao.DeployableState;
-import org.jboss.tools.rsp.launching.memento.JSONMemento;
-import org.jboss.tools.rsp.server.generic.servertype.GenericServerBehavior;
-import org.jboss.tools.rsp.server.spi.servertype.IServer;
-import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
-import org.jboss.tools.rsp.server.spi.servertype.IServerWorkingCopy;
-import org.jboss.tools.rsp.server.tomcat.servertype.impl.LibertyContextRootSupport;
+import com.github.cabutchei.rsp.api.dao.DeployableState;
+import com.github.cabutchei.rsp.launching.memento.JSONMemento;
+import com.github.cabutchei.rsp.server.generic.servertype.GenericServerBehavior;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
+import com.github.cabutchei.rsp.server.tomcat.servertype.impl.LibertyContextRootSupport;
 
 public class LibertyServerDelegate extends GenericServerBehavior implements IServerDelegate {
 

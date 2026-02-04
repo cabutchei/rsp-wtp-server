@@ -1,19 +1,19 @@
 package com.github.cabutchei.rsp.server.liberty.servertype;
 
-import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
-import org.jboss.tools.rsp.api.dao.Attributes;
-import org.jboss.tools.rsp.api.dao.ServerHandle;
-import org.jboss.tools.rsp.api.dao.ServerLaunchMode;
-import org.jboss.tools.rsp.api.dao.ServerType;
-import org.jboss.tools.rsp.api.dao.util.CreateServerAttributesUtility;
-import org.jboss.tools.rsp.eclipse.wst.WSTServerContext;
-import org.jboss.tools.rsp.server.liberty.custom.impl.Activator;
-import org.jboss.tools.rsp.server.liberty.custom.impl.LibertyServerDelegate;
-import org.jboss.tools.rsp.server.spi.servertype.AbstractServerType;
-import org.jboss.tools.rsp.server.spi.servertype.IServer;
-import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
-import org.jboss.tools.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
-import org.jboss.tools.rsp.launching.java.ILaunchModes;
+import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
+import com.github.cabutchei.rsp.api.dao.Attributes;
+import com.github.cabutchei.rsp.api.dao.ServerHandle;
+import com.github.cabutchei.rsp.api.dao.ServerLaunchMode;
+import com.github.cabutchei.rsp.api.dao.ServerType;
+import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
+import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;
+import com.github.cabutchei.rsp.server.liberty.impl.Activator;
+import com.github.cabutchei.rsp.server.liberty.impl.LibertyServerDelegate;
+import com.github.cabutchei.rsp.server.spi.servertype.AbstractServerType;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
+import com.github.cabutchei.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
+import com.github.cabutchei.rsp.launching.java.ILaunchModes;
 
 public class LibertyServerType extends AbstractServerType {
 	public static final String ATTR_LIBERTY_ID = "server.liberty.id";

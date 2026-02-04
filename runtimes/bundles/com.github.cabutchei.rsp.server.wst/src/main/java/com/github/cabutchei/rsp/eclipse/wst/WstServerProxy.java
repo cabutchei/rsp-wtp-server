@@ -12,22 +12,22 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.jboss.tools.rsp.api.ServerManagementAPIConstants;
-import org.jboss.tools.rsp.api.dao.Attributes;
-import org.jboss.tools.rsp.api.dao.util.CreateServerAttributesUtility;
-import org.jboss.tools.rsp.eclipse.core.runtime.CoreException;
-import org.jboss.tools.rsp.eclipse.core.runtime.IProgressMonitor;
-import org.jboss.tools.rsp.eclipse.core.runtime.IStatus;
-import org.jboss.tools.rsp.eclipse.core.runtime.Status;
-import org.jboss.tools.rsp.launching.memento.IMemento;
-import org.jboss.tools.rsp.launching.memento.JSONMemento;
-import org.jboss.tools.rsp.server.ServerCoreActivator;
-import org.jboss.tools.rsp.server.spi.model.IServerManagementModel;
-import org.jboss.tools.rsp.server.spi.model.IServerModel;
-import org.jboss.tools.rsp.server.spi.servertype.IServer;
-import org.jboss.tools.rsp.server.spi.servertype.IServerDelegate;
-import org.jboss.tools.rsp.server.spi.servertype.IServerType;
-import org.jboss.tools.rsp.server.spi.servertype.IServerWorkingCopy;
+import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
+import com.github.cabutchei.rsp.api.dao.Attributes;
+import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
+import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.launching.memento.IMemento;
+import com.github.cabutchei.rsp.launching.memento.JSONMemento;
+import com.github.cabutchei.rsp.server.ServerCoreActivator;
+import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 
 
 
@@ -35,7 +35,7 @@ import org.jboss.tools.rsp.server.spi.servertype.IServerWorkingCopy;
 
 public class WstServerProxy implements IServer {
 	// TODO: do we need these properties?
-	private static final String TYPE_ID = "org.jboss.tools.rsp.server.typeId";
+	private static final String TYPE_ID = "com.github.cabutchei.rsp.server.typeId";
 	private static final String MAP_PROPERTIES_KEY = "mapProperties";
 	private static final String LIST_PROPERTIES_KEY = "listProperties";
 	private static final String MAP_PROPERTY_KEY_PREFIX = "mapProperty";
@@ -304,10 +304,10 @@ public class WstServerProxy implements IServer {
 		}
 	}
 
-	public void addServerListener(org.jboss.tools.rsp.server.spi.servertype.IServerListener listener) {
+	public void addServerListener(com.github.cabutchei.rsp.server.spi.servertype.IServerListener listener) {
 		org.eclipse.wst.server.core.IServerListener wrapper = new org.eclipse.wst.server.core.IServerListener() {
 			public void serverChanged(org.eclipse.wst.server.core.ServerEvent event) {
-				org.jboss.tools.rsp.server.spi.servertype.ServerEvent rspEvent = WstServerProxy.this.adapter.toRspServerEvent(event, WstServerProxy.this);
+				com.github.cabutchei.rsp.server.spi.servertype.ServerEvent rspEvent = WstServerProxy.this.adapter.toRspServerEvent(event, WstServerProxy.this);
 				listener.serverChanged(rspEvent);
 			}
 		};

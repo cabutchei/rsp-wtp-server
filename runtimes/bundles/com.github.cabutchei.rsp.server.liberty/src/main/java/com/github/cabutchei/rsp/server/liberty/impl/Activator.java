@@ -1,9 +1,9 @@
 package com.github.cabutchei.rsp.server.liberty.impl;
 
-import org.jboss.tools.rsp.server.spi.RSPExtensionBundle;
-import org.jboss.tools.rsp.server.LauncherSingleton;
-import org.jboss.tools.rsp.server.ServerCoreActivator;
-import org.jboss.tools.rsp.eclipse.wst.IWstIntegrationService;
+import com.github.cabutchei.rsp.server.spi.RSPExtensionBundle;
+import com.github.cabutchei.rsp.server.LauncherSingleton;
+import com.github.cabutchei.rsp.server.ServerCoreActivator;
+import com.github.cabutchei.rsp.eclipse.wst.IWstIntegrationService;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.ServiceReference;
@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Activator extends RSPExtensionBundle {
-	public static final String BUNDLE_ID = "org.jboss.tools.rsp.server.liberty.custom";
+	public static final String BUNDLE_ID = "com.github.cabutchei.rsp.server.liberty";
 	private static final Logger LOG = LoggerFactory.getLogger(Activator.class);
 	private static volatile IWstIntegrationService wstIntegration;
 	private static volatile BundleContext bundleContext;

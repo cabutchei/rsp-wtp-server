@@ -1,0 +1,94 @@
+/*******************************************************************************
+ * Copyright (c) 2018 Red Hat, Inc. Distributed under license by Red Hat, Inc.
+ * All rights reserved. This program is made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is
+ * available at http://www.eclipse.org/legal/epl-v20.html
+ * 
+ * Contributors: Red Hat, Inc.
+ ******************************************************************************/
+package com.github.cabutchei.rsp.server;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+
+import org.eclipse.lsp4j.jsonrpc.MessageConsumer;
+import org.eclipse.lsp4j.jsonrpc.MessageProducer;
+import org.eclipse.lsp4j.jsonrpc.json.ConcurrentMessageProcessor;
+import com.github.cabutchei.rsp.api.SocketLauncher;
+import com.github.cabutchei.rsp.server.spi.client.MessageContextStore;
+import com.github.cabutchei.rsp.server.spi.client.MessageContextStore.MessageContext;
+
+class RSPServerSocketLauncher<T> extends SocketLauncher<T> {
+	private static final ExecutorService REQUEST_EXECUTOR = Executors.newCachedThreadPool(new ThreadFactory() {
+		@Override
+		public Thread newThread(Runnable r) {
+			return new Thread(() -> {
+				ClassLoader loader = OsgiClassLoaderHolder.get();
+				if (loader != null) {
+					Thread.currentThread().setContextClassLoader(loader);
+				}
+				r.run();
+			}, "RSP-JSONRPC");
+		}
+	});
+
+	public RSPServerSocketLauncher(Object localService, 
+			Class<T> remoteInterface, Socket socket,
+			MessageContextStore<T> contextStore,
+			PrintWriter tracing) throws IOException {
+		super(localService, remoteInterface, socket, createBuilder(contextStore), tracing);
+	}
+
+	static <T> Builder<T> createBuilder(MessageContextStore<T> store) {
+		Builder<T> builder = new Builder<T>() {
+			protected ConcurrentMessageProcessor createMessageProcessor(MessageProducer reader, 
+					MessageConsumer messageConsumer, T remoteProxy) {
+				return new CustomConcurrentMessageProcessor<T>(reader, messageConsumer, remoteProxy, store);
+			}
+		};
+		builder.setExecutorService(REQUEST_EXECUTOR);
+		return builder;
+	}
+
+	/*
+	 * The custom message processor, which can make sure to persist which clients are 
+	 * making a given request before propagating those requests to the server implementation. 
+	 */
+	public static class CustomConcurrentMessageProcessor<T> extends ConcurrentMessageProcessor {
+
+		private T remoteProxy;
+		private final MessageContextStore<T> threadMap;
+		public CustomConcurrentMessageProcessor(MessageProducer reader, MessageConsumer messageConsumer,
+				T remoteProxy, MessageContextStore<T> threadMap) {
+			super(reader, messageConsumer);
+			this.remoteProxy = remoteProxy;
+			this.threadMap = threadMap;
+		}
+
+		protected void processingStarted() {
+			super.processingStarted();
+			ClassLoader targetLoader = OsgiClassLoaderHolder.get();
+			if (targetLoader != null) {
+				Thread current = Thread.currentThread();
+				ClassLoader existing = current.getContextClassLoader();
+				if (existing != targetLoader) {
+					current.setContextClassLoader(targetLoader);
+				}
+			}
+			if (threadMap != null) {
+				threadMap.setContext(new MessageContext<T>(remoteProxy));
+			}
+		}
+
+		protected void processingEnded() {
+			super.processingEnded();
+			if (threadMap != null)
+				threadMap.clear();
+
+		}
+	}
+}

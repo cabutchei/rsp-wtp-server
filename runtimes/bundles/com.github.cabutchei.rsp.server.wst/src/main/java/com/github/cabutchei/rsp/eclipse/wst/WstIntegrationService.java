@@ -2,8 +2,8 @@ package com.github.cabutchei.rsp.eclipse.wst;
 
 import java.util.Objects;
 
-import org.jboss.tools.rsp.server.spi.model.IServerModel;
-import org.jboss.tools.rsp.server.spi.workspace.IWorkspaceService;
+import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
 
 import com.github.cabutchei.rsp.eclipse.workspace.EclipseWorkspaceService;
 

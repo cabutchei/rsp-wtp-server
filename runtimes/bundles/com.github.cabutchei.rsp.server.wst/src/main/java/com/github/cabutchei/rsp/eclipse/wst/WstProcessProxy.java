@@ -11,15 +11,12 @@ import com.github.cabutchei.rsp.eclipse.debug.core.model.IStreamsProxy;
 public class WstProcessProxy implements IProcess {
 	private final org.eclipse.debug.core.model.IProcess wstProcess;
 	private final WstLaunchProxy launch;
-	private final WstModelAdapter adapter;
 	private IStreamsProxy streamsProxy;
 
-	public WstProcessProxy(org.eclipse.debug.core.model.IProcess wstProcess, WstLaunchProxy launch,
-			WstModelAdapter adapter) {
+	public WstProcessProxy(org.eclipse.debug.core.model.IProcess wstProcess, WstLaunchProxy launch) {
 		this.wstProcess = Objects.requireNonNull(wstProcess, "wstProcess");
 		this.launch = launch;
 		// initializeAttributes(attributes);
-		this.adapter = adapter == null ? new WstModelAdapter() : adapter;
 		this.streamsProxy = new WstStreamsProxy(wstProcess.getStreamsProxy());
 		// String captureOutput = launch.getAttribute(DebugPluginConstants.ATTR_CAPTURE_OUTPUT);
 		// fCaptureOutput = !("false".equals(captureOutput)); //$NON-NLS-1$
@@ -63,7 +60,7 @@ public class WstProcessProxy implements IProcess {
 		try {
 			return wstProcess.getExitValue();
 		} catch (org.eclipse.debug.core.DebugException e) {
-			throw new DebugException(adapter.toRspStatus(e.getStatus()));
+			throw new DebugException(WstModelAdapter.toRspStatus(e.getStatus()));
 		}
 	}
 
@@ -82,7 +79,7 @@ public class WstProcessProxy implements IProcess {
 		try {
 			wstProcess.terminate();
 		} catch (org.eclipse.debug.core.DebugException e) {
-			throw new DebugException(adapter.toRspStatus(e.getStatus()));
+			throw new DebugException(WstModelAdapter.toRspStatus(e.getStatus()));
 		}
 	}
 }

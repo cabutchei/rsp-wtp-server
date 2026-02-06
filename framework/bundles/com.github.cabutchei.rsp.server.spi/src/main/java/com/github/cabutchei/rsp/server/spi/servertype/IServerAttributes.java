@@ -12,6 +12,8 @@ package com.github.cabutchei.rsp.server.spi.servertype;
 
 import java.util.List;
 import java.util.Map;
+
+import com.github.cabutchei.rsp.server.spi.util.IRspAdaptable;
 /**
  * Represents a server instance. Every server is an instance of a
  * particular, fixed server type.
@@ -43,12 +45,10 @@ import java.util.Map;
  * stop, and restart it.
  * </p>
  * <p>
- * IServerAttributes implements IAdaptable to allow users to obtain a
- * server-type-specific class. By casting the runtime extension to the type
- * prescribed in the API documentation for that particular server type, the
- * client can access server-type-specific properties and methods.
- * getAdapter() may involve plugin loading, and should not be called from
- * popup menus, etc.
+ * IServerAttributes implements {@link IRspAdaptable} to allow users to obtain a
+ * server-type-specific class (or any other adapter) without coupling the SPI to
+ * Eclipse runtime types. Implementations may return adapters to WST objects,
+ * server-specific delegates, etc.
  * </p>
  * <p>
  * The server framework maintains a global list of all known server instances
@@ -74,7 +74,7 @@ import java.util.Map;
  * 
  * @since 1.0
  */
-public interface IServerAttributes {
+public interface IServerAttributes extends IRspAdaptable {
 	/**
 	 * Returns the displayable name for this server.
 	 * <p>

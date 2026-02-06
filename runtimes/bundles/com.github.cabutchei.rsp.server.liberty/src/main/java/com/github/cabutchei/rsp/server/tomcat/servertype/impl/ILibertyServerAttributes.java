@@ -11,6 +11,7 @@ public interface ILibertyServerAttributes extends DefaultServerAttributes {
 	 * Required attributes
 	 */
 	public static final String SERVER_HOME = DefaultServerAttributes.SERVER_HOME_DIR;
+	public static final String LIBERTY_PROFILE = "server.liberty.id";
 	
 	/*
 	 * Optional attributes

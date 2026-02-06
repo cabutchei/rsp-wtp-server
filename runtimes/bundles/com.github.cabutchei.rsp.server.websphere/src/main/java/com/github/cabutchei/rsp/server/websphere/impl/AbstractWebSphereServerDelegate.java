@@ -30,6 +30,7 @@ import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
 import com.github.cabutchei.rsp.launching.java.ILaunchModes;
 import com.github.cabutchei.rsp.launching.utils.LaunchingDebugProperties;
 import com.github.cabutchei.rsp.server.model.AbstractServerDelegate;
+import com.github.cabutchei.rsp.server.spi.servertype.CreateServerValidation;
 import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerPublishModel;
@@ -79,6 +80,18 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractServerDele
 
 	public void setWSTServerFacade(WSTServerContext wstServerFacade) {
 		this.wstServerFacade = wstServerFacade;
+	}
+
+	@Override
+	public CreateServerValidation validate() {
+		IStatus status;
+		try {
+			status = WebSphereWstServerAccess.validateWebSphereProfileExists(getServer());
+			return new CreateServerValidation(status, List.of(IWebSphereServerAttributes.WEBSPHERE_PROFILE));
+		} catch (CoreException e) {
+			status = new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Error validating WebSphere profile existence: " + e.getMessage(), e);
+			return new CreateServerValidation(status, List.of(IWebSphereServerAttributes.WEBSPHERE_PROFILE));
+		}
 	}
 
 	@Override
@@ -139,14 +152,14 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractServerDele
 			s = StatusConverter.convert(stat);
 			return new StartServerResponse(s, null);
 		}
-		CommandLineDetails details = new CommandLineDetails();
-		try {
-			if (ILaunchModes.DEBUG.equals(mode)) {
-				addDebugDetails(WebSphereWstServerAccess.getDebugPort(wstServerFacade), details);
-			}
-			launchStreamAttacher.reset();
-			launchStreamAttacher.attach();
-			wstServerFacade.startAsync(mode);
+			CommandLineDetails details = new CommandLineDetails();
+			try {
+				if (ILaunchModes.DEBUG.equals(mode)) {
+					addDebugDetails(WebSphereWstServerAccess.getDebugPort(getServer()), details);
+				}
+				launchStreamAttacher.reset();
+				launchStreamAttacher.attach();
+				wstServerFacade.startAsync(mode);
 		} catch (CoreException e) {
 			launchStreamAttacher.reset();
 			s = StatusConverter.convert(e.getStatus());

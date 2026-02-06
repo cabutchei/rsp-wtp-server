@@ -86,6 +86,8 @@ import com.github.cabutchei.rsp.server.core.internal.ServerStringConstants;
 import com.github.cabutchei.rsp.server.discovery.serverbeans.ServerBeanLoader;
 import com.github.cabutchei.rsp.server.model.RemoteEventManager;
 import com.github.cabutchei.rsp.server.spi.client.ClientThreadLocal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.github.cabutchei.rsp.server.spi.jobs.IJob;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
@@ -99,8 +101,12 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import com.github.cabutchei.rsp.server.workspace.WorkspaceFolderChangeHandler;
 
+
+
 public class ServerManagementServerImpl implements RSPServer, WTPServer {
-	
+
+	private static final Logger LOG = LoggerFactory.getLogger(ServerManagementServerImpl.class);
+
 	private final List<RSPWTPClient> clients = new CopyOnWriteArrayList<>();
 	private final List<SocketLauncher<RSPWTPClient>> launchers = new CopyOnWriteArrayList<>();
 	
@@ -135,6 +141,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		this.launchers.add(launcher);
 		RSPWTPClient client = launcher.getRemoteProxy();
 		this.clients.add(client);
+		LOG.info("addClient: now {} active launchers, {} clients", this.launchers.size(), this.clients.size());
 		return () -> this.removeClient(launcher);
 	}
 
@@ -147,6 +154,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		this.launchers.remove(launcher);
 		this.managementModel.clientRemoved(launcher.getRemoteProxy());
 		this.clients.remove(launcher.getRemoteProxy());
+		LOG.info("removeClient: now {} active launchers, {} clients", this.launchers.size(), this.clients.size());
 	}
 	
 	public List<SocketLauncher<RSPWTPClient>> getActiveLaunchers() {

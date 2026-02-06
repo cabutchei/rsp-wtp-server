@@ -33,7 +33,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 
 /** A proxy for a WST server that implements the IServer interface. */
 
-public class WstServerProxy implements IServer {
+public class WstServerProxy implements IServer, IWstServerBacked {
 	// TODO: do we need these properties?
 	private static final String TYPE_ID = "com.github.cabutchei.rsp.server.typeId";
 	private static final String MAP_PROPERTIES_KEY = "mapProperties";
@@ -43,22 +43,17 @@ public class WstServerProxy implements IServer {
 	private static final String PROPERTY_KEY_VALUE_PREFIX = "value";
 
 	private final org.eclipse.wst.server.core.IServer wstServer;
-	private final IServerType serverType;
 	private final IServerManagementModel managementModel;
 	private final IServerModel serverModel;
-	private final WstModelAdapter adapter;
 	private IServerDelegate delegate;
 
-	public WstServerProxy(org.eclipse.wst.server.core.IServer wstServer, IServerType serverType,
-			IServerManagementModel managementModel, IServerModel serverModel, WstModelAdapter adapter) {
+	public WstServerProxy(org.eclipse.wst.server.core.IServer wstServer, IServerManagementModel managementModel) {
 		this.wstServer = Objects.requireNonNull(wstServer, "wstServer");
-		this.serverType = serverType;
 		this.managementModel = managementModel;
-		this.serverModel = serverModel;
-		this.adapter = adapter == null ? new WstModelAdapter() : adapter;
-		if( this.serverType != null ) {
+		this.serverModel = managementModel.getServerModel();
+		if(getServerType() != null ) {
 			// setAttribute(TYPE_ID, serverType.getId());
-			this.delegate = this.serverType.createServerDelegate(this);
+			this.delegate = getServerType().createServerDelegate(this);
 		}
 		if( delegate != null && delegate.getServerPublishModel() != null ) {
 			delegate.getServerPublishModel().initialize(Collections.emptyList());
@@ -72,7 +67,8 @@ public class WstServerProxy implements IServer {
 		// }
 	}
 
-	org.eclipse.wst.server.core.IServer getWstServer() {
+	@Override
+	public org.eclipse.wst.server.core.IServer getWstServer() {
 		return wstServer;
 	}
 
@@ -92,8 +88,8 @@ public class WstServerProxy implements IServer {
 
 	@Override
 	public String getTypeId() {
-		if (serverType != null) {
-			return serverType.getId();
+		if (getServerType() != null) {
+			return getServerType().getId();
 		}
 		if (wstServer.getServerType() != null) {
 			return wstServer.getServerType().getId();
@@ -103,7 +99,7 @@ public class WstServerProxy implements IServer {
 
 	@Override
 	public IServerType getServerType() {
-		return serverType;
+		return WstModelAdapter.toRspServerType(wstServer.getServerType(), serverModel);
 	}
 
 	@Override
@@ -114,8 +110,27 @@ public class WstServerProxy implements IServer {
 	@Override
 	public IServerWorkingCopy createWorkingCopy() {
 		org.eclipse.wst.server.core.IServerWorkingCopy copy = wstServer.createWorkingCopy();
-		return new WstServerWorkingCopy(copy, adapter);
+		return new WstServerWorkingCopyProxy(copy, managementModel);
 	}
+
+	@Override
+	public <T> T getAdapter(Class<T> adapterType) {
+		if (adapterType == null) {
+			return null;
+		}
+		if (adapterType.isInstance(this)) {
+			return adapterType.cast(this);
+		}
+			if (adapterType.isInstance(wstServer)) {
+				return adapterType.cast(wstServer);
+			}
+			try {
+				Object adapted = wstServer.loadAdapter(adapterType, null);
+				return adapterType.cast(adapted);
+			} catch (Exception e) {
+				return null;
+			}
+		}
 
 	@Override
 	public String asJson(IProgressMonitor monitor) throws CoreException {
@@ -142,7 +157,7 @@ public class WstServerProxy implements IServer {
 		try {
 			wstServer.delete();
 		} catch (org.eclipse.core.runtime.CoreException ce) {
-			throw new CoreException(adapter.toRspStatus(ce.getStatus()));
+			throw new CoreException(WstModelAdapter.toRspStatus(ce.getStatus()));
 		}
 	}
 
@@ -193,9 +208,9 @@ public class WstServerProxy implements IServer {
 		if (typeId != null) {
 			map.put(TYPE_ID, typeId);
 		}
-		if (serverType != null) {
-			addAttributesFromType(map, serverType.getRequiredAttributes());
-			addAttributesFromType(map, serverType.getOptionalAttributes());
+		if (getServerType() != null) {
+			addAttributesFromType(map, getServerType().getRequiredAttributes());
+			addAttributesFromType(map, getServerType().getOptionalAttributes());
 		}
 		return map;
 	}
@@ -307,89 +322,12 @@ public class WstServerProxy implements IServer {
 	public void addServerListener(com.github.cabutchei.rsp.server.spi.servertype.IServerListener listener) {
 		org.eclipse.wst.server.core.IServerListener wrapper = new org.eclipse.wst.server.core.IServerListener() {
 			public void serverChanged(org.eclipse.wst.server.core.ServerEvent event) {
-				com.github.cabutchei.rsp.server.spi.servertype.ServerEvent rspEvent = WstServerProxy.this.adapter.toRspServerEvent(event, WstServerProxy.this);
+				com.github.cabutchei.rsp.server.spi.servertype.ServerEvent rspEvent = WstModelAdapter.toRspServerEvent(event,
+						WstServerProxy.this);
 				listener.serverChanged(rspEvent);
 			}
 		};
 		this.wstServer.addServerListener(wrapper);
 	}
 
-	private static class WstServerWorkingCopy implements IServerWorkingCopy {
-		private final org.eclipse.wst.server.core.IServerWorkingCopy wstWorkingCopy;
-		private final WstModelAdapter adapter;
-
-		WstServerWorkingCopy(org.eclipse.wst.server.core.IServerWorkingCopy wstWorkingCopy, WstModelAdapter adapter) {
-			this.wstWorkingCopy = wstWorkingCopy;
-			this.adapter = adapter == null ? new WstModelAdapter() : adapter;
-		}
-
-		@Override
-		public String getName() {
-			return wstWorkingCopy.getName();
-		}
-
-		@Override
-		public String getId() {
-			return wstWorkingCopy.getId();
-		}
-
-		@Override
-		public int getAttribute(String attributeName, int defaultValue) {
-			return wstWorkingCopy.getAttribute(attributeName, defaultValue);
-		}
-
-		@Override
-		public boolean getAttribute(String attributeName, boolean defaultValue) {
-			return wstWorkingCopy.getAttribute(attributeName, defaultValue);
-		}
-
-		@Override
-		public String getAttribute(String attributeName, String defaultValue) {
-			return wstWorkingCopy.getAttribute(attributeName, defaultValue);
-		}
-
-		@Override
-		public List<String> getAttribute(String attributeName, List<String> defaultValue) {
-			return wstWorkingCopy.getAttribute(attributeName, defaultValue);
-		}
-
-		@Override
-		public Map getAttribute(String attributeName, Map defaultValue) {
-			return wstWorkingCopy.getAttribute(attributeName, defaultValue);
-		}
-
-		@Override
-		public void setAttribute(String attributeName, int value) {
-			wstWorkingCopy.setAttribute(attributeName, value);
-		}
-
-		@Override
-		public void setAttribute(String attributeName, boolean value) {
-			wstWorkingCopy.setAttribute(attributeName, value);
-		}
-
-		@Override
-		public void setAttribute(String attributeName, String value) {
-			wstWorkingCopy.setAttribute(attributeName, value);
-		}
-
-		@Override
-		public void setAttribute(String attributeName, List<String> value) {
-			wstWorkingCopy.setAttribute(attributeName, value);
-		}
-
-		@Override
-		public void setAttribute(String attributeName, Map<?, ?> value) {
-			wstWorkingCopy.setAttribute(attributeName, value);
-		}
-
-		@Override
-		public void save(IProgressMonitor monitor) throws CoreException {
-			try {
-				wstWorkingCopy.save(false, new NullProgressMonitor());
-			} catch (org.eclipse.core.runtime.CoreException ce) {
-				throw new CoreException(adapter.toRspStatus(ce.getStatus()));
-			}
-		}
-	}
 }

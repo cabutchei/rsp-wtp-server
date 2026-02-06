@@ -8,8 +8,6 @@ public interface IWstIntegrationService {
 
 	ServerHandleRegistry getRegistry();
 
-	WstModelAdapter getAdapter();
-
 	IWorkspaceService getWorkspaceService();
 
 	void dispose(IServerModel model);

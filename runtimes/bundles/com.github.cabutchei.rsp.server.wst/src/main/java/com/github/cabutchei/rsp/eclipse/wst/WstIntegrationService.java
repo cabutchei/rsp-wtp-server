@@ -14,7 +14,6 @@ public final class WstIntegrationService implements IWstIntegrationService {
 
 	private final ServerHandleRegistry registry;
 	private final WSTFacade facade;
-	private final WstModelAdapter adapter;
 	private final IWorkspaceService workspaceService;
 
 	public WstIntegrationService() {
@@ -23,9 +22,8 @@ public final class WstIntegrationService implements IWstIntegrationService {
 
 	public WstIntegrationService(ServerHandleRegistry registry) {
 		this.registry = Objects.requireNonNull(registry, "registry");
-		this.adapter = new WstModelAdapter();
 		this.workspaceService = new EclipseWorkspaceService();
-		this.facade = new WSTFacade(this.registry, this.adapter, this.workspaceService);
+		this.facade = new WSTFacade(this.registry, this.workspaceService);
 		if (this.workspaceService instanceof EclipseWorkspaceService) {
 			((EclipseWorkspaceService) this.workspaceService).setWstFacade(this.facade);
 		}
@@ -39,11 +37,6 @@ public final class WstIntegrationService implements IWstIntegrationService {
 	@Override
 	public ServerHandleRegistry getRegistry() {
 		return registry;
-	}
-
-	@Override
-	public WstModelAdapter getAdapter() {
-		return adapter;
 	}
 
 	@Override

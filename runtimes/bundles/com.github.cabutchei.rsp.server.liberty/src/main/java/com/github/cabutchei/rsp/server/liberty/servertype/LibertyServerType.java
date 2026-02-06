@@ -16,7 +16,6 @@ import com.github.cabutchei.rsp.server.tomcat.servertype.impl.ILibertyServerAttr
 import com.github.cabutchei.rsp.launching.java.ILaunchModes;
 
 public class LibertyServerType extends AbstractServerType {
-	public static final String ATTR_LIBERTY_ID = "server.liberty.id";
 	public static final String ATTR_HTTP_PORT = "server.http.port";
 	public static final String ATTR_CLASSPATH_ADDITIONS = "server.classpath.additions";
 
@@ -48,7 +47,7 @@ public class LibertyServerType extends AbstractServerType {
 					ServerManagementAPIConstants.ATTR_TYPE_LOCAL_FOLDER,
 					"A filesystem path pointing to a server installation's root directory",
 					null);
-			attrs.addAttribute(ATTR_LIBERTY_ID,
+			attrs.addAttribute(ILibertyServerAttributes.LIBERTY_PROFILE,
 					ServerManagementAPIConstants.ATTR_TYPE_STRING,
 					"The server profile name",
 					"defaultServer");

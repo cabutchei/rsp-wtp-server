@@ -11,6 +11,7 @@ import com.github.cabutchei.rsp.api.dao.ListServerActionResponse;
 import com.github.cabutchei.rsp.api.dao.ServerActionRequest;
 import com.github.cabutchei.rsp.api.dao.ServerActionWorkflow;
 import com.github.cabutchei.rsp.api.dao.WorkflowResponse;
+import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.server.discovery.serverbeans.ServerBeanLoader;
@@ -48,10 +49,16 @@ public abstract class AbstractLibertyServerDelegate extends AbstractServerDelega
 	@Override
 	public CreateServerValidation validate() {
 		String validationType = getServer().getAttribute("server.home.validation", "discovery");
+		CreateServerValidation homeValidation;
 		if ("isFolder".equals(validationType)) {
-			return validateServerHomeFolderExists(getServer());
+			homeValidation = validateServerHomeFolderExists(getServer());
+		} else {
+			homeValidation = validateServerHomeDiscovery(getServer());
 		}
-		return validateServerHomeDiscovery(getServer());
+		if (homeValidation != null && homeValidation.getStatus() != null && !homeValidation.getStatus().isOK()) {
+			return homeValidation;
+		}
+		return validateLibertyServerExists(getServer());
 	}
 
 	private CreateServerValidation validateServerHomeFolderExists(IServer server) {
@@ -83,6 +90,35 @@ public abstract class AbstractLibertyServerDelegate extends AbstractServerDelega
 		return new CreateServerValidation(Status.OK_STATUS, new ArrayList<>());
 	}
 
+	private CreateServerValidation validateLibertyServerExists(IServer server) {
+		String home = getServerHome(server);
+		if (home == null) {
+			IStatus failed = new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Server home is required");
+			return new CreateServerValidation(failed, List.of(getServerHomeKey()));
+		}
+		String libertyId = getLibertyServerId();
+		if (libertyId == null || libertyId.trim().isEmpty()) {
+			IStatus failed = new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Liberty server id is required");
+			return new CreateServerValidation(failed, List.of(ILibertyServerAttributes.LIBERTY_PROFILE));
+		}
+		// File usrServers = new File(home, "usr/servers");
+		// File serverDir = new File(usrServers, libertyId);
+		// if (!serverDir.isDirectory()) {
+		// 	IStatus failed = new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+		// 			"Liberty server '" + libertyId + "' was not found under " + usrServers.getAbsolutePath());
+		// 	return new CreateServerValidation(failed, List.of(ILibertyServerAttributes.LIBERTY_PROFILE));
+		// }
+		// return new CreateServerValidation(Status.OK_STATUS, new ArrayList<>());
+		IStatus status;
+		try {
+			status = LibertyWstServerAccess.validateLibertyServerExists(server);
+			return new CreateServerValidation(status, List.of(ILibertyServerAttributes.LIBERTY_PROFILE));
+		} catch (CoreException e) {
+			status = new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Error validating Liberty server existence: " + e.getMessage(), e);
+			return new CreateServerValidation(status, List.of(ILibertyServerAttributes.LIBERTY_PROFILE));
+		}
+	}
+
 	private String getServerHomeKey() {
 		String path = getServer().getAttribute(DefaultServerAttributes.SERVER_HOME_DIR, (String) null);
 		if (path != null) {
@@ -109,11 +145,11 @@ public abstract class AbstractLibertyServerDelegate extends AbstractServerDelega
 	}
 
 	protected String getLibertyServerId(IServerWorkingCopy server) {
-		return server.getAttribute(LibertyServerType.ATTR_LIBERTY_ID, DEFAULT_LIBERTY_ID);
+		return server.getAttribute(ILibertyServerAttributes.LIBERTY_PROFILE, DEFAULT_LIBERTY_ID);
 	}
 
 	protected String getLibertyServerId() {
-		return getServer().getAttribute(LibertyServerType.ATTR_LIBERTY_ID, DEFAULT_LIBERTY_ID);
+		return getServer().getAttribute(ILibertyServerAttributes.LIBERTY_PROFILE, DEFAULT_LIBERTY_ID);
 	}
 
 	protected String getShowInBrowserBaseUrl() {

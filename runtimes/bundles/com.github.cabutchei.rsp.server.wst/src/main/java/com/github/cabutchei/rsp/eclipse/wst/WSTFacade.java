@@ -54,6 +54,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
 import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
@@ -64,35 +65,25 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 
 
 
-public class WSTFacade {
+	public class WSTFacade {
 
 	private static final String KIND_FOLDER = "folder";
 	private static final String KIND_PROJECT = "project";
-	private static final String KIND_ARCHIVE = "archive";
+		private static final String KIND_ARCHIVE = "archive";
 
-	private final ServerHandleRegistry registry;
-	private final WstModelAdapter adapter;
-	private final IWorkspaceService workspaceService;
+		private final ServerHandleRegistry registry;
+		private final IWorkspaceService workspaceService;
 
-	public WSTFacade(ServerHandleRegistry registry, IWorkspaceService workspaceService) {
-		this(registry, new WstModelAdapter(), workspaceService);
-	}
-
-	public WSTFacade(ServerHandleRegistry registry, WstModelAdapter adapter, IWorkspaceService workspaceService) {
-		this.registry = Objects.requireNonNull(registry, "registry");
-		this.adapter = Objects.requireNonNull(adapter, "adapter");
-		this.workspaceService = workspaceService;
-	}
+		public WSTFacade(ServerHandleRegistry registry, IWorkspaceService workspaceService) {
+			this.registry = Objects.requireNonNull(registry, "registry");
+			this.workspaceService = workspaceService;
+		}
 
 	public ServerHandleRegistry getRegistry() {
 		return registry;
 	}
 
-	public WstModelAdapter getAdapter() {
-		return adapter;
-	}
-
-	public List<DeploymentAssemblyEntry> getDeploymentAssembly(IProject project) {
+		public List<DeploymentAssemblyEntry> getDeploymentAssembly(IProject project) {
 		if (project == null || !project.exists()) {
 			return null;
 		}
@@ -163,6 +154,9 @@ public class WSTFacade {
 	}
 
 	public List<IProject> listDeploymentAssemblyProjects(java.nio.file.Path projectPath, String projectName) {
+		// org.eclipse.wst.server.core.IServerWorkingCopy wc;
+		// org.eclipse.wst.server.core.IServer wstServer;
+		// wstServer.delegat
 		IProject project = resolveProject(projectPath, projectName);
 		if (project == null || !project.exists()) {
 			return Collections.emptyList();
@@ -215,21 +209,31 @@ public class WSTFacade {
 		return removeReference(project, entry);
 	}
 
-	public IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer, IServerManagementModel managementModel) {
+	private IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer, IServerManagementModel managementModel) {
 		return createServerProxy(wstServer, managementModel, null);
 	}
-
-	public IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer,
-			IServerManagementModel managementModel, IServerDelegate delegate) {
-		Objects.requireNonNull(wstServer, "wstServer");
-		IServerModel serverModel = managementModel.getServerModel();
-		IServerType serverType = serverModel.getIServerType(wstServer.getServerType().getId());
-		WstServerProxy proxy = new WstServerProxy(wstServer, serverType, managementModel, serverModel, adapter);
-		if (delegate != null) {
-			proxy.setDelegate(delegate);
-		}
-		return proxy;
+	
+	private IServerWorkingCopy createServerWorkingCopyProxy(org.eclipse.wst.server.core.IServerWorkingCopy wstServer, IServerManagementModel managementModel) {
+		return createServerWorkingCopyProxy(wstServer, managementModel, null);
 	}
+
+		private IServerWorkingCopy createServerWorkingCopyProxy(org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy,
+				IServerManagementModel managementModel, IServerDelegate delegate) {
+			Objects.requireNonNull(wstServerWorkingCopy, "wstServerWorkingCopy");
+			WstServerWorkingCopyProxy proxy = new WstServerWorkingCopyProxy(
+				wstServerWorkingCopy, managementModel);
+			return proxy;
+		}
+		public IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer,
+				IServerManagementModel managementModel, IServerDelegate delegate) {
+			Objects.requireNonNull(wstServer, "wstServer");
+			WstServerProxy proxy = new WstServerProxy(
+				wstServer, managementModel);
+			if (delegate != null) {
+				proxy.setDelegate(delegate);
+			}
+			return proxy;
+		}
 
 	public IServer[] createServeProxies(IServerManagementModel managementModel) {
 		List<IServer> rspServers = new ArrayList<>();
@@ -244,18 +248,23 @@ public class WSTFacade {
 	}
 
 	public IStatus addDeployable(DeployableReference ref, ServerHandle server) {
-			IProject project = this.workspaceService.getProject(ref.getLabel());
-			IModule[] modules = ServerUtil.getModules(project);
-			org.eclipse.wst.server.core.IServerWorkingCopy copy = getWstServer(server.getId()).createWorkingCopy();
-			try {
-				copy.modifyModules(modules, null, new NullProgressMonitor());
-				copy.save(false, new NullProgressMonitor());
-			} catch (org.eclipse.core.runtime.CoreException e) {
-				e.printStackTrace();
-				IStatus status = this.adapter.toRspStatus(e.getStatus());
-				return status;
-			}
-			return Status.OK_STATUS;
+		IProject project = this.workspaceService.getProject(ref.getLabel());
+		IModule[] modules = ServerUtil.getModules(project);
+		try {
+			modules = getWstServer(server.getId()).getRootModules(modules[0], null);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			e.printStackTrace();
+		}
+		org.eclipse.wst.server.core.IServerWorkingCopy copy = getWstServer(server.getId()).createWorkingCopy();
+		try {
+			copy.modifyModules(modules, null, new NullProgressMonitor());
+			copy.save(false, new NullProgressMonitor());
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			e.printStackTrace();
+			IStatus status = WstModelAdapter.toRspStatus(e.getStatus());
+			return status;
+		}
+		return Status.OK_STATUS;
 	}
 
 	public IStatus canAddDeployable(DeployableReference ref, ServerHandle server) {
@@ -268,8 +277,13 @@ public class WSTFacade {
 			IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
 			return status;
 		}
+		try {
+			modules = getWstServer(server.getId()).getRootModules(modules[0], null);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			e.printStackTrace();
+		}
 		org.eclipse.core.runtime.IStatus status = getWstServer(server.getId()).canModifyModules(modules, null, new NullProgressMonitor());
-		return this.adapter.toRspStatus(status);
+		return WstModelAdapter.toRspStatus(status);
 	}
 
 	public IStatus removeDeployable(DeployableReference ref, ServerHandle server) {
@@ -289,8 +303,8 @@ public class WSTFacade {
 			return Status.OK_STATUS;
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			e.printStackTrace();
-			IStatus status = this.adapter.toRspStatus(e.getStatus());
-			return status;
+				IStatus status = WstModelAdapter.toRspStatus(e.getStatus());
+				return status;
 		}
 	}
 
@@ -305,28 +319,28 @@ public class WSTFacade {
 			return status;
 		}
 		org.eclipse.core.runtime.IStatus status = getWstServer(server.getId()).canModifyModules(null, modules, new NullProgressMonitor());
-		return this.adapter.toRspStatus(status);
+			return WstModelAdapter.toRspStatus(status);
 	}
 
-	public IStatus canPublish(ServerHandle server) {
-		return this.adapter.toRspStatus(getWstServer(server.getId()).canPublish());
-	}
+		public IStatus canPublish(ServerHandle server) {
+			return WstModelAdapter.toRspStatus(getWstServer(server.getId()).canPublish());
+		}
 
-	public IStatus publish(ServerHandle handle, int rspKind) {
-		org.eclipse.core.runtime.IStatus status = getWstServer(handle.getId())
-		.publish(this.adapter.toWstPublishKind(rspKind), new NullProgressMonitor());
-		return this.adapter.toRspStatus(status);
-	}
+		public IStatus publish(ServerHandle handle, int rspKind) {
+			org.eclipse.core.runtime.IStatus status = getWstServer(handle.getId())
+			.publish(WstModelAdapter.toWstPublishKind(rspKind), new NullProgressMonitor());
+			return WstModelAdapter.toRspStatus(status);
+		}
 
-	public int getServerPublishState(ServerHandle handle) {
-		int publishState = getWstServer(handle.getId()).getServerPublishState();
-		return this.adapter.toRspPublishState(publishState);
-	}
+		public int getServerPublishState(ServerHandle handle) {
+			int publishState = getWstServer(handle.getId()).getServerPublishState();
+			return WstModelAdapter.toRspPublishState(publishState);
+		}
 
-	public int getServerRunState(ServerHandle handle) {
-		int runState = getWstServer(handle.getId()).getServerState();
-		return this.adapter.toRspServerState(runState);
-	}
+		public int getServerRunState(ServerHandle handle) {
+			int runState = getWstServer(handle.getId()).getServerState();
+			return WstModelAdapter.toRspServerState(runState);
+		}
 
 	private org.eclipse.wst.server.core.IModule getModule(ServerHandle handle, String name) {
 		for ( org.eclipse.wst.server.core.IModule module : getWstServer(handle.getId()).getModules()) {
@@ -405,19 +419,18 @@ public class WSTFacade {
 		return result;
 	}
 
-	public List<DeployableState> getDeployableStates(ServerHandle server) {
-		List<DeployableState> states = new ArrayList<>();
-		IModule[] modules = getModules(server);
-		for (IModule module : modules) {
-			// DeployableReference ref = this.adapter.toDeployableReference(module);
-			DeployableReference ref = toDeployableReference(module);
-			int runState = this.adapter.toRspServerState(getModuleRunState(server, ref));
-			int publishState = this.adapter.toRspPublishState(getModulePublishState(server, ref));
-			DeployableState ds = new DeployableState(server, ref, runState, publishState);
-			states.add(ds);
+		public List<DeployableState> getDeployableStates(ServerHandle server) {
+			List<DeployableState> states = new ArrayList<>();
+			IModule[] modules = getModules(server);
+			for (IModule module : modules) {
+				DeployableReference ref = toDeployableReference(module);
+				int runState = WstModelAdapter.toRspServerState(getModuleRunState(server, ref));
+				int publishState = WstModelAdapter.toRspPublishState(getModulePublishState(server, ref));
+				DeployableState ds = new DeployableState(server, ref, runState, publishState);
+				states.add(ds);
+			}
+			return states;
 		}
-		return states;
-	}
 
 	public List<ModuleState> getModuleStates(ServerHandle server) {
 		List<ModuleState> states = new ArrayList<>();
@@ -429,34 +442,34 @@ public class WSTFacade {
 		for (IModule module : modules) {
 			DeployableReference deployable = toDeployableReference(module);
 			List<IModule> children = collectChildModules(wstServer, module);
-			for (IModule child : children) {
-				ModuleReference moduleRef = toModuleReference(child);
-				int runState = this.adapter.toRspServerState(getModuleRunState(wstServer, child));
-				int publishState = this.adapter.toRspPublishState(getModulePublishState(wstServer, child));
-				states.add(new ModuleState(deployable, moduleRef, runState, publishState));
+				for (IModule child : children) {
+					ModuleReference moduleRef = toModuleReference(child);
+					int runState = WstModelAdapter.toRspServerState(getModuleRunState(wstServer, child));
+					int publishState = WstModelAdapter.toRspPublishState(getModulePublishState(wstServer, child));
+					states.add(new ModuleState(deployable, moduleRef, runState, publishState));
+				}
 			}
+			return states;
 		}
-		return states;
-	}
 
-	public DeployableState getDeployableState(ServerHandle handle, DeployableReference ref) {
-		int runState = this.adapter.toRspServerState(getModuleRunState(handle, ref));
-		int publishState = this.adapter.toRspPublishState(getModulePublishState(handle, ref));
-		DeployableState ds = new DeployableState(handle, ref, runState, publishState);	
-		return ds;
-	}
+		public DeployableState getDeployableState(ServerHandle handle, DeployableReference ref) {
+			int runState = WstModelAdapter.toRspServerState(getModuleRunState(handle, ref));
+			int publishState = WstModelAdapter.toRspPublishState(getModulePublishState(handle, ref));
+			DeployableState ds = new DeployableState(handle, ref, runState, publishState);	
+			return ds;
+		}
 
 
-	public IServer createServer(IServerType serverType, String id, Map<String, Object> attributes, IServerManagementModel model) throws CoreException {
+	public IServerWorkingCopy createServer(IServerType serverType, String id, Map<String, Object> attributes, IServerManagementModel model) throws CoreException {
 		org.eclipse.wst.server.core.IServer wstServer = null;
 		if (serverType == null) {
 			throw new IllegalArgumentException("serverType cannot be null");
-		}
-		org.eclipse.core.runtime.IProgressMonitor monitor = new NullProgressMonitor();
-		org.eclipse.wst.server.core.IServerType wstServerType = this.adapter.toWstServerType(serverType);
-		if (wstServerType == null) {
-			throw new CoreException(new Status(IStatus.ERROR, "", "Server Type " + serverType.getId() + " is unknown by this Eclipse application"));
-		}
+			}
+			org.eclipse.core.runtime.IProgressMonitor monitor = new NullProgressMonitor();
+			org.eclipse.wst.server.core.IServerType wstServerType = WstModelAdapter.toWstServerType(serverType);
+			if (wstServerType == null) {
+				throw new CoreException(new Status(IStatus.ERROR, "", "Server Type " + serverType.getId() + " is unknown by this Eclipse application"));
+			}
 		org.eclipse.wst.server.core.IRuntimeType wstRuntimeType = wstServerType.getRuntimeType();
 		org.eclipse.wst.server.core.IRuntimeWorkingCopy runtimeWC;
 		try {
@@ -469,15 +482,40 @@ public class WSTFacade {
 			// set same id so we can retrieve the rsp-wst pairs
 			org.eclipse.wst.server.core.IServerWorkingCopy server = wstServerType.createServer(id, null, run, monitor);
 			server.setName(id);
+			applyAttributes(server, attributes);
 			WstServerTypeHandler handler = WstServerTypeHandlerRegistry.find(serverType.getId());
 			if( handler != null ) {
 				handler.configureServer(server, runtimeWC, attributes, monitor);
 			}
-			wstServer = server.save(false, monitor);
-			return createServerProxy(wstServer, model);
+			return createServerWorkingCopyProxy(server, model);
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			e.printStackTrace();
-			throw new CoreException(this.adapter.toRspStatus(e.getStatus()));
+			throw new CoreException(WstModelAdapter.toRspStatus(e.getStatus()));
+		}
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void applyAttributes(org.eclipse.wst.server.core.IServerWorkingCopy server, Map<String, Object> attributes) {
+		if (server == null || attributes == null || attributes.isEmpty()) {
+			return;
+		}
+		for (Map.Entry<String, Object> entry : attributes.entrySet()) {
+			String key = entry.getKey();
+			Object value = entry.getValue();
+			if (key == null || value == null) {
+				continue;
+			}
+			if (value instanceof Integer) {
+				server.setAttribute(key, ((Integer) value).intValue());
+			} else if (value instanceof Boolean) {
+				server.setAttribute(key, ((Boolean) value).booleanValue());
+			} else if (value instanceof String) {
+				server.setAttribute(key, (String) value);
+			} else if (value instanceof List) {
+				server.setAttribute(key, (List) value);
+			} else if (value instanceof Map) {
+				server.setAttribute(key, (Map) value);
+			}
 		}
 	}
 
@@ -509,9 +547,9 @@ public class WSTFacade {
 
 	public IStatus start(ServerHandle handle, String launchMode) {
 		CompletableFuture<IStatus> future = new CompletableFuture<>();
-		IOperationListener listener = (result) -> { future.complete(this.adapter.toRspStatus(result)); };
+		IOperationListener listener = (result) -> { future.complete(WstModelAdapter.toRspStatus(result)); };
 		getWstServer(handle.getId()).start(launchMode, listener);
-		return future.join();
+		return Status.OK_STATUS;
 	}
 
 	// public void start(ServerHandle handle, String launchMode) throws CoreException {
@@ -525,7 +563,7 @@ public class WSTFacade {
 
 	public IStatus canStart(ServerHandle handle, String launchMode) {
 		org.eclipse.core.runtime.IStatus status = getWstServer(handle.getId()).canStart(launchMode);
-		return this.adapter.toRspStatus(status);
+		return WstModelAdapter.toRspStatus(status);
 	}
 
 	public void stop(ServerHandle handle, boolean force) {
@@ -534,14 +572,14 @@ public class WSTFacade {
 
 	public IStatus stopSync(ServerHandle handle, boolean force) {
 		CompletableFuture<IStatus> future = new CompletableFuture<>();
-		IOperationListener listener = (result) -> { future.complete(this.adapter.toRspStatus(result)); };
+		IOperationListener listener = (result) -> { future.complete(WstModelAdapter.toRspStatus(result)); };
 		getWstServer(handle.getId()).stop(force, listener);
 		return future.join();
 	}
 
 	public IStatus canStop(ServerHandle handle) {
 		org.eclipse.core.runtime.IStatus status = getWstServer(handle.getId()).canStop();
-		return this.adapter.toRspStatus(status);
+		return WstModelAdapter.toRspStatus(status);
 	}
 
 	public String getMode(ServerHandle handle) {

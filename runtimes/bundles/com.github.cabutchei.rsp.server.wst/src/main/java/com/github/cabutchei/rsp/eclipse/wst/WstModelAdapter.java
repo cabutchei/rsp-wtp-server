@@ -20,10 +20,14 @@ import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 /**
  * Adapts WST/Eclipse runtime objects to the RSP runtime equivalents.
  */
-public class WstModelAdapter {
+public final class WstModelAdapter {
 	private static final String UNKNOWN_PLUGIN_ID = "unknown";
 
-	public com.github.cabutchei.rsp.eclipse.core.runtime.IStatus toRspStatus(IStatus status) {
+	private WstModelAdapter() {
+		// utility class
+	}
+
+	public static com.github.cabutchei.rsp.eclipse.core.runtime.IStatus toRspStatus(IStatus status) {
 		if (status == null) {
 			return new Status(Status.ERROR, UNKNOWN_PLUGIN_ID, "WST status was null");
 		}
@@ -35,7 +39,7 @@ public class WstModelAdapter {
 		return new Status(status.getSeverity(), pluginId, status.getCode(), status.getMessage(), status.getException());
 	}
 
-	public int toRspPublishKind(int wstPublishKind) {
+	public static int toRspPublishKind(int wstPublishKind) {
 		switch (wstPublishKind) {
 			case IServer.PUBLISH_INCREMENTAL:
 				return ServerManagementAPIConstants.PUBLISH_INCREMENTAL;
@@ -50,7 +54,7 @@ public class WstModelAdapter {
 		}
 	}
 
-	public int toWstPublishKind(int rspPublishKind) {
+	public static int toWstPublishKind(int rspPublishKind) {
 		switch (rspPublishKind) {
 			case ServerManagementAPIConstants.PUBLISH_INCREMENTAL:
 				return IServer.PUBLISH_INCREMENTAL;
@@ -65,7 +69,7 @@ public class WstModelAdapter {
 		}
 	}
 
-	public int toRspPublishState(int wstPublishState) {
+	public static int toRspPublishState(int wstPublishState) {
 		switch (wstPublishState) {
 			case IServer.PUBLISH_STATE_NONE:
 				return ServerManagementAPIConstants.PUBLISH_STATE_NONE;
@@ -84,7 +88,7 @@ public class WstModelAdapter {
 		}
 	}
 
-	public int toWstPublishState(int rspPublishState) {
+	public static int toWstPublishState(int rspPublishState) {
 		switch (rspPublishState) {
 			case ServerManagementAPIConstants.PUBLISH_STATE_NONE:
 				return IServer.PUBLISH_STATE_NONE;
@@ -103,7 +107,7 @@ public class WstModelAdapter {
 		}
 	}
 
-	public int toRspServerState(int wstServerState) {
+	public static int toRspServerState(int wstServerState) {
 		switch (wstServerState) {
 			case IServer.STATE_STARTING:
 				return ServerManagementAPIConstants.STATE_STARTING;
@@ -120,7 +124,7 @@ public class WstModelAdapter {
 		}
 	}
 
-	public int toWstServerState(int rspServerState) {
+	public static int toWstServerState(int rspServerState) {
 		switch (rspServerState) {
 			case ServerManagementAPIConstants.STATE_STARTING:
 				return IServer.STATE_STARTING;
@@ -137,28 +141,28 @@ public class WstModelAdapter {
 		}
 	}
 
-	public com.github.cabutchei.rsp.server.spi.servertype.IServerType toRspServerType(IServerType wstType, IServerModel model) {
+	public static com.github.cabutchei.rsp.server.spi.servertype.IServerType toRspServerType(IServerType wstType, IServerModel model) {
 		if (wstType == null || model == null) {
 			return null;
 		}
 		return model.getIServerType(wstType.getId());
 	}
 
-	public com.github.cabutchei.rsp.server.spi.servertype.IServerType toRspServerType(String typeId, IServerModel model) {
+	public static com.github.cabutchei.rsp.server.spi.servertype.IServerType toRspServerType(String typeId, IServerModel model) {
 		if (typeId == null || model == null) {
 			return null;
 		}
 		return model.getIServerType(typeId);
 	}
 
-	public IServerType toWstServerType(com.github.cabutchei.rsp.server.spi.servertype.IServerType rspType) {
+	public static IServerType toWstServerType(com.github.cabutchei.rsp.server.spi.servertype.IServerType rspType) {
 		if (rspType == null) {
 			return null;
 		}
 		return toWstServerType(rspType.getId());
 	}
 
-	public IServerType toWstServerType(String typeId) {
+	public static IServerType toWstServerType(String typeId) {
 		if (typeId == null) {
 			return null;
 		}
@@ -170,7 +174,7 @@ public class WstModelAdapter {
 		return null;
 	}
 
-	public com.github.cabutchei.rsp.server.spi.servertype.ServerEvent toRspServerEvent(ServerEvent event,
+	public static com.github.cabutchei.rsp.server.spi.servertype.ServerEvent toRspServerEvent(ServerEvent event,
 			com.github.cabutchei.rsp.server.spi.servertype.IServer rspServer) {
 		if (event == null || rspServer == null) {
 			return null;
@@ -183,7 +187,7 @@ public class WstModelAdapter {
 				state, publishState, event.getRestartState(), status);
 	}
 
-	public ServerEvent toWstServerEvent(com.github.cabutchei.rsp.server.spi.servertype.ServerEvent event,
+	public static ServerEvent toWstServerEvent(com.github.cabutchei.rsp.server.spi.servertype.ServerEvent event,
 			org.eclipse.wst.server.core.IServer wstServer) {
 		if (event == null || wstServer == null) {
 			return null;
@@ -208,7 +212,7 @@ public class WstModelAdapter {
 		return new ServerEvent(kind, wstServer, state, publishState, restartState);
 	}
 
-	private DeployableReference[] toDeployableReferences(IModule[] modules) {
+	private static DeployableReference[] toDeployableReferences(IModule[] modules) {
 		if (modules == null || modules.length == 0) {
 			return null;
 		}
@@ -230,7 +234,7 @@ public class WstModelAdapter {
 		return refs.toArray(new DeployableReference[0]);
 	}
 
-	private IModule[] toWstModules(DeployableReference[] deployables, org.eclipse.wst.server.core.IServer wstServer) {
+	private static IModule[] toWstModules(DeployableReference[] deployables, org.eclipse.wst.server.core.IServer wstServer) {
 		if (deployables == null || deployables.length == 0 || wstServer == null) {
 			return null;
 		}
@@ -253,7 +257,7 @@ public class WstModelAdapter {
 		return matches.toArray(new IModule[0]);
 	}
 
-	private boolean matchesModule(DeployableReference deployable, IModule module) {
+	private static boolean matchesModule(DeployableReference deployable, IModule module) {
 		if (deployable == null || module == null) {
 			return false;
 		}
@@ -274,14 +278,14 @@ public class WstModelAdapter {
 		return path != null && path.equals(module.getName());
 	}
 
-	private com.github.cabutchei.rsp.eclipse.core.runtime.IStatus toRspStatusOrNull(IStatus status) {
+	private static com.github.cabutchei.rsp.eclipse.core.runtime.IStatus toRspStatusOrNull(IStatus status) {
 		if (status == null) {
 			return null;
 		}
 		return toRspStatus(status);
 	}
 
-	private org.eclipse.core.runtime.IStatus toWstStatus(com.github.cabutchei.rsp.eclipse.core.runtime.IStatus status) {
+	private static org.eclipse.core.runtime.IStatus toWstStatus(com.github.cabutchei.rsp.eclipse.core.runtime.IStatus status) {
 		if (status == null) {
 			return null;
 		}
@@ -295,7 +299,7 @@ public class WstModelAdapter {
 				status.getException());
 	}
 
-	private org.eclipse.core.runtime.IStatus[] toWstChildren(com.github.cabutchei.rsp.eclipse.core.runtime.IStatus[] children) {
+	private static org.eclipse.core.runtime.IStatus[] toWstChildren(com.github.cabutchei.rsp.eclipse.core.runtime.IStatus[] children) {
 		if (children == null || children.length == 0) {
 			return new org.eclipse.core.runtime.IStatus[0];
 		}
@@ -306,7 +310,7 @@ public class WstModelAdapter {
 		return converted;
 	}
 
-	private com.github.cabutchei.rsp.eclipse.core.runtime.IStatus[] convertChildren(IStatus[] children) {
+	private static com.github.cabutchei.rsp.eclipse.core.runtime.IStatus[] convertChildren(IStatus[] children) {
 		if (children == null || children.length == 0) {
 			return new com.github.cabutchei.rsp.eclipse.core.runtime.IStatus[0];
 		}
@@ -317,7 +321,7 @@ public class WstModelAdapter {
 		return converted;
 	}
 
-	private String normalizePluginId(String pluginId) {
+	private static String normalizePluginId(String pluginId) {
 		if (pluginId == null || pluginId.isEmpty()) {
 			return UNKNOWN_PLUGIN_ID;
 		}

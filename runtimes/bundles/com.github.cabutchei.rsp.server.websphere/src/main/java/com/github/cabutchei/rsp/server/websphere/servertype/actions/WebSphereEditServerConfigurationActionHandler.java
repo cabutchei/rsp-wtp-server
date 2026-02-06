@@ -67,7 +67,7 @@ public class WebSphereEditServerConfigurationActionHandler {
 
 	private String getConfigurationFile() {
 		try {
-			ServerXmlFileHandler handler = WebSphereWstServerAccess.createServerXmlFileHandler(delegate.getWSTServerFacade());
+			ServerXmlFileHandler handler = WebSphereWstServerAccess.createServerXmlFileHandler(delegate.getServer());
 			if (handler == null) {
 				return null;
 			}

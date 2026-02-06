@@ -55,6 +55,8 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 import com.github.cabutchei.rsp.server.spi.servertype.ServerEvent;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
+import com.ibm.ws.st.core.internal.WebSphereServer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -221,43 +223,46 @@ public class WSTServerModel implements IServerModel {
 	}
 	
 
-	private CreateServerResponse createServerUnprotected(String serverType, String id, Map<String, Object> attributes) throws CoreException {
-		if( getServer(id) != null) {
-			throw new CoreException(new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
-					"Server with id " + id + " already exists."));
-		}
-		IServerType type = serverTypes.get(serverType);
-		if( type == null ) {
-			return new CreateServerResponse(createDaoErrorStatus("Server Type " + serverType + " not found"), 
-					Collections.emptyList());
-		}
-		// TODO: how do we validate if we don't have access to com.github.cabutchei.rsp.server.model.internal.DaoUtilities?
+		private CreateServerResponse createServerUnprotected(String serverType, String id, Map<String, Object> attributes) throws CoreException {
+			if( getServer(id) != null) {
+				throw new CoreException(new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
+						"Server with id " + id + " already exists."));
+			}
+			if (attributes == null) {
+				attributes = new HashMap<>();
+			}
+			IServerType type = serverTypes.get(serverType);
+			if( type == null ) {
+				return new CreateServerResponse(createDaoErrorStatus("Server Type " + serverType + " not found"), 
+						Collections.emptyList());
+			}
+			IStatus validAttributes = validateAttributes(type, attributes, true, false);
+			if( !validAttributes.isOK()) {
+				return new CreateServerResponse(StatusConverter.convert(validAttributes), 
+						getInvalidAttributeKeys(validAttributes));
+			}
 
-		// IStatus validAttributes = validateAttributes(type, attributes, true, false);
-		// if( !validAttributes.isOK()) {
-		// 	return new CreateServerResponse(StatusConverter.convert(validAttributes), 
-		// 			getInvalidAttributeKeys(validAttributes));
-		// }
+			IServerWorkingCopy serverWc = this.wstIntegrationService.getFacade().createServer(type, id, attributes, managementModel);
+			IServerDelegate del = serverWc.getDelegate();
+			if( del == null ) {
+				return new CreateServerResponse(
+						StatusConverter.convert(
+								new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
+										"Error creating server delegate")), 
+										Collections.EMPTY_LIST);
+			}
+			CreateServerValidation valid = del.validate();
+			if( valid != null && valid.getStatus() != null && !valid.getStatus().isOK()) {
+				return valid.toDao();
+			}
+			IServer server = serverWc.save(false, new NullProgressMonitor());
 
-		IServer server = this.wstIntegrationService.getFacade().createServer(type, id, attributes, managementModel);
-		IServerDelegate del = server.getDelegate();
-		if( del == null ) {
+			addServer(server);
 			return new CreateServerResponse(
-					StatusConverter.convert(
-							new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
-									"Error creating server delegate")), 
-									Collections.EMPTY_LIST);
+				StatusConverter.convert(
+					new Status(IStatus.OK, ServerCoreActivator.BUNDLE_ID, "Server created")),
+						Collections.EMPTY_LIST);
 		}
-		// CreateServerValidation valid = del.validate();
-		// if( !valid.getStatus().isOK()) {
-		// 	return valid.toDao();
-		// }
-		addServer(server);
-		return new CreateServerResponse(
-			StatusConverter.convert(
-				new Status(IStatus.OK, ServerCoreActivator.BUNDLE_ID, "Server created")),
-					Collections.EMPTY_LIST);
-	}
 	
 	private IStatus validateAttributes(IServerType type, 
 			Map<String, Object> map, boolean updateMapWithConversions,

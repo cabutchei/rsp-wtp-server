@@ -109,7 +109,7 @@ public class WebSphereEditJvmPropertiesActionHandler {
 
 	private List<Map<String, Object>> loadSystemProperties() throws Exception {
 		try {
-			Map<String, String> props = WebSphereWstServerAccess.getSystemProperties(delegate.getWSTServerFacade());
+			Map<String, String> props = WebSphereWstServerAccess.getSystemProperties(delegate.getServer());
 			return convertPropsToList(props);
 		} catch (CoreException e) {
 			String json = runWsadmin("list", null);
@@ -125,7 +125,7 @@ public class WebSphereEditJvmPropertiesActionHandler {
 	private void updateSystemProperties(List<Map<String, Object>> properties) throws Exception {
 		try {
 			Map<String, String> map = convertListToProps(properties);
-			WebSphereWstServerAccess.setSystemProperties(delegate.getWSTServerFacade(), map);
+			WebSphereWstServerAccess.setSystemProperties(delegate.getServer(), map);
 			return;
 		} catch (CoreException e) {
 			// fall back to wsadmin
@@ -291,7 +291,7 @@ public class WebSphereEditJvmPropertiesActionHandler {
 			return home;
 		}
 		try {
-			return WebSphereWstServerAccess.getWebSphereInstallPath(delegate.getWSTServerFacade());
+			return WebSphereWstServerAccess.getWebSphereInstallPath(delegate.getServer());
 		} catch (CoreException e) {
 			return null;
 		}
@@ -303,7 +303,7 @@ public class WebSphereEditJvmPropertiesActionHandler {
 			return profile;
 		}
 		try {
-			return WebSphereWstServerAccess.getProfileName(delegate.getWSTServerFacade());
+			return WebSphereWstServerAccess.getProfileName(delegate.getServer());
 		} catch (CoreException e) {
 			return null;
 		}
@@ -311,7 +311,7 @@ public class WebSphereEditJvmPropertiesActionHandler {
 
 	private String resolveServerName() {
 		try {
-			return WebSphereWstServerAccess.getBaseServerName(delegate.getWSTServerFacade());
+			return WebSphereWstServerAccess.getBaseServerName(delegate.getServer());
 		} catch (CoreException e) {
 			return delegate.getServer().getName();
 		}

@@ -12,11 +12,9 @@ import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
 
 public class WstLaunchProxy implements ILaunch {
 	private final org.eclipse.debug.core.ILaunch wstLaunch;
-	private final WstModelAdapter adapter;
 
-	public WstLaunchProxy(org.eclipse.debug.core.ILaunch wstLaunch, WstModelAdapter adapter) {
+	public WstLaunchProxy(org.eclipse.debug.core.ILaunch wstLaunch) {
 		this.wstLaunch = Objects.requireNonNull(wstLaunch, "wstLaunch");
-		this.adapter = adapter == null ? new WstModelAdapter() : adapter;
 	}
 
 	org.eclipse.debug.core.ILaunch getWstLaunch() {
@@ -33,7 +31,7 @@ public class WstLaunchProxy implements ILaunch {
 		for (int i = 0; i < children.length; i++) {
 			Object child = children[i];
 			if (child instanceof org.eclipse.debug.core.model.IProcess) {
-				wrapped[i] = new WstProcessProxy((org.eclipse.debug.core.model.IProcess) child, this, adapter);
+				wrapped[i] = new WstProcessProxy((org.eclipse.debug.core.model.IProcess) child, this);
 			} else {
 				wrapped[i] = child;
 			}
@@ -49,7 +47,7 @@ public class WstLaunchProxy implements ILaunch {
 		}
 		List<IProcess> result = new ArrayList<>(processes.length);
 		for (org.eclipse.debug.core.model.IProcess process : processes) {
-			result.add(new WstProcessProxy(process, this, adapter));
+			result.add(new WstProcessProxy(process, this));
 		}
 		return result.toArray(new IProcess[result.size()]);
 	}
@@ -103,7 +101,7 @@ public class WstLaunchProxy implements ILaunch {
 		try {
 			wstLaunch.terminate();
 		} catch (org.eclipse.debug.core.DebugException e) {
-			throw new DebugException(adapter.toRspStatus(e.getStatus()));
+			throw new DebugException(WstModelAdapter.toRspStatus(e.getStatus()));
 		}
 	}
 }

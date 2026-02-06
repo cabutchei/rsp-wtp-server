@@ -24,6 +24,10 @@ public interface IServerWorkingCopy extends IServerAttributes {
 	public void setAttribute(String attributeName, List<String> value);
 
 	public void setAttribute(String attributeName, Map<?,?> value);
+
+	default IServerDelegate getDelegate() { return null; }
 	
 	void save(IProgressMonitor monitor) throws CoreException;
+
+	public default IServer save(boolean force, IProgressMonitor monitor) throws CoreException { return null; }
 }

@@ -69,7 +69,7 @@ final class LaunchStreamAttacher {
 		if( processes == null || processes.length == 0 ) {
 			return false;
 		}
-		ILaunch launch = new WstLaunchProxy(wstLaunch, null);
+		ILaunch launch = new WstLaunchProxy(wstLaunch);
 		onLaunchReady.accept(launch);
 		completeLaunchFuture(launch);
 		return true;

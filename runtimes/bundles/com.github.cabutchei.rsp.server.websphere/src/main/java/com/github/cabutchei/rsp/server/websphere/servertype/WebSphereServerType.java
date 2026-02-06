@@ -61,10 +61,6 @@ public class WebSphereServerType extends AbstractServerType {
 	public Attributes getOptionalAttributes() {
 		if (optional == null) {
 			CreateServerAttributesUtility attrs = new CreateServerAttributesUtility();
-			attrs.addAttribute(ATTR_HTTP_PORT,
-					ServerManagementAPIConstants.ATTR_TYPE_INT,
-					"HTTP port for the WebSphere server",
-					IWebSphereServerAttributes.LIBERTY_SERVER_PORT_DEFAULT);
 			attrs.addAttribute(ATTR_CLASSPATH_ADDITIONS,
 					ServerManagementAPIConstants.ATTR_TYPE_STRING,
 					"Additional classpath entries for the WebSphere server launch",

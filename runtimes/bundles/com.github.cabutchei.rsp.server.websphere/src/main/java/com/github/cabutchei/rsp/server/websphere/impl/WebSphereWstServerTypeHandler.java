@@ -1,6 +1,5 @@
 package com.github.cabutchei.rsp.server.websphere.impl;
 
-import java.util.Arrays;
 import java.util.Map;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -40,9 +39,6 @@ final class WebSphereWstServerTypeHandler implements WstServerTypeHandler {
 		if( wasServer == null ) {
 			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID, 
 					"Unable to load WebSphere server adapter"));
-		}
-		if( profileName == null || !Arrays.asList(wasServer.getProfileNames()).contains(profileName)) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Profile does not exist"));
 		}
 		wasServer.setWebSphereProfileName(profileName);
 		new ProfileChangeHelper().updateBaseServerForProfileChange(server, profileName);

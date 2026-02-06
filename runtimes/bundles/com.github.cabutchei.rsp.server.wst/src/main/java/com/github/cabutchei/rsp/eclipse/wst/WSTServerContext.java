@@ -108,7 +108,7 @@ public class WSTServerContext {
     }
 
     private void setLaunch(org.eclipse.debug.core.ILaunch launch) {
-        this.launch = new WstLaunchProxy(launch, this.facade.getAdapter());
+        this.launch = new WstLaunchProxy(launch);
     }
 
     public ILaunch getLaunch() {

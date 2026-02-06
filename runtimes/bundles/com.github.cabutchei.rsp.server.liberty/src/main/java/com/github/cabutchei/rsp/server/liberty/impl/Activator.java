@@ -4,6 +4,8 @@ import com.github.cabutchei.rsp.server.spi.RSPExtensionBundle;
 import com.github.cabutchei.rsp.server.LauncherSingleton;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.eclipse.wst.IWstIntegrationService;
+import com.github.cabutchei.rsp.eclipse.wst.WstServerTypeHandlerRegistry;
+
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.ServiceReference;
@@ -15,6 +17,7 @@ public class Activator extends RSPExtensionBundle {
 	private static final Logger LOG = LoggerFactory.getLogger(Activator.class);
 	private static volatile IWstIntegrationService wstIntegration;
 	private static volatile BundleContext bundleContext;
+	private static final LibertyServerTypeHandler WST_HANDLER = new LibertyServerTypeHandler();
 
 	public static synchronized IWstIntegrationService getWstIntegrationService() {
 		if (wstIntegration == null) {
@@ -44,6 +47,7 @@ public class Activator extends RSPExtensionBundle {
 	public void start(BundleContext context) throws Exception {
 		LOG.info("Bundle {} starting...", context.getBundle().getSymbolicName());
 		bundleContext = context;
+		WstServerTypeHandlerRegistry.register(WST_HANDLER);
 		addExtensions(ServerCoreActivator.BUNDLE_ID, context);
 	}
 

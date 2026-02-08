@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -65,7 +66,7 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 
 
 
-	public class WSTFacade {
+public class WSTFacade {
 
 	private static final String KIND_FOLDER = "folder";
 	private static final String KIND_PROJECT = "project";
@@ -154,9 +155,6 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 	}
 
 	public List<IProject> listDeploymentAssemblyProjects(java.nio.file.Path projectPath, String projectName) {
-		// org.eclipse.wst.server.core.IServerWorkingCopy wc;
-		// org.eclipse.wst.server.core.IServer wstServer;
-		// wstServer.delegat
 		IProject project = resolveProject(projectPath, projectName);
 		if (project == null || !project.exists()) {
 			return Collections.emptyList();
@@ -217,23 +215,23 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 		return createServerWorkingCopyProxy(wstServer, managementModel, null);
 	}
 
-		private IServerWorkingCopy createServerWorkingCopyProxy(org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy,
-				IServerManagementModel managementModel, IServerDelegate delegate) {
-			Objects.requireNonNull(wstServerWorkingCopy, "wstServerWorkingCopy");
-			WstServerWorkingCopyProxy proxy = new WstServerWorkingCopyProxy(
-				wstServerWorkingCopy, managementModel);
-			return proxy;
+	private IServerWorkingCopy createServerWorkingCopyProxy(org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy,
+			IServerManagementModel managementModel, IServerDelegate delegate) {
+		Objects.requireNonNull(wstServerWorkingCopy, "wstServerWorkingCopy");
+		WstServerWorkingCopyProxy proxy = new WstServerWorkingCopyProxy(
+			wstServerWorkingCopy, managementModel);
+		return proxy;
+	}
+	public IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer,
+			IServerManagementModel managementModel, IServerDelegate delegate) {
+		Objects.requireNonNull(wstServer, "wstServer");
+		WstServerProxy proxy = new WstServerProxy(
+			wstServer, managementModel);
+		if (delegate != null) {
+			proxy.setDelegate(delegate);
 		}
-		public IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer,
-				IServerManagementModel managementModel, IServerDelegate delegate) {
-			Objects.requireNonNull(wstServer, "wstServer");
-			WstServerProxy proxy = new WstServerProxy(
-				wstServer, managementModel);
-			if (delegate != null) {
-				proxy.setDelegate(delegate);
-			}
-			return proxy;
-		}
+		return proxy;
+	}
 
 	public IServer[] createServeProxies(IServerManagementModel managementModel) {
 		List<IServer> rspServers = new ArrayList<>();
@@ -247,18 +245,31 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 		registry.clear();
 	}
 
+	private IModule[] getRootModules(IProject project, ServerHandle server) throws org.eclipse.core.runtime.CoreException {
+		IModule[] candidates = ServerUtil.getModules(project);
+		Set<IModule> roots = new LinkedHashSet<>();
+		for (IModule m : candidates) {
+			IModule[] allRoots = getWstServer(server.getId()).getRootModules(m, null);
+    		for (IModule r : allRoots) {
+        		roots.add(r);
+    		}
+		}
+		return roots.toArray(new IModule[roots.size()]);
+	}
+
 	public IStatus addDeployable(DeployableReference ref, ServerHandle server) {
 		IProject project = this.workspaceService.getProject(ref.getLabel());
 		IModule[] modules = ServerUtil.getModules(project);
 		try {
-			modules = getWstServer(server.getId()).getRootModules(modules[0], null);
+			modules = getRootModules(project, server);
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			e.printStackTrace();
+			return WstModelAdapter.toRspStatus(e.getStatus());
 		}
-		org.eclipse.wst.server.core.IServerWorkingCopy copy = getWstServer(server.getId()).createWorkingCopy();
+		org.eclipse.wst.server.core.IServerWorkingCopy serverWc = getWstServer(server.getId()).createWorkingCopy();
 		try {
-			copy.modifyModules(modules, null, new NullProgressMonitor());
-			copy.save(false, new NullProgressMonitor());
+			serverWc.modifyModules(modules, null, new NullProgressMonitor());
+			serverWc.save(false, new NullProgressMonitor());
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			e.printStackTrace();
 			IStatus status = WstModelAdapter.toRspStatus(e.getStatus());
@@ -278,9 +289,10 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 			return status;
 		}
 		try {
-			modules = getWstServer(server.getId()).getRootModules(modules[0], null);
+			modules = getRootModules(project, server);
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			e.printStackTrace();
+			return WstModelAdapter.toRspStatus(e.getStatus());
 		}
 		org.eclipse.core.runtime.IStatus status = getWstServer(server.getId()).canModifyModules(modules, null, new NullProgressMonitor());
 		return WstModelAdapter.toRspStatus(status);
@@ -291,7 +303,13 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 		if (!project.exists()) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, NLS.bind("{0} isn't bound to any workspace project", ref.getLabel()));
 		}
-		org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
+		IModule[] modules = ServerUtil.getModules(project);
+		try {
+			modules = getRootModules(project, server);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			e.printStackTrace();
+			return WstModelAdapter.toRspStatus(e.getStatus());
+		}
 		if (modules == null || modules.length == 0) {
 			IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
 			return status;
@@ -303,8 +321,8 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 			return Status.OK_STATUS;
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			e.printStackTrace();
-				IStatus status = WstModelAdapter.toRspStatus(e.getStatus());
-				return status;
+			IStatus status = WstModelAdapter.toRspStatus(e.getStatus());
+			return status;
 		}
 	}
 
@@ -314,6 +332,12 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, NLS.bind("{0} isn't bound to any workspace project", ref.getLabel()));
 		}
 		org.eclipse.wst.server.core.IModule[] modules = ServerUtil.getModules(project);
+		try {
+			modules = getRootModules(project, server);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			e.printStackTrace();
+			return WstModelAdapter.toRspStatus(e.getStatus());
+		}
 		if (modules == null || modules.length == 0) {
 			IStatus status = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
 			return status;
@@ -322,25 +346,25 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 			return WstModelAdapter.toRspStatus(status);
 	}
 
-		public IStatus canPublish(ServerHandle server) {
-			return WstModelAdapter.toRspStatus(getWstServer(server.getId()).canPublish());
-		}
+	public IStatus canPublish(ServerHandle server) {
+		return WstModelAdapter.toRspStatus(getWstServer(server.getId()).canPublish());
+	}
 
-		public IStatus publish(ServerHandle handle, int rspKind) {
-			org.eclipse.core.runtime.IStatus status = getWstServer(handle.getId())
-			.publish(WstModelAdapter.toWstPublishKind(rspKind), new NullProgressMonitor());
-			return WstModelAdapter.toRspStatus(status);
-		}
+	public IStatus publish(ServerHandle handle, int rspKind) {
+		org.eclipse.core.runtime.IStatus status = getWstServer(handle.getId())
+		.publish(WstModelAdapter.toWstPublishKind(rspKind), new NullProgressMonitor());
+		return WstModelAdapter.toRspStatus(status);
+	}
 
-		public int getServerPublishState(ServerHandle handle) {
-			int publishState = getWstServer(handle.getId()).getServerPublishState();
-			return WstModelAdapter.toRspPublishState(publishState);
-		}
+	public int getServerPublishState(ServerHandle handle) {
+		int publishState = getWstServer(handle.getId()).getServerPublishState();
+		return WstModelAdapter.toRspPublishState(publishState);
+	}
 
-		public int getServerRunState(ServerHandle handle) {
-			int runState = getWstServer(handle.getId()).getServerState();
-			return WstModelAdapter.toRspServerState(runState);
-		}
+	public int getServerRunState(ServerHandle handle) {
+		int runState = getWstServer(handle.getId()).getServerState();
+		return WstModelAdapter.toRspServerState(runState);
+	}
 
 	private org.eclipse.wst.server.core.IModule getModule(ServerHandle handle, String name) {
 		for ( org.eclipse.wst.server.core.IModule module : getWstServer(handle.getId()).getModules()) {
@@ -378,13 +402,13 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 
 	public void startModule(ServerHandle server, DeployableReference ref) {
 		org.eclipse.wst.server.core.IServer wstServer = getWstServer(server.getId());
-		IModule module = this.getModule(server, ref.getPath());
+		IModule module = this.getModule(server, ref.getLabel());
 		this.startModule(wstServer, module);
 	}
 
 	public void stopModule(ServerHandle server, DeployableReference ref) {
 		org.eclipse.wst.server.core.IServer wstServer = getWstServer(server.getId());
-		IModule module = this.getModule(server, ref.getPath());
+		IModule module = this.getModule(server, ref.getLabel());
 		this.stopModule(wstServer, module);
 	}
 
@@ -398,8 +422,8 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 
 	private DeployableReference toDeployableReference(IModule module) {
 		String label = module.getName();
-		String path = module.getProject() != null ? module.getProject().getName() : module.getName();
-		return new DeployableReference(label, path);
+		String path = module.getProject() != null ? module.getProject().getLocation().toOSString() : module.getName();
+		return new DeployableReference(label, path, module.getModuleType().getId());
 	}
 
 	private ModuleReference toModuleReference(IModule module) {

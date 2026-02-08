@@ -295,7 +295,6 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			return validate;
 		
 		IServer server = managementModel.getServerModel().getServer(handle.getId());
-		boolean b = managementModel.getServerModel().removeServer(server);
 		if( server.getDelegate().getServerRunState() != ServerManagementAPIConstants.STATE_STOPPED) {
 			new Thread("Stopping server: " + server.getName()) {
 				public void run() {
@@ -304,6 +303,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 				}
 			}.start();
 		}
+		boolean b = managementModel.getServerModel().removeServer(server);
 		return booleanToStatus(b, "Server not removed: " + handle.getId());
 	}
 

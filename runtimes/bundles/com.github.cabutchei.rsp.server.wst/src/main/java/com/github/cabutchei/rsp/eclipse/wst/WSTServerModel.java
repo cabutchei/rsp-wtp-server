@@ -380,6 +380,11 @@ public class WSTServerModel implements IServerModel {
 			new IServerListener() {
 				public void serverChanged(ServerEvent event) {
 					ServerState state = event.getServer().getDelegate().getServerState();
+					// ignore unknown->unknown state changes,  which can happen on server creation before the initial state is set
+					if (state.getState() == ServerManagementAPIConstants.STATE_UNKNOWN &&
+						event.getState() == state.getState()) {
+							return;
+						}
 					WSTServerModel.this.fireServerStateChanged(server, state);
 				}
 			});
@@ -602,7 +607,6 @@ public class WSTServerModel implements IServerModel {
 			return canRemove;
 		}
 		IStatus ret = s.getServerPublishModel().removeDeployable(reference);
-		saveServerLogError(server);
 		return ret;
 	}
 

@@ -33,7 +33,6 @@ import com.github.cabutchei.rsp.server.spi.publishing.IFullPublishRequiredCallba
 import com.github.cabutchei.rsp.server.spi.servertype.IDeployableDelta;
 import com.github.cabutchei.rsp.server.spi.servertype.IDeploymentAssemblyMapping;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerPublishModel;
-import com.github.cabutchei.rsp.server.model.internal.publishing.ServerPublishStateModel;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 
 import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;
@@ -49,7 +48,6 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 
 	static final Logger LOG = LoggerFactory.getLogger(WSTServerPublishStateModel.class);
 	
-	private final Map<String, DeployableState> states;
 	private final Map<String, Map<String,Object>> deploymentOptions;
 	private final Map<String, DeployableDelta> deltas = new HashMap<>();
 	private final Map<String, DeploymentAssemblyFile> assembly = new HashMap<>();
@@ -74,7 +72,6 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
         this.wstServerFacade = this.facadeSupplier.get();
 		this.fileWatcher = fileWatcher;
 		this.fullPublishRequired = fullPublishRequired;
-		this.states = new LinkedHashMap<>();
 		this.deploymentOptions = new LinkedHashMap<>();
 	}
 
@@ -84,7 +81,6 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
         this.wstServerFacade = wstServerFacade;
 		this.fileWatcher = fileWatcher;
 		this.fullPublishRequired = fullPublishRequired;
-		this.states = new LinkedHashMap<>();
 		this.deploymentOptions = new LinkedHashMap<>();
 	}
 
@@ -201,13 +197,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	}
 
 	private IStatus addDeployableImpl(DeployableReference reference, int publishState) {
-		DeployableState deployableState = 
-				createDeployableState(reference, publishState, ServerManagementAPIConstants.STATE_UNKNOWN);
-	
         this.wstServerFacade.addDeployable(reference);
-
-		String key = getKey(reference);
-		getStates().put(key, deployableState);
 		deploymentOptions.put(getKey(reference), reference.getOptions());
         try{
             return registerFileWatcher(reference);
@@ -225,6 +215,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	@Override
 	public synchronized IStatus removeDeployable(DeployableReference reference) {
 		DeployableState ds = getStates().get(getKey(reference));
+		ds = null;
 		if (ds == null) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, IStatus.ERROR, 
 					NLS.bind("Could not remove deploybale with path {0}: it doesn't exist", getKey(reference)),
@@ -291,11 +282,10 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		// return cloneDeployableState(reference, ds);
 	}
 
-	/**
-	 * for testing purposes
-	 */
 	protected Map<String, DeployableState> getStates() {
-		return states;
+		return this.wstServerFacade.getDeployableStates().stream().collect(Collectors.toMap(
+				ds -> getKey(ds.getReference()), 
+				ds -> ds));
 	}
 
 	/**

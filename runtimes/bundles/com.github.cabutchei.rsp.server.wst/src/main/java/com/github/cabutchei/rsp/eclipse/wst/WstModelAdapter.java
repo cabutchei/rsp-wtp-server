@@ -263,19 +263,20 @@ public final class WstModelAdapter {
 		}
 		String label = deployable.getLabel();
 		String path = deployable.getPath();
-		if (label != null && label.equals(module.getName())) {
-			return true;
+		if (label == null || !label.equals(module.getName())) {
+			return false;
 		}
-		if (module.getProject() != null && module.getProject().getName() != null) {
+		if (module.getProject() == null || module.getProject().getName() == null) {
+			return false;
+		}
 			String projectName = module.getProject().getName();
-			if (label != null && label.equals(projectName)) {
-				return true;
-			}
-			if (path != null && path.equals(projectName)) {
-				return true;
-			}
+		if (label == null || !label.equals(projectName)) {
+			return false;
 		}
-		return path != null && path.equals(module.getName());
+		if (path == null || path.equals(module.getProject().getLocation().toOSString())) {
+				return true;
+			}
+		return true;
 	}
 
 	private static com.github.cabutchei.rsp.eclipse.core.runtime.IStatus toRspStatusOrNull(IStatus status) {

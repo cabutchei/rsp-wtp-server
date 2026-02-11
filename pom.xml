@@ -130,6 +130,66 @@
 								<id>com.ibm.websphere.v9.core</id>
 								<versionRange>[1.100.1.v20251120_1402,1.100.1.v20251120_1402]</versionRange>
 							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.jboss.tools.runtime.core</id>
+								<versionRange>[3.4.5.v20190318-0933,3.4.5.v20190318-0933]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.jboss.tools.foundation.core</id>
+								<versionRange>[1.5.2.Final-v20190328-1451-B3608,1.5.2.Final-v20190328-1451-B3608]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.eclipse.ecf</id>
+								<versionRange>[3.9.3.v20181012-2016,3.9.3.v20181012-2016]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.apache.commons.logging</id>
+								<versionRange>[1.2.0.v20180409-1502,1.2.0.v20180409-1502]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.apache.ant</id>
+								<versionRange>[1.10.5.v20180808-0324,1.10.5.v20180808-0324]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.eclipse.pde.core</id>
+								<versionRange>[3.12.300.v20190214-2042,3.12.300.v20190214-2042]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.jboss.ide.eclipse.as.wtp.core</id>
+								<versionRange>[3.6.2.v20190304-1841,3.6.2.v20190304-1841]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.jboss.ide.eclipse.as.management.core</id>
+								<versionRange>[3.6.2.v20181011-1445,3.6.2.v20181011-1445]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.jboss.ide.eclipse.as.dmr</id>
+								<versionRange>[3.6.2.v20181011-1445,3.6.2.v20181011-1445]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.jboss.ide.eclipse.archives.core</id>
+								<versionRange>[3.6.202.v20181011-1445,3.6.202.v20181011-1445]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.jboss.tools.jmx.core</id>
+								<versionRange>[1.10.6.v20181011-1445,1.10.6.v20181011-1445]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.jboss.tools.common.jdt.debug</id>
+								<versionRange>[3.10.2.v20190328-1432,3.10.2.v20190328-1432]</versionRange>
+							</requirement>
 						</extraRequirements>
 					</dependency-resolution>
 					<environments>

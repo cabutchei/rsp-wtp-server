@@ -1,23 +1,13 @@
-package com.github.cabutchei.rsp.server.liberty.impl;
+package com.github.cabutchei.rsp.server.eap.impl;
 
 import java.util.Collections;
 import java.util.List;
 
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.api.dao.DeployableReference;
-import com.github.cabutchei.rsp.api.dao.DeployableState;
 import com.github.cabutchei.rsp.api.dao.ModuleState;
 import com.github.cabutchei.rsp.api.dao.ServerState;
 import com.github.cabutchei.rsp.api.dao.StartServerResponse;
-import com.github.cabutchei.rsp.wst.server.model.WSTServerStreamListener;
-import com.github.cabutchei.rsp.wst.server.model.publishing.WSTServerPublishStateModel;
-import com.github.cabutchei.rsp.server.spi.servertype.IServer;
-import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
-import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
-import com.github.cabutchei.rsp.server.spi.servertype.IServerPublishModel;
-import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
-import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
-import com.github.cabutchei.rsp.server.tomcat.servertype.impl.LibertyContextRootSupport;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
@@ -25,29 +15,31 @@ import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 import com.github.cabutchei.rsp.eclipse.debug.core.IStreamListener;
 import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
 import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;
+import com.github.cabutchei.rsp.server.model.AbstractServerDelegate;
+import com.github.cabutchei.rsp.wst.server.model.WSTServerStreamListener;
+import com.github.cabutchei.rsp.wst.server.model.publishing.WSTServerPublishStateModel;
+import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerPublishModel;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
+import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
 
-
-public class LibertyServerDelegate extends AbstractLibertyServerDelegate implements IServerDelegate, IModuleStateProvider {
-
+public class EapServerDelegate extends AbstractServerDelegate implements IServerDelegate, IModuleStateProvider {
 	private static final String PROCESS_ID_KEY = "process.id.key";
-	// private static final Logger LOG = LoggerFactory.getLogger(LibertyServerDelegate.class);
+
 	private WSTServerContext wstServerFacade;
 	private final LaunchStreamAttacher launchStreamAttacher;
 
-	public LibertyServerDelegate(IServer server, WSTServerContext wstServerFacade) {
+	public EapServerDelegate(IServer server, WSTServerContext wstServerFacade) {
 		super(server);
 		this.wstServerFacade = wstServerFacade;
 		this.launchStreamAttacher = new LaunchStreamAttacher(server.getId(), this::handleLaunchReady);
 	}
-	
-	@Override
-	public void setDependentDefaults(IServerWorkingCopy server) {
-		setJavaLaunchDependentDefaults(server);
-	}
 
 	@Override
-	public String[] getDeploymentUrls(String strat, String baseUrl, String deployableOutputName, DeployableState ds) {
-		return new LibertyContextRootSupport().getDeploymentUrls(strat, baseUrl, deployableOutputName, ds); 
+	public void setDependentDefaults(IServerWorkingCopy server) {
+		// no-op
 	}
 
 	@Override
@@ -112,7 +104,7 @@ public class LibertyServerDelegate extends AbstractLibertyServerDelegate impleme
 	public StartServerResponse start(String mode) {
 		IStatus stat = canStart(mode);
 		com.github.cabutchei.rsp.api.dao.Status s;
-		if( !stat.isOK()) {
+		if (!stat.isOK()) {
 			s = StatusConverter.convert(stat);
 			return new StartServerResponse(s, null);
 		}
@@ -152,23 +144,22 @@ public class LibertyServerDelegate extends AbstractLibertyServerDelegate impleme
 	}
 
 	private void handleLaunchReady(ILaunch launch) {
-		setStartLaunch(launch);
 		addStreamListener(launch);
 	}
 
 	private void addStreamListener(ILaunch launch) {
 		String ctime = "" + System.currentTimeMillis();
 		IProcess[] all = launch.getProcesses();
-		
-		for( int i = 0; i < all.length; i++ ) {
+
+		for (int i = 0; i < all.length; i++) {
 			String pName = getServer().getTypeId() + ":" + getServer().getId()
 					+ ":" + ctime + ":p" + i;
 			all[i].setAttribute(PROCESS_ID_KEY, pName);
 			IStreamListener out = new WSTServerStreamListener(
-					getServer(), getProcessId(all[i]), 
+					getServer(), getProcessId(all[i]),
 					ServerManagementAPIConstants.STREAM_TYPE_SYSOUT);
 			IStreamListener err = new WSTServerStreamListener(
-					getServer(), getProcessId(all[i]), 
+					getServer(), getProcessId(all[i]),
 					ServerManagementAPIConstants.STREAM_TYPE_SYSERR);
 			all[i].getStreamsProxy().getOutputStreamMonitor().addListener(out);
 			all[i].getStreamsProxy().getErrorStreamMonitor().addListener(err);

@@ -35,7 +35,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 
 public class WstServerProxy implements IServer, IWstServerBacked {
 	// TODO: do we need these properties?
-	private static final String TYPE_ID = "com.github.cabutchei.rsp.server.typeId";
+	public static final String TYPE_ID = "server-type-id";
 	private static final String MAP_PROPERTIES_KEY = "mapProperties";
 	private static final String LIST_PROPERTIES_KEY = "listProperties";
 	private static final String MAP_PROPERTY_KEY_PREFIX = "mapProperty";
@@ -72,8 +72,10 @@ public class WstServerProxy implements IServer, IWstServerBacked {
 		return wstServer;
 	}
 
-	void setDelegate(IServerDelegate delegate) {
+	public void setDelegate(IServerDelegate delegate) {
 		this.delegate = delegate;
+		if( delegate != null && delegate.getServerPublishModel() != null )
+			delegate.getServerPublishModel().initialize(Collections.EMPTY_LIST);
 	}
 
 	@Override
@@ -100,6 +102,9 @@ public class WstServerProxy implements IServer, IWstServerBacked {
 	@Override
 	public IServerType getServerType() {
 		return WstModelAdapter.toRspServerType(wstServer.getServerType(), serverModel);
+	}
+
+	public void setServerType(IServerType type) {
 	}
 
 	@Override

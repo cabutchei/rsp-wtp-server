@@ -10,8 +10,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.jdt.core.IClasspathAttribute;
+import org.eclipse.jdt.core.IClasspathContainer;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
@@ -21,6 +25,8 @@ import org.eclipse.jdt.launching.JavaRuntime;
 import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
 import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
+import com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerEntry;
+import com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerMapping;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectImporter;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
@@ -231,6 +237,100 @@ public class ProjectsManager implements IProjectsManager {
 	}
 
 	@Override
+	public List<ClasspathContainerMapping> listClasspathContainers() {
+		if (workspaceService == null) {
+			return Collections.emptyList();
+		}
+		List<WorkspaceProject> projects = workspaceService.listProjects();
+		if (projects == null || projects.isEmpty()) {
+			return Collections.emptyList();
+		}
+		Collection<Path> roots = getWorkspaceRootsSnapshot();
+		List<ClasspathContainerMapping> mappings = new ArrayList<>();
+		Set<String> seen = new HashSet<>();
+		for (WorkspaceProject projectInfo : projects) {
+			if (projectInfo == null || !projectInfo.isOpen()) {
+				continue;
+			}
+			IProject project = workspaceService.getProject(projectInfo.getName());
+			if (project == null || !project.exists() || !project.isOpen()) {
+				continue;
+			}
+			IPath location = project.getLocation();
+			Path projectPath = location == null ? null : location.toFile().toPath().toAbsolutePath().normalize();
+			if (!roots.isEmpty() && (projectPath == null || !isContainedInAny(projectPath, roots))) {
+				continue;
+			}
+			IJavaProject javaProject = JavaCore.create(project);
+			if (javaProject == null) {
+				continue;
+			}
+			IClasspathEntry[] rawEntries;
+			try {
+				rawEntries = javaProject.getRawClasspath();
+			} catch (JavaModelException e) {
+				continue;
+			}
+			if (rawEntries == null) {
+				continue;
+			}
+			for (IClasspathEntry rawEntry : rawEntries) {
+				if (rawEntry == null || rawEntry.getEntryKind() != IClasspathEntry.CPE_CONTAINER) {
+					continue;
+				}
+				IPath containerPath = rawEntry.getPath();
+				if (isJreContainer(containerPath)) {
+					continue;
+				}
+				IClasspathContainer container;
+				try {
+					container = JavaCore.getClasspathContainer(containerPath, javaProject);
+				} catch (JavaModelException e) {
+					continue;
+				}
+				if (container == null) {
+					continue;
+				}
+				String projectUri = null;
+				URI locationUri = project.getLocationURI();
+				if (locationUri != null) {
+					projectUri = locationUri.toString();
+				}
+				String key = (projectUri == null ? project.getName() : projectUri) + "|" + containerPath.toString();
+				if (!seen.add(key)) {
+					continue;
+				}
+				List<ClasspathContainerEntry> entryMappings = new ArrayList<>();
+				IClasspathEntry[] containerEntries = container.getClasspathEntries();
+				if (containerEntries != null) {
+					for (IClasspathEntry containerEntry : containerEntries) {
+						if (containerEntry == null) {
+							continue;
+						}
+						String entryPath = resolveEntryPath(containerEntry);
+						String sourcePath = resolveEntrySourcePath(containerEntry);
+						String javadoc = extractJavadoc(containerEntry);
+						entryMappings.add(new ClasspathContainerEntry(
+								containerEntry.getEntryKind(),
+								entryPath,
+								sourcePath,
+								stringValue(containerEntry.getSourceAttachmentRootPath()),
+								javadoc,
+								containerEntry.isExported()));
+					}
+				}
+				mappings.add(new ClasspathContainerMapping(
+						project.getName(),
+						projectUri,
+						containerPath.toString(),
+						container.getDescription(),
+						entryMappings));
+			}
+		}
+		return mappings;
+	}
+
+	@Override
 	public boolean isInitialized() {
 		return initialized;
 	}
@@ -302,5 +402,53 @@ public class ProjectsManager implements IProjectsManager {
 		}
 		String execEnv = JavaRuntime.getExecutionEnvironmentId(containerPath);
 		return execEnv == null || execEnv.trim().isEmpty();
+	}
+
+	private boolean isJreContainer(IPath containerPath) {
+		if (containerPath == null || containerPath.segmentCount() < 1) {
+			return false;
+		}
+		String jreContainerId = String.valueOf(JavaRuntime.JRE_CONTAINER);
+		return jreContainerId.equals(containerPath.segment(0));
+	}
+
+	private String extractJavadoc(IClasspathEntry entry) {
+		IClasspathAttribute[] attrs = entry.getExtraAttributes();
+		if (attrs == null) {
+			return null;
+		}
+		for (IClasspathAttribute attr : attrs) {
+			if (attr != null && IClasspathAttribute.JAVADOC_LOCATION_ATTRIBUTE_NAME.equals(attr.getName())) {
+				String value = attr.getValue();
+				return value == null || value.isBlank() ? null : value;
+			}
+		}
+		return null;
+	}
+
+	private String stringValue(IPath path) {
+		return path == null ? null : path.toString();
+	}
+
+	private String resolveEntryPath(IClasspathEntry entry) {
+		return resolveEntryPath(entry, entry == null ? null : entry.getPath());
+	}
+
+	private String resolveEntrySourcePath(IClasspathEntry entry) {
+		return resolveEntryPath(entry, entry == null ? null : entry.getSourceAttachmentPath());
+	}
+
+	private String resolveEntryPath(IClasspathEntry entry, IPath path) {
+		if (path == null || entry == null) {
+			return null;
+		}
+		if (entry.getEntryKind() != IClasspathEntry.CPE_LIBRARY) {
+			return path.toString();
+		}
+		IResource resource = ResourcesPlugin.getWorkspace().getRoot().findMember(path);
+		if (resource != null && resource.getLocation() != null) {
+			return resource.getLocation().toString();
+		}
+		return path.toString();
 	}
 }

@@ -18,6 +18,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
 import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
+import com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerMapping;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import com.github.cabutchei.rsp.server.spi.workspace.JreContainerMapping;
 import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject;
@@ -67,6 +68,11 @@ public class DefaultProjectsManager implements IProjectsManager {
 
 	@Override
 	public List<JreContainerMapping> listNonStandardJreContainers() {
+		return Collections.emptyList();
+	}
+
+	@Override
+	public List<ClasspathContainerMapping> listClasspathContainers() {
 		return Collections.emptyList();
 	}
 

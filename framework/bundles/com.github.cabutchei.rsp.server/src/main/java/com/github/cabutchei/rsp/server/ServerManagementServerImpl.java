@@ -44,6 +44,9 @@ import com.github.cabutchei.rsp.api.dao.DidChangeWorkspaceFoldersParams;
 import com.github.cabutchei.rsp.api.dao.GetServerJsonResponse;
 import com.github.cabutchei.rsp.api.dao.JobHandle;
 import com.github.cabutchei.rsp.api.dao.JobProgress;
+import com.github.cabutchei.rsp.api.dao.ClasspathContainerEntry;
+import com.github.cabutchei.rsp.api.dao.ClasspathContainerMapping;
+import com.github.cabutchei.rsp.api.dao.ClasspathContainerMappings;
 import com.github.cabutchei.rsp.api.dao.JreContainerMappings;
 import com.github.cabutchei.rsp.api.dao.LaunchAttributesRequest;
 import com.github.cabutchei.rsp.api.dao.LaunchParameters;
@@ -877,6 +880,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		WorkspaceFolderChangeHandler handler = new WorkspaceFolderChangeHandler(managementModel.getProjectsManager());
 		handler.update(params);
 		notifyJdtlsJreContainers();
+		notifyJdtlsClasspathContainers();
 	}
 
 	private void notifyJdtlsJreContainers() {
@@ -910,6 +914,54 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			return;
 		}
 		client.jdtlsJreContainersDetected(new JreContainerMappings(apiMappings));
+	}
+
+	private void notifyJdtlsClasspathContainers() {
+		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		if (projectsManager == null) {
+			return;
+		}
+		List<com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerMapping> mappings = projectsManager
+				.listClasspathContainers();
+		if (mappings == null || mappings.isEmpty()) {
+			return;
+		}
+		RSPWTPClient client = ClientThreadLocal.getActiveClient();
+		if (client == null) {
+			return;
+		}
+		List<ClasspathContainerMapping> apiMappings = new ArrayList<>();
+		for (com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerMapping mapping : mappings) {
+			if (mapping == null) {
+				continue;
+			}
+			List<ClasspathContainerEntry> entries = new ArrayList<>();
+			List<com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerEntry> sourceEntries = mapping.getEntries();
+			if (sourceEntries != null) {
+				for (com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerEntry entry : sourceEntries) {
+					if (entry == null) {
+						continue;
+					}
+					entries.add(new ClasspathContainerEntry(
+							entry.getEntryKind(),
+							entry.getPath(),
+							entry.getSourcePath(),
+							entry.getSourceRootPath(),
+							entry.getJavadocLocation(),
+							entry.isExported()));
+				}
+			}
+			apiMappings.add(new ClasspathContainerMapping(
+					mapping.getProjectName(),
+					mapping.getProjectUri(),
+					mapping.getContainerPath(),
+					mapping.getDescription(),
+					entries));
+		}
+		if (apiMappings.isEmpty()) {
+			return;
+		}
+		client.jdtlsClasspathContainersDetected(new ClasspathContainerMappings(apiMappings));
 	}
 
 	/*

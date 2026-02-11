@@ -73,6 +73,12 @@ public interface IProjectsManager {
 	List<JreContainerMapping> listNonStandardJreContainers();
 
 	/**
+	 * List classpath containers from workspace Java projects, including their
+	 * resolved entries.
+	 */
+	List<ClasspathContainerMapping> listClasspathContainers();
+
+	/**
 	 * @return true if the workspace has been initialized
 	 */
 	boolean isInitialized();

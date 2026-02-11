@@ -41,7 +41,6 @@ import com.github.cabutchei.rsp.launching.utils.IStatusRunnableWithProgress;
 import com.github.cabutchei.rsp.secure.model.ISecureStorageProvider;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.model.internal.DaoUtilities;
-import com.github.cabutchei.rsp.server.model.internal.DummyServer;
 import com.github.cabutchei.rsp.server.model.internal.Server;
 import com.github.cabutchei.rsp.server.spi.client.ClientThreadLocal;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
@@ -55,6 +54,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 import com.github.cabutchei.rsp.server.spi.servertype.ServerEvent;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
+import com.github.cabutchei.rsp.wst.server.model.WSTDummyServer;
 import com.ibm.ws.st.core.internal.WebSphereServer;
 
 import org.slf4j.Logger;
@@ -369,13 +369,13 @@ public class WSTServerModel implements IServerModel {
 		IServer[] servers = this.wstIntegrationService.getFacade().createServeProxies(managementModel);
 		this.wstIntegrationService.getFacade().updateServerStatus();
 		for (IServer server : servers) {
-			this.serverDelegates.put(server.getId(), server.getDelegate());
 			addServer(server);
 		}
 	}
 
 	protected void addServer(IServer server) {
 		this.wstIntegrationService.getRegistry().register(server);
+		this.serverDelegates.put(server.getId(), server.getDelegate());
 		this.wstIntegrationService.getFacade().addServerListener(server.getId(),
 			new IServerListener() {
 				public void serverChanged(ServerEvent event) {
@@ -581,7 +581,7 @@ public class WSTServerModel implements IServerModel {
 	@Override
 	public IStatus addDeployable(IServer server, DeployableReference ref) {
 		// temporary hack, need to handle this better. Maybe a custom object?
-		ref.setLabel(java.nio.file.Paths.get(ref.getLabel()).getFileName().toString());
+		// ref.setLabel(java.nio.file.Paths.get(ref.getLabel()).getFileName().toString());
 		IServerDelegate s = serverDelegates.get(server.getId());
 		if( s == null ) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 
@@ -717,12 +717,12 @@ public class WSTServerModel implements IServerModel {
 			return resp;
 		}
 		
-		DummyServer ds = null;
+		WSTDummyServer ds = null;
 		try {
 			if( req.getServerJson() == null ) {
 				throw new Exception("Error while reading server string: null");
 			}
-			ds = DummyServer.createDummyServer(req.getServerJson(), this);
+			ds = WSTDummyServer.createDummyServer(req.getServerJson(), this, managementModel);
 		} catch(Exception ce) {
 			resp.getValidation().setStatus(errorStatus("Update Failed: " + ce.getMessage(), ce));
 			return resp;
@@ -730,14 +730,22 @@ public class WSTServerModel implements IServerModel {
 		
 		String[] unchangeable = new String[] {
 				// Base.PROP_ID and Base.PROP_ID_SET are protected
-				Server.TYPE_ID, "id", "id-set" 
+				WstServerProxy.TYPE_ID, "id", "id-set"
 		};
-		for( int i = 0; i < unchangeable.length; i++ ) {
-			String dsType = ds.getAttribute(unchangeable[i], (String)null);
-			String type = server.getAttribute(unchangeable[i], (String)null);
-			if( !isEqual(dsType, type)) {
+		for (int i = 0; i < unchangeable.length; i++) {
+			String key = unchangeable[i];
+			String dsValue = ds.getAttribute(key, (String) null);
+			String current;
+			if (WstServerProxy.TYPE_ID.equals(key)) {
+				current = server.getTypeId();
+			} else if ("id".equals(key)) {
+				current = server.getId();
+			} else {
+				current = server.getAttribute(key, (String) null);
+			}
+			if (!isEqual(dsValue, current)) {
 				resp.getValidation().setStatus(errorStatus(
-						NLS.bind("Field {0} may not be changed", unchangeable[i])));
+						NLS.bind("Field {0} may not be changed", key)));
 				return resp;
 			}
 		}
@@ -759,11 +767,11 @@ public class WSTServerModel implements IServerModel {
 			return resp;
 		}
 		
-		// Everything looks good on the framework side... 
-		((Server)server).updateAttributes(ds.getMap());
-		
+		// Everything looks good on the framework side...
 		try {
-			((IServerWorkingCopy)server).save(new NullProgressMonitor());
+			IServerWorkingCopy wc = server.createWorkingCopy();
+			applyDummyAttributes(wc, ds.getMap(), type);
+			wc.save(new NullProgressMonitor());
 		} catch(CoreException ce) {
 			resp.getValidation().setStatus(StatusConverter.convert(ce.getStatus()));
 		}
@@ -778,6 +786,99 @@ public class WSTServerModel implements IServerModel {
 					com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS));
 		}
 		return resp;
+	}
+
+	private void applyDummyAttributes(IServerWorkingCopy wc, Map<String, Object> values, IServerType type) {
+		if (wc == null || values == null || type == null) {
+			return;
+		}
+		Map<String, String> types = collectAttributeTypes(type);
+		for (Map.Entry<String, Object> entry : values.entrySet()) {
+			String key = entry.getKey();
+			if (key == null || !types.containsKey(key)) {
+				continue;
+			}
+			Object value = entry.getValue();
+			String attrType = types.get(key);
+			if (ServerManagementAPIConstants.ATTR_TYPE_INT.equals(attrType)) {
+				Integer intValue = coerceInteger(value);
+				if (intValue != null) {
+					wc.setAttribute(key, intValue.intValue());
+				}
+				continue;
+			}
+			if (ServerManagementAPIConstants.ATTR_TYPE_BOOL.equals(attrType)) {
+				Boolean boolValue = coerceBoolean(value);
+				if (boolValue != null) {
+					wc.setAttribute(key, boolValue.booleanValue());
+				}
+				continue;
+			}
+			if (ServerManagementAPIConstants.ATTR_TYPE_LIST.equals(attrType) && value instanceof List) {
+				@SuppressWarnings("unchecked")
+				List<String> list = (List<String>) value;
+				wc.setAttribute(key, list);
+				continue;
+			}
+			if (ServerManagementAPIConstants.ATTR_TYPE_MAP.equals(attrType) && value instanceof Map) {
+				@SuppressWarnings("unchecked")
+				Map<String, String> map = (Map<String, String>) value;
+				wc.setAttribute(key, map);
+				continue;
+			}
+			wc.setAttribute(key, value == null ? null : String.valueOf(value));
+		}
+	}
+
+	private Map<String, String> collectAttributeTypes(IServerType type) {
+		Map<String, String> types = new HashMap<>();
+		addAttributeTypes(types, type.getRequiredAttributes());
+		addAttributeTypes(types, type.getOptionalAttributes());
+		return types;
+	}
+
+	private void addAttributeTypes(Map<String, String> types, Attributes attrs) {
+		if (attrs == null) {
+			return;
+		}
+		CreateServerAttributesUtility util = new CreateServerAttributesUtility(attrs);
+		Set<String> keys = util.listAttributes();
+		for (String key : keys) {
+			String attrType = util.getAttributeType(key);
+			if (attrType != null) {
+				types.put(key, attrType);
+			}
+		}
+	}
+
+	private Integer coerceInteger(Object value) {
+		if (value instanceof Integer) {
+			return (Integer) value;
+		}
+		if (value instanceof Number) {
+			return Integer.valueOf(((Number) value).intValue());
+		}
+		if (value instanceof String) {
+			try {
+				return Integer.valueOf((String) value);
+			} catch (NumberFormatException nfe) {
+				return null;
+			}
+		}
+		return null;
+	}
+
+	private Boolean coerceBoolean(Object value) {
+		if (value instanceof Boolean) {
+			return (Boolean) value;
+		}
+		if (value instanceof String) {
+			String s = ((String) value).trim();
+			if ("true".equalsIgnoreCase(s) || "false".equalsIgnoreCase(s)) {
+				return Boolean.valueOf(s);
+			}
+		}
+		return null;
 	}
 	
 }

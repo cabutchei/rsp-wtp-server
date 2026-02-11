@@ -1,4 +1,4 @@
-package com.github.cabutchei.rsp.server.model.publishing;
+package com.github.cabutchei.rsp.wst.server.model.publishing;
 
 
 

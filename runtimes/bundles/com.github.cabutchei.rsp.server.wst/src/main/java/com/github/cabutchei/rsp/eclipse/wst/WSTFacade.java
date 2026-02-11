@@ -572,6 +572,7 @@ public class WSTFacade {
 	public IStatus start(ServerHandle handle, String launchMode) {
 		CompletableFuture<IStatus> future = new CompletableFuture<>();
 		IOperationListener listener = (result) -> { future.complete(WstModelAdapter.toRspStatus(result)); };
+		IJBoss7Mana
 		getWstServer(handle.getId()).start(launchMode, listener);
 		return Status.OK_STATUS;
 	}

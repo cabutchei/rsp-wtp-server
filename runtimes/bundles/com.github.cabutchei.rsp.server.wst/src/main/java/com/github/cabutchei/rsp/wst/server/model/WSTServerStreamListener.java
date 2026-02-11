@@ -1,4 +1,4 @@
-package com.github.cabutchei.rsp.server.model;
+package com.github.cabutchei.rsp.wst.server.model;
 
 import java.util.function.IntConsumer;
 // import java.util.regex.Matcher;

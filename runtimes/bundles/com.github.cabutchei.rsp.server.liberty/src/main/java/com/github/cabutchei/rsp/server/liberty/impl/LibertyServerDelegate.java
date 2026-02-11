@@ -81,6 +81,9 @@ public class LibertyServerDelegate extends AbstractLibertyServerDelegate impleme
 	@Override
 	public IStatus publish(int publishRequestType) {
 		IStatus status = this.wstServerFacade.publish(publishRequestType);
+		if (status != null && status.isOK() && getServerPublishModel() instanceof WSTServerPublishStateModel) {
+			((WSTServerPublishStateModel) getServerPublishModel()).markPublished();
+		}
 		fireStateChanged(getServerState());
 		return status;
 	}

@@ -122,6 +122,9 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractServerDele
 	@Override
 	public IStatus publish(int publishRequestType) {
 		IStatus status = wstServerFacade.publish(publishRequestType);
+		if (status != null && status.isOK() && getServerPublishModel() instanceof WSTServerPublishStateModel) {
+			((WSTServerPublishStateModel) getServerPublishModel()).markPublished();
+		}
 		fireStateChanged(getServerState());
 		return status;
 	}

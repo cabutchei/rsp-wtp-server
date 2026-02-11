@@ -5,12 +5,12 @@ package com.github.cabutchei.rsp.wst.server.model.publishing;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
@@ -20,7 +20,6 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.model.AbstractServerDelegate;
-import com.github.cabutchei.rsp.server.model.internal.publishing.AutoPublishThread;
 import com.github.cabutchei.rsp.server.model.internal.publishing.DeployableDelta;
 import com.github.cabutchei.rsp.server.model.internal.publishing.DeploymentAssemblyDiscovery;
 import com.github.cabutchei.rsp.server.model.internal.publishing.DeploymentAssemblyDiscovery.IDeploymentAssembler;
@@ -30,13 +29,24 @@ import com.github.cabutchei.rsp.server.spi.filewatcher.IFileWatcherService;
 import com.github.cabutchei.rsp.server.spi.filewatcher.FileWatcherEvent;
 import com.github.cabutchei.rsp.server.spi.filewatcher.IFileWatcherEventListener;
 import com.github.cabutchei.rsp.server.spi.publishing.IFullPublishRequiredCallback;
+import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.model.IServerModelListener;
+import com.github.cabutchei.rsp.server.spi.model.ServerModelListenerAdapter;
 import com.github.cabutchei.rsp.server.spi.servertype.IDeployableDelta;
 import com.github.cabutchei.rsp.server.spi.servertype.IDeploymentAssemblyMapping;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerPublishModel;
+import com.github.cabutchei.rsp.server.spi.servertype.ServerEvent;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 
 import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;
 
+import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
@@ -58,7 +68,37 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	private IFileWatcherService fileWatcher;
 	private int publishState = AbstractServerDelegate.PUBLISH_STATE_UNKNOWN;
 	
-	private AutoPublishThread autoPublish;
+	private WSTAutoPublishThread autoPublish;
+	private boolean autoPublishListenerRegistered;
+	private boolean publishStateListenerRegistered;
+	private final IServerModelListener autoPublishListener = new ServerModelListenerAdapter() {
+		@Override
+		public void serverAttributesChanged(com.github.cabutchei.rsp.api.dao.ServerHandle server) {
+			if (server == null || delegate == null || delegate.getServerHandle() == null) {
+				return;
+			}
+			if (server.getId().equals(delegate.getServerHandle().getId())) {
+				handleAutoPublishConfigChanged();
+			}
+		}
+	};
+	private final IServerListener publishStateListener = new IServerListener() {
+		@Override
+		public void serverChanged(ServerEvent event) {
+			if (event == null) {
+				return;
+			}
+			if ((event.getKind() & ServerEvent.PUBLISH_STATE_CHANGE) == 0) {
+				return;
+			}
+			if (!isAutoPublisherEnabled()) {
+				return;
+			}
+			if (event.getPublishState() != ServerManagementAPIConstants.PUBLISH_STATE_NONE) {
+				launchOrUpdateAutopublishThread();
+			}
+		}
+	};
 
 	private IFullPublishRequiredCallback fullPublishRequired;
 	
@@ -69,7 +109,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 			IFileWatcherService fileWatcher, IFullPublishRequiredCallback fullPublishRequired) {
 		this.delegate = delegate;
         this.facadeSupplier = facadeSupplier;
-        this.wstServerFacade = this.facadeSupplier.get();
+		this.wstServerFacade = this.facadeSupplier.get();
 		this.fileWatcher = fileWatcher;
 		this.fullPublishRequired = fullPublishRequired;
 		this.deploymentOptions = new LinkedHashMap<>();
@@ -78,7 +118,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	public WSTServerPublishStateModel(AbstractServerDelegate delegate, WSTServerContext wstServerFacade,
 			IFileWatcherService fileWatcher, IFullPublishRequiredCallback fullPublishRequired) {
 		this.delegate = delegate;
-        this.wstServerFacade = wstServerFacade;
+		this.wstServerFacade = wstServerFacade;
 		this.fileWatcher = fileWatcher;
 		this.fullPublishRequired = fullPublishRequired;
 		this.deploymentOptions = new LinkedHashMap<>();
@@ -86,7 +126,33 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 
 	@Override
 	public synchronized void initialize(List<DeployableReference> references) {
+		if (references != null) {
+			for (DeployableReference reference : references) {
+				if (reference != null) {
+					deploymentOptions.put(getKey(reference), reference.getOptions());
+				}
+			}
+		}
+
+		List<DeployableState> existing = wstServerFacade == null
+				? Collections.emptyList()
+				: wstServerFacade.getDeployableStates();
+		if (existing != null && !existing.isEmpty()) {
+			for (DeployableState state : existing) {
+				DeployableReference ref = state.getReference();
+				if (ref != null) {
+					registerDeployable(ref);
+				}
+			}
+		} else if (references != null && !references.isEmpty()) {
+			for (DeployableReference reference : references) {
+				registerDeployable(reference);
+			}
+		}
+		updateServerPublishStateFromDeployments();
 		fireState();
+		registerAutoPublishConfigListener();
+		// registerPublishStateListener();
 	}
 
 	private DeployableState cloneDeployableState(DeployableReference reference, DeployableState state) {
@@ -122,13 +188,11 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	
 	private IStatus registerFileWatcher(DeployableReference reference) {
 		if( fileWatcher != null ) {
-            // ignore deployment assembly for now
-
-			// // DEPLOY_ASSEMBLY
-			// IStatus ret = cacheAssemblies(reference);
-			// if( !ret.isOK()) {
-			// 	return ret;
-			// }
+			// DEPLOY_ASSEMBLY
+			IStatus ret = cacheAssemblies(reference);
+			if( !ret.isOK()) {
+				return ret;
+			}
 			
 			List<Path> sourcePaths = getDeploySourceFolders(reference);
 			for( int i = 0; i < sourcePaths.size(); i++ ) {
@@ -145,17 +209,15 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	}
 	
 	private List<Path> getDeploySourceFolders(DeployableReference ref) {
-        // ignore deployment assembly for now
-
-		// DeploymentAssemblyFile assemblyData = assembly.get(getKey(ref));
-		// if( assemblyData == null ) {
+		DeploymentAssemblyFile assemblyData = assembly.get(getKey(ref));
+		if( assemblyData == null ) {
 			File f = new File(ref.getPath());
 			ArrayList<Path> al = new ArrayList<Path>();
 			al.add(f.toPath());
 			return al;
-		// } else {
-			// return getAssemblySourceFolders(ref);
-		// }
+		} else {
+			return getAssemblySourceFolders(ref);
+		}
 	}
 	private List<Path> getAssemblySourceFolders(DeployableReference ref) {
 		List<Path> ret = new ArrayList<Path>();
@@ -182,55 +244,56 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	 */
 	@Override
 	public synchronized IStatus addDeployable(DeployableReference withOptions) {
-		DeployableState ds = getStates().get(getKey(withOptions));
-		if (ds != null && ds.getPublishState() != ServerManagementAPIConstants.PUBLISH_STATE_REMOVE) {
-			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, IStatus.ERROR, 
-					NLS.bind("Could not add deployable with path {0}: it already exists.", 
-							getKey(withOptions)), null);
+		if (contains(withOptions)) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, IStatus.ERROR,
+					NLS.bind("Could not add deployable with path {0}: it already exists.", getKey(withOptions)),
+					null);
 		}
 
-		addDeployableImpl(withOptions, ServerManagementAPIConstants.PUBLISH_STATE_ADD);
+		IStatus status = addDeployableImpl(withOptions);
+		if (!status.isOK()) {
+			return status;
+		}
 		updateServerPublishStateFromDeployments();
 		fireState();
 		launchOrUpdateAutopublishThread();
 		return Status.OK_STATUS;
 	}
 
-	private IStatus addDeployableImpl(DeployableReference reference, int publishState) {
-        this.wstServerFacade.addDeployable(reference);
-		deploymentOptions.put(getKey(reference), reference.getOptions());
-        try{
-            return registerFileWatcher(reference);
-        } catch(Throwable e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
+	private IStatus addDeployableImpl(DeployableReference reference) {
+		IStatus status = this.wstServerFacade.addDeployable(reference);
+		if (!status.isOK()) {
+			return status;
+		}
+		return registerDeployable(reference);
 	}
 
 	@Override
 	public synchronized boolean contains(DeployableReference reference) {
-		return getStates().containsKey(getKey(reference));
+		if (reference == null) {
+			return false;
+		}
+		String key = getKey(reference);
+		for (DeployableState state : getWstDeployableStates()) {
+			DeployableReference ref = state.getReference();
+			if (ref != null && key.equals(getKey(ref))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
 	public synchronized IStatus removeDeployable(DeployableReference reference) {
-		DeployableState ds = getStates().get(getKey(reference));
-		ds = null;
-		if (ds == null) {
+		if (!contains(reference)) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, IStatus.ERROR, 
 					NLS.bind("Could not remove deploybale with path {0}: it doesn't exist", getKey(reference)),
 							null);
 		}
-        // IStatus status = getFacade().removeDeployable(reference, delegate.getServerHandle());
-        IStatus status = this.wstServerFacade.removeDeployable(reference);
-        if (!status.isOK()) {
-            return status;
-        }
-		if (ds.getPublishState() == ServerManagementAPIConstants.PUBLISH_STATE_ADD) {
-			// It hasn't been added / published yet, so we can remove it immediately
-			deployableRemoved(reference);
+		IStatus status = this.wstServerFacade.removeDeployable(reference);
+		if (!status.isOK()) {
+			return status;
 		}
-		ds.setPublishState(ServerManagementAPIConstants.PUBLISH_STATE_REMOVE);
 		if (fileWatcher != null) {
 			List<Path> sourcePaths = getDeploySourceFolders(reference);
 			for( int i = 0; i < sourcePaths.size(); i++ ) {
@@ -238,6 +301,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 				fileWatcher.removeFileWatcherListener(sourcePathToWatch, this);
 			}
 		}
+		deployableRemoved(reference);
 		updateServerPublishStateFromDeployments();
 		fireState();
 		launchOrUpdateAutopublishThread();
@@ -250,42 +314,119 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		} 
 		return reference.getPath();
 	}
+
+	private List<DeployableState> getWstDeployableStates() {
+		if (wstServerFacade == null) {
+			return Collections.emptyList();
+		}
+		List<DeployableState> states = wstServerFacade.getDeployableStates();
+		return states == null ? Collections.emptyList() : states;
+	}
+
+	private void refreshWorkspaceForPath(Path affected) {
+		if (affected == null) {
+			return;
+		}
+		IProject project = resolveProjectForPath(affected);
+		if (project == null || !project.exists()) {
+			return;
+		}
+		try {
+			project.refreshLocal(IResource.DEPTH_INFINITE, null);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			LOG.warn("Failed to refresh workspace for {}", affected, e);
+		}
+	}
+
+	private IProject resolveProjectForPath(Path path) {
+		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		org.eclipse.core.runtime.Path eclipsePath = new org.eclipse.core.runtime.Path(path.toString());
+		IResource resource = root.getFileForLocation(eclipsePath);
+		if (resource == null) {
+			resource = root.getContainerForLocation(eclipsePath);
+		}
+		if (resource == null) {
+			IFile[] files = root.findFilesForLocationURI(path.toUri());
+			if (files != null && files.length > 0) {
+				resource = files[0];
+			}
+		}
+		if (resource == null) {
+			IContainer[] containers = root.findContainersForLocationURI(path.toUri());
+			if (containers != null && containers.length > 0) {
+				resource = containers[0];
+			}
+		}
+		if (resource != null) {
+			return resource.getProject();
+		}
+		java.nio.file.Path normalized = path.toAbsolutePath().normalize();
+		IProject bestMatch = null;
+		int bestSegments = -1;
+		for (IProject project : root.getProjects()) {
+			org.eclipse.core.runtime.IPath location = project.getLocation();
+			if (location == null) {
+				continue;
+			}
+			java.nio.file.Path projectLocation = location.toFile().toPath().toAbsolutePath().normalize();
+			if (!normalized.startsWith(projectLocation)) {
+				continue;
+			}
+			int segments = projectLocation.getNameCount();
+			if (segments > bestSegments) {
+				bestMatch = project;
+				bestSegments = segments;
+			}
+		}
+		return bestMatch;
+	}
 	
 	@Override
 	public synchronized void deployableRemoved(DeployableReference reference) {
 		String k = getKey(reference);
-		getStates().remove(k);
 		deploymentOptions.remove(k);
+		deltas.remove(k);
+		assembly.remove(k);
 	}
 
 	@Override
 	public synchronized List<DeployableState> getDeployableStates() {
-		return this.wstServerFacade.getDeployableStates();
-
+		List<DeployableState> states = getWstDeployableStates();
+		List<DeployableState> ret = new ArrayList<>(states.size());
+		for (DeployableState state : states) {
+			DeployableReference ref = state.getReference();
+			if (ref != null) {
+				fillOptionsFromCache(ref);
+			}
+			ret.add(state);
+		}
+		return ret;
 	}
 
 	@Override
 	public synchronized List<DeployableState> getDeployableStatesWithOptions() {
-		// TODO: what do I do with this?
-		List<DeployableState> ret = getStates().values().stream().
-				map(element -> cloneDeployableState(element.getReference(), element))
-				.collect(Collectors.toList());
-		for( DeployableState ds : ret ) {
-			fillOptionsFromCache(ds.getReference());
+		List<DeployableState> states = getWstDeployableStates();
+		List<DeployableState> ret = new ArrayList<>(states.size());
+		for (DeployableState ds : states) {
+			DeployableReference ref = ds.getReference();
+			if (ref != null) {
+				fillOptionsFromCache(ref);
+			}
+			ret.add(ds);
 		}
-		return new ArrayList<>(ret);
+		return ret;
 	}
 
 	@Override
 	public synchronized DeployableState getDeployableState(DeployableReference reference) {
-		return this.wstServerFacade.getDeployableState(reference);
-		// return cloneDeployableState(reference, ds);
-	}
-
-	protected Map<String, DeployableState> getStates() {
-		return this.wstServerFacade.getDeployableStates().stream().collect(Collectors.toMap(
-				ds -> getKey(ds.getReference()), 
-				ds -> ds));
+		if (reference == null || wstServerFacade == null) {
+			return null;
+		}
+		DeployableState state = wstServerFacade.getDeployableState(reference);
+		if (state != null && state.getReference() != null) {
+			fillOptionsFromCache(state.getReference());
+		}
+		return state;
 	}
 
 	/**
@@ -308,14 +449,11 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	
 	@Override
 	public synchronized void setDeployablePublishState(DeployableReference reference, int publishState) {
-		DeployableState ds = getDeployableState(reference);
-		if (ds == null) {
+		if (reference == null) {
 			return;
 		}
-		DeployableState next = createDeployableState(reference, publishState, ds.getState());
 		String key = getKey(reference);
-		getStates().put(key, next);
-		if( publishState == ServerManagementAPIConstants.PUBLISH_STATE_NONE) {
+		if (publishState == ServerManagementAPIConstants.PUBLISH_STATE_NONE) {
 			clearDelta(key);
 		}
 		updateServerPublishStateFromDeployments();
@@ -332,12 +470,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 
 	@Override
 	public synchronized void setDeployableState(DeployableReference reference, int runState) {
-		DeployableState ds = getStates().get(getKey(reference));
-		if (ds == null) {
-			return;
-		}
-		DeployableState next = createDeployableState(reference, ds.getPublishState(), runState);
-		getStates().put(getKey(reference), next);
+		// WST manages run state; nothing to do here.
 	}
 
 	/*
@@ -371,7 +504,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		// DEPLOY_ASSEMBLY
 		Path affected = event.getPath();
 		//System.out.println("File changed: " + affected.toString());
-		List<DeployableState> ds = new ArrayList<>(getStates().values());
+		List<DeployableState> ds = new ArrayList<>(getWstDeployableStates());
 		boolean changed = false;
 		for( DeployableState d : ds ) {
 			DeploymentAssemblyFile assemblyObj = assembly.get(getKey(d.getReference()));
@@ -381,9 +514,11 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 				changed = fileChangedWithAssembly(event, affected, d);
 			}
 		}
-		updateServerPublishStateFromDeployments();
-		if( changed ) 
+		refreshWorkspaceForPath(affected);
+		updateServerPublishStateFromDeployments(true);
+		if (changed) {
 			fireState();
+		}
 		launchOrUpdateAutopublishThread();
 	}
 
@@ -409,20 +544,8 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 			DeployableState d, Path deploymentPath) {
 		boolean changed = false;
 		if( affected.startsWith(deploymentPath)) {
-			int currentPubState = d.getPublishState();
-			if( currentPubState == ServerManagementAPIConstants.PUBLISH_STATE_NONE
-					|| currentPubState == ServerManagementAPIConstants.PUBLISH_STATE_INCREMENTAL) {
-				int newState = getRequiredPublishStateOnFileChange(event);
-				if( newState > currentPubState ) {
-					d.setPublishState(newState);
-					changed = true;
-				}
-			}
-			if( currentPubState == ServerManagementAPIConstants.PUBLISH_STATE_NONE 
-					|| currentPubState == ServerManagementAPIConstants.PUBLISH_STATE_INCREMENTAL
-					|| currentPubState == ServerManagementAPIConstants.PUBLISH_STATE_FULL ) {
-				registerSingleDelta(event, d.getReference());
-			}
+			registerSingleDelta(event, d.getReference());
+			changed = true;
 		}
 		return changed;
 	}
@@ -457,41 +580,31 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	}
 	
 	public synchronized void updateServerPublishStateFromDeployments(boolean fireEvent) {
-		List<DeployableState> vals = new ArrayList<>(getStates().values());
-		int newState = ServerManagementAPIConstants.PUBLISH_STATE_NONE;
-
-		if( deployableExists(ServerManagementAPIConstants.PUBLISH_STATE_ADD, vals) || 
-				deployableExists(ServerManagementAPIConstants.PUBLISH_STATE_REMOVE, vals) ||
-				deployableExists(ServerManagementAPIConstants.PUBLISH_STATE_FULL, vals)) {
-			newState = ServerManagementAPIConstants.PUBLISH_STATE_FULL;
-		} else {
-			if( deployableExists(ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN, vals)) {
-				newState = ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN;
-			} else if( deployableExists(ServerManagementAPIConstants.PUBLISH_STATE_INCREMENTAL, vals)) {
-				newState = ServerManagementAPIConstants.PUBLISH_STATE_INCREMENTAL;
-			} else {
-				newState = ServerManagementAPIConstants.PUBLISH_STATE_NONE;
-			}
+		if (wstServerFacade == null) {
+			return;
 		}
-		setServerPublishState(newState, fireEvent);
-	}
-	
-	private boolean deployableExists(int publishState, List<DeployableState> deployableStates) {
-		return deployableStates.stream()
-				.anyMatch(deployState -> deployState.getPublishState() == publishState);
+		setServerPublishState(wstServerFacade.getServerPublishState(), fireEvent);
 	}
 
 	@Override
 	public synchronized int getServerPublishState() {
-		return this.wstServerFacade.getServerPublishState();
+		if (wstServerFacade != null) {
+			this.publishState = wstServerFacade.getServerPublishState();
+		}
+		return this.publishState;
 	}
 
 	@Override
 	public synchronized void setServerPublishState(int state, boolean fire) {
-		if( state != this.publishState) {
-			this.publishState = state;
-			if( fire ) 
+		int nextState = state;
+		if (wstServerFacade != null) {
+			nextState = wstServerFacade.getServerPublishState();
+		}
+		if (nextState != this.publishState) {
+			this.publishState = nextState;
+			if (fire) {
 				fireState();
+			}
 		}
 	}
 
@@ -520,9 +633,20 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	}
 
 	protected boolean isAutoPublisherEnabled() {
+		if (!isAutoPublisherSupported()) {
+			return false;
+		}
 		return delegate.getServer().getAttribute(
 				DefaultServerAttributes.AUTOPUBLISH_ENABLEMENT, 
 				DefaultServerAttributes.AUTOPUBLISH_ENABLEMENT_DEFAULT);
+	}
+
+	private boolean isAutoPublisherSupported() {
+		if (delegate == null || delegate.getServer() == null) {
+			return true;
+		}
+		String typeId = delegate.getServer().getTypeId();
+		return typeId == null || !typeId.startsWith("com.ibm.ws.ast");
 	}
 	
 	protected int getInactivityTimeout() {
@@ -537,24 +661,85 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		}
 	}
 	protected void launchOrUpdateAutopublishThreadImpl() {
-		// synchronized (this) {
-		// 	if (this.autoPublish != null) {
-		// 		if (this.autoPublish.isDone() || this.autoPublish.getPublishBegan()) {
-		// 			// we need a new thread
-		// 			this.autoPublish = createNewAutoPublishThread( getInactivityTimeout());
-		// 			this.autoPublish.start();
-		// 		} else {
-		// 			this.autoPublish.updateInactivityCounter();
-		// 		}
-		// 	} else {
-		// 		this.autoPublish = createNewAutoPublishThread( getInactivityTimeout());
-		// 		this.autoPublish.start();
-		// 	}
-		// }
+		synchronized (this) {
+			if (this.autoPublish != null) {
+				if (this.autoPublish.isDone() || this.autoPublish.getPublishBegan()) {
+					// we need a new thread
+					this.autoPublish = createNewAutoPublishThread( getInactivityTimeout());
+					this.autoPublish.start();
+				} else {
+					this.autoPublish.updateInactivityCounter();
+				}
+			} else {
+				this.autoPublish = createNewAutoPublishThread( getInactivityTimeout());
+				this.autoPublish.start();
+			}
+		}
 	}
 	
-	protected AutoPublishThread createNewAutoPublishThread(int timeout) {
-		return new AutoPublishThread(delegate.getServer(), timeout);
+	protected WSTAutoPublishThread createNewAutoPublishThread(int timeout) {
+		return new WSTAutoPublishThread(delegate.getServer(), timeout, this::hasPendingChanges, this::isAutoPublisherEnabled);
 	}
-	
-} 
+
+	public synchronized void markPublished() {
+		for (DeployableDelta delta : deltas.values()) {
+			if (delta != null) {
+				delta.clear();
+			}
+		}
+		updateServerPublishStateFromDeployments();
+		fireState();
+	}
+
+	private boolean hasPendingChanges() {
+		for (DeployableDelta delta : deltas.values()) {
+			if (delta != null && !delta.getResourceDeltaMap().isEmpty()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private void handleAutoPublishConfigChanged() {
+		if (!isAutoPublisherEnabled()) {
+			cancelAutoPublishThread();
+			return;
+		}
+		if (hasPendingChanges() || (wstServerFacade != null
+				&& wstServerFacade.getServerPublishState() != ServerManagementAPIConstants.PUBLISH_STATE_NONE)) {
+			launchOrUpdateAutopublishThread();
+		}
+	}
+
+	private void cancelAutoPublishThread() {
+		if (autoPublish != null) {
+			autoPublish.cancel();
+			autoPublish = null;
+		}
+	}
+
+	private void registerAutoPublishConfigListener() {
+		if (autoPublishListenerRegistered || delegate == null || delegate.getServer() == null) {
+			return;
+		}
+		IServerModel model = delegate.getServer().getServerModel();
+		if (model != null) {
+			model.addServerModelListener(autoPublishListener);
+			autoPublishListenerRegistered = true;
+		}
+	}
+
+	private void registerPublishStateListener() {
+		if (publishStateListenerRegistered || wstServerFacade == null) {
+			return;
+		}
+		wstServerFacade.addServerListener(publishStateListener);
+		publishStateListenerRegistered = true;
+	}
+
+	private IStatus registerDeployable(DeployableReference reference) {
+		deploymentOptions.put(getKey(reference), reference.getOptions());
+		return registerFileWatcher(reference);
+	}
+
+}

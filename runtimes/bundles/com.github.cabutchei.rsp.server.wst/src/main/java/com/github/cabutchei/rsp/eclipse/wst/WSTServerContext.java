@@ -12,6 +12,7 @@ import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
 
 
 
@@ -105,6 +106,10 @@ public class WSTServerContext {
 
     public void stopModule(DeployableReference ref) {
         this.facade.stopModule(serverHandle, ref);
+    }
+
+    public void addServerListener(IServerListener listener) {
+        this.facade.addServerListener(serverHandle.getId(), listener);
     }
 
     private void setLaunch(org.eclipse.debug.core.ILaunch launch) {

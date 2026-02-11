@@ -15,6 +15,7 @@ import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 import com.github.cabutchei.rsp.eclipse.debug.core.IStreamListener;
 import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
 import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;
+import com.github.cabutchei.rsp.launching.java.ILaunchModes;
 import com.github.cabutchei.rsp.server.model.AbstractServerDelegate;
 import com.github.cabutchei.rsp.wst.server.model.WSTServerStreamListener;
 import com.github.cabutchei.rsp.wst.server.model.publishing.WSTServerPublishStateModel;
@@ -24,12 +25,14 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerPublishModel;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
+import com.github.cabutchei.rsp.server.eap.servertype.publishing.EapPublishController;
 
 public class EapServerDelegate extends AbstractServerDelegate implements IServerDelegate, IModuleStateProvider {
 	private static final String PROCESS_ID_KEY = "process.id.key";
 
 	private WSTServerContext wstServerFacade;
 	private final LaunchStreamAttacher launchStreamAttacher;
+	private EapPublishController publishController;
 
 	public EapServerDelegate(IServer server, WSTServerContext wstServerFacade) {
 		super(server);
@@ -73,6 +76,12 @@ public class EapServerDelegate extends AbstractServerDelegate implements IServer
 	@Override
 	public IStatus publish(int publishRequestType) {
 		IStatus status = this.wstServerFacade.publish(publishRequestType);
+		if (status != null && status.isOK() && getServerPublishModel() instanceof WSTServerPublishStateModel) {
+			((WSTServerPublishStateModel) getServerPublishModel()).markPublished();
+			getPublishController().publishFinished(publishRequestType,
+					getServerPublishModel().getDeployableStatesWithOptions(),
+					getServerRunState());
+		}
 		fireStateChanged(getServerState());
 		return status;
 	}
@@ -122,6 +131,9 @@ public class EapServerDelegate extends AbstractServerDelegate implements IServer
 
 	@Override
 	public IStatus canStart(String mode) {
+		if (ILaunchModes.DEBUG.equals(mode)) {
+			return new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Debug mode is not implemented for this server.");
+		}
 		return this.wstServerFacade.canStart(mode);
 	}
 
@@ -164,5 +176,12 @@ public class EapServerDelegate extends AbstractServerDelegate implements IServer
 			all[i].getStreamsProxy().getOutputStreamMonitor().addListener(out);
 			all[i].getStreamsProxy().getErrorStreamMonitor().addListener(err);
 		}
+	}
+
+	private EapPublishController getPublishController() {
+		if (publishController == null) {
+			publishController = new EapPublishController(getServer());
+		}
+		return publishController;
 	}
 }

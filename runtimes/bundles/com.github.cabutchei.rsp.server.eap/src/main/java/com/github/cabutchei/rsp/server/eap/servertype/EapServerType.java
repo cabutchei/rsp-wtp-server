@@ -1,6 +1,7 @@
 package com.github.cabutchei.rsp.server.eap.servertype;
 
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
+import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 import com.github.cabutchei.rsp.api.dao.Attributes;
 import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.api.dao.ServerLaunchMode;
@@ -68,6 +69,14 @@ public class EapServerType extends AbstractServerType {
 					ServerManagementAPIConstants.ATTR_TYPE_INT,
 					"Web port to use for server",
 					IEapServerAttributes.WEB_PORT_DEFAULT);
+			attrs.addAttribute(DefaultServerAttributes.AUTOPUBLISH_ENABLEMENT,
+					ServerManagementAPIConstants.ATTR_TYPE_BOOL,
+					"Enable the autopublisher.",
+					DefaultServerAttributes.AUTOPUBLISH_ENABLEMENT_DEFAULT);
+			attrs.addAttribute(DefaultServerAttributes.AUTOPUBLISH_INACTIVITY_LIMIT,
+					ServerManagementAPIConstants.ATTR_TYPE_INT,
+					"Set the inactivity limit before the autopublisher runs.",
+					DefaultServerAttributes.AUTOPUBLISH_INACTIVITY_LIMIT_DEFAULT);
 			optional = attrs.toPojo();
 		}
 		return optional;

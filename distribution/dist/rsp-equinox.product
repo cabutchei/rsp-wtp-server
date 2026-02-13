@@ -34,6 +34,7 @@
 		<plugin id="com.ibm.ws.st.was.core"/>
 		<plugin id="com.ibm.ws.ast.st.v85.core"/>
 		<plugin id="com.ibm.websphere.v85.core"/>
+      	<plugin id="com.ibm.ws.ast.st.v85.wdt" />
 		<plugin id="com.ibm.websphere.v9.core"/>
 		<plugin id="javax.annotation"/>
 		<plugin id="org.eclipse.jdt.launching.macosx"/>
@@ -53,19 +54,6 @@
 		<plugin id="org.eclipse.ecf.identity"/>
 		<plugin id="org.eclipse.ecf.provider.filetransfer"/>
 		<plugin id="org.eclipse.ecf.provider.filetransfer.httpclient4"/>
-		<!-- <plugin id="org.jboss.tools.as.runtimes.integration"/> -->
-		<!-- <plugin id="org.jboss.tools.foundation.checkup"/>
-		<plugin id="org.jboss.ide.eclipse.archives.webtools"/>
-		<plugin id="org.jboss.ide.eclipse.as.core"/>
-		<plugin id="org.jboss.ide.eclipse.as.management.core"/>
-		<plugin id="org.jboss.ide.eclipse.as.management.as7"/>
-		<plugin id="org.jboss.ide.eclipse.as.classpath.core"/>
-		<plugin id="org.jboss.tools.jmx.local"/>
-		<plugin id="org.jboss.ide.eclipse.as.jmx.integration"/>
-		<plugin id="org.jboss.ide.eclipse.archives.jdt.integration"/>
-		<plugin id="org.jboss.tools.stacks.core"/>
-		<plugin id="org.jboss.ide.eclipse.as.wtp.core"/>
-		<plugin id="org.jboss.ide.eclipse.as.wtp.core"/> -->
 		
 	</plugins>
 	<configurations>

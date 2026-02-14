@@ -938,6 +938,9 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			List<ClasspathContainerEntry> entries = new ArrayList<>();
 			List<com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerEntry> sourceEntries = mapping.getEntries();
 			if (sourceEntries != null) {
+				if (sourceEntries.size() == 0) {
+					return;
+				}
 				for (com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerEntry entry : sourceEntries) {
 					if (entry == null) {
 						continue;

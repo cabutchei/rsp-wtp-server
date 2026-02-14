@@ -71,6 +71,8 @@
 			<unit id="org.eclipse.equinox.server.core.feature.group" version="1.9.0.v20190218-2100" />
 			<unit id="org.eclipse.equinox.server.jetty.feature.group" version="1.8.0.v20190223-1328" />
 			<unit id="org.eclipse.help.feature.group" version="2.2.500.v20190301-0040" />
+			<unit id="org.eclipse.jst.common.annotations.core" version="1.1.300.v201802082131" />
+			<unit id="org.eclipse.jst.ws.annotations.core" version="1.2.200.v201902162033" />
 			<unit id="org.eclipse.jdt.feature.group" version="3.17.0.v20190301-0040" />
 			<unit id="org.eclipse.pde.feature.group" version="3.13.400.v20190301-0538" />
 			<unit id="org.eclipse.platform.feature.group" version="4.11.0.v20190301-0040" />
@@ -122,6 +124,9 @@
       		<unit id="org.eclipse.emf.converter" />
       		<unit id="org.eclipse.emf.codegen.ecore" />
       		<unit id="org.apache.commons.io" />
+      		<unit id="org.eclipse.jpt.jpa.core" version="3.5.1.v201902121834" />
+      		<unit id="org.eclipse.jst.ws.jaxrs.core" version="1.0.850.v201902081908" />
+      		<unit id="org.eclipse.jst.jee.web" version="1.0.701.v201802201739" />
 		</location>
 
     	<location
@@ -147,8 +152,12 @@
       		<unit id="com.ibm.websphere.v9.core" />
       		<unit id="com.ibm.ws.ast.st.v85.core" />
       		<unit id="com.ibm.ws.ast.st.v85.wdt" />
-      		<!-- <repository
-        		location="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/wasdev/updates/wdt/2025-03/" /> -->
+      		<unit id="com.ibm.etools.annotations.ejb" version="1.0.101.v20251120_1402" />
+      		<unit id="com.ibm.etools.annotations.jca" version="1.0.3.v20251120_1402" />
+      		<unit id="com.ibm.etools.annotations.jcdi" version="1.0.1.v20251120_1402" />
+      		<unit id="com.ibm.etools.annotations.web" version="1.0.5.v20251120_1402" />
+      		<unit id="com.ibm.etools.annotations.core" version="1.0.409.v20251120_1402" />
+			<unit id="com.ibm.propertygroup" version="6.5.101.v20251120_1402" />
       		<repository
         		location="file:/Users/cabutchei/.m2/repository/p2-mirrors/public.dhe.ibm.com:ibmdl:export:pub:software:websphere:wasdev:updates:wdt:2025-03:" />
     	</location>

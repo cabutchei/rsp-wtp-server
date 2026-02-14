@@ -5,7 +5,7 @@
 	application="com.github.cabutchei.rsp.server.application"
 	version="0.1.0.qualifier"
 	useFeatures="false"
-	includeLaunchers="true">
+	includeLaunchers="false">
 	<configIni use="default"/>
 	<launcherArgs>
 		<vmArgs>-Dosgi.instance.area.default=@user.home/workspace</vmArgs>
@@ -28,14 +28,24 @@
 		<plugin id="com.github.cabutchei.rsp.server.liberty"/>
 		<plugin id="org.eclipse.jface.text"/>
 		<plugin id="org.eclipse.emf.common"/>
+		<plugin id="org.eclipse.jst.ws.annotations.core"/>
 		<plugin id="com.ibm.ws.st.core"/>
 		<plugin id="com.ibm.ws.ast.st.common.core"/>
 		<plugin id="com.ibm.ws.st.was.core"/>
 		<plugin id="com.ibm.ws.ast.st.v85.core"/>
 		<plugin id="com.ibm.websphere.v85.core"/>
+      	<plugin id="com.ibm.ws.ast.st.v85.wdt" />
 		<plugin id="com.ibm.websphere.v9.core"/>
+		<plugin id="org.eclipse.jst.common.annotations.core"/>
+		<plugin id="com.ibm.etools.annotations.core"/>
+		<plugin id="com.ibm.etools.annotations.ejb"/>
+		<plugin id="com.ibm.etools.annotations.jca"/>
+		<plugin id="com.ibm.etools.annotations.jcdi"/>
+		<plugin id="com.ibm.etools.annotations.web"/>
+		<plugin id="com.ibm.propertygroup"/>
 		<plugin id="javax.annotation"/>
 		<plugin id="org.eclipse.jdt.launching.macosx"/>
+
 	</plugins>
 	<configurations>
 		<plugin id="com.github.cabutchei.rsp.server.liberty" autoStart="true" startLevel="3"/>

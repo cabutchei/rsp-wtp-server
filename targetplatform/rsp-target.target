@@ -86,10 +86,10 @@
       <unit id="org.jboss.tools.runtime.core.feature.feature.group" />
       <unit id="org.jboss.tools.foundation.feature.feature.group" />
       <unit id="org.jboss.ide.eclipse.as.feature.feature.group" />
-      <repository location="https://download.jboss.org/jbosstools/static/photon/stable/updates/core/4.29.1.Final/" />
-      <repository location="https://download.jboss.org/jbosstools/static/photon/stable/updates/central/4.29.1.Final/" />
-      <repository location="https://download.jboss.org/jbosstools/targetplatforms/jbosstoolstarget/4.29.0.Final-SNAPSHOT/REPO/" />
-      <repository location="https://download.jboss.org/jbosstools/targetplatforms/jbtcentraltarget/4.28.0.AM1-SNAPSHOT/REPO/" />
+			<repository location="https://download.jboss.org/jbosstools/static/photon/stable/updates/core/4.11.0.Final/" />
+			<repository location="https://download.jboss.org/jbosstools/static/photon/stable/updates/central/4.11.0.Final/" />
+			<repository location="https://download.jboss.org/jbosstools/targetplatforms/jbosstoolstarget/4.11.0.Final-SNAPSHOT/REPO/" />
+			<repository location="https://download.jboss.org/jbosstools/targetplatforms/jbtcentraltarget/4.11.0.AM1-SNAPSHOT/REPO/" />
     </location>
 
   </locations>

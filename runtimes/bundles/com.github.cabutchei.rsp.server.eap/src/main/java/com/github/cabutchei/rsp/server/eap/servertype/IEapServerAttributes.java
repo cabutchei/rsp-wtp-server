@@ -18,4 +18,7 @@ public interface IEapServerAttributes extends DefaultServerAttributes {
 
 	String WEB_PORT = "org.jboss.ide.eclipse.as.core.server.webPort";
 	String WEB_PORT_DEFAULT = "8080";
+
+	String ATTACH_DEBUGGER = "org.jboss.ide.eclipse.as.core.server.launch.DebugLaunchConstants.ATTACH_DEBUGGER";
+	String DEBUG_PORT = "org.jboss.ide.eclipse.as.core.server.launch.DebugLaunchConstants.DEBUG_PORT";
 }

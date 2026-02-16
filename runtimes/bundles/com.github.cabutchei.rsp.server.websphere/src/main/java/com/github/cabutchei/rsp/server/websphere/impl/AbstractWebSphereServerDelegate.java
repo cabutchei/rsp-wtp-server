@@ -155,14 +155,14 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractServerDele
 			s = StatusConverter.convert(stat);
 			return new StartServerResponse(s, null);
 		}
-			CommandLineDetails details = new CommandLineDetails();
-			try {
-				if (ILaunchModes.DEBUG.equals(mode)) {
-					addDebugDetails(WebSphereWstServerAccess.getDebugPort(getServer()), details);
-				}
-				launchStreamAttacher.reset();
-				launchStreamAttacher.attach();
-				wstServerFacade.startAsync(mode);
+		CommandLineDetails details = new CommandLineDetails();
+		try {
+			if (ILaunchModes.DEBUG.equals(mode)) {
+				addDebugDetails(WebSphereWstServerAccess.getDebugPort(getServer()), details);
+			}
+			launchStreamAttacher.reset();
+			launchStreamAttacher.attach();
+			wstServerFacade.startAsync(mode);
 		} catch (CoreException e) {
 			launchStreamAttacher.reset();
 			s = StatusConverter.convert(e.getStatus());

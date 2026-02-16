@@ -1,6 +1,9 @@
 package com.github.cabutchei.rsp.eclipse.wst;
 
 import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.IWorkspaceDescription;
+import org.eclipse.core.runtime.preferences.InstanceScope;
+
 import com.github.cabutchei.rsp.server.LauncherSingleton;
 import com.github.cabutchei.rsp.server.ServerManagementServerLauncher;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
@@ -8,6 +11,8 @@ import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.prefs.BackingStoreException;
+import org.osgi.service.prefs.Preferences;
 import org.osgi.util.tracker.ServiceTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +24,8 @@ public class WstBootstrapActivator implements BundleActivator {
 	private static final long LAUNCHER_WAIT_MS = 60000;
 	private static final long WORKSPACE_WAIT_MS = 60000;
 	private static final long WAIT_SLICE_MS = 200;
+	private static final String WST_SERVER_CORE_PLUGIN_ID = "org.eclipse.wst.server.core";
+	private static final String WST_PREF_AUTO_PUBLISH = "auto-publish";
 	private ServiceRegistration<IWstIntegrationService> registration;
 	private IWstIntegrationService integrationService;
 	private BundleContext bundleContext;
@@ -72,6 +79,7 @@ public class WstBootstrapActivator implements BundleActivator {
 		} else {
 			LOG.warn("WST bootstrap skipped server refresh: server model unavailable.");
 		}
+		disableGlobalWstAutoPublishing();
 	}
 
 	private ServerManagementServerLauncher waitForLauncher() {
@@ -98,6 +106,11 @@ public class WstBootstrapActivator implements BundleActivator {
 				sleep(WAIT_SLICE_MS);
 				workspace = tracker.getService();
 			}
+			// return workspace != null;
+			if (workspace != null) {
+				IWorkspaceDescription desc = workspace.getDescription();
+    			desc.setAutoBuilding(false);
+			}
 			return workspace != null;
 		} finally {
 			tracker.close();
@@ -109,6 +122,17 @@ public class WstBootstrapActivator implements BundleActivator {
 			Thread.sleep(millis);
 		} catch (InterruptedException ie) {
 			Thread.currentThread().interrupt();
+		}
+	}
+
+	private void disableGlobalWstAutoPublishing() {
+		try {
+			Preferences node = InstanceScope.INSTANCE.getNode(WST_SERVER_CORE_PLUGIN_ID);
+			node.putBoolean(WST_PREF_AUTO_PUBLISH, false);
+			node.flush();
+			LOG.info("Disabled WTP global auto-publish preference.");
+		} catch (BackingStoreException bse) {
+			LOG.warn("Unable to disable WTP global auto-publish preference.", bse);
 		}
 	}
 }

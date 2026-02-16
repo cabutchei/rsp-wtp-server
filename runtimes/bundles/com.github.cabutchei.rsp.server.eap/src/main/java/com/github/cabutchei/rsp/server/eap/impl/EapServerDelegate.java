@@ -1,9 +1,14 @@
 package com.github.cabutchei.rsp.server.eap.impl;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.io.IOException;
+import java.net.ServerSocket;
 
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
+import com.github.cabutchei.rsp.api.dao.CommandLineDetails;
 import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.api.dao.ModuleState;
 import com.github.cabutchei.rsp.api.dao.ServerState;
@@ -16,6 +21,7 @@ import com.github.cabutchei.rsp.eclipse.debug.core.IStreamListener;
 import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
 import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;
 import com.github.cabutchei.rsp.launching.java.ILaunchModes;
+import com.github.cabutchei.rsp.launching.utils.LaunchingDebugProperties;
 import com.github.cabutchei.rsp.server.model.AbstractServerDelegate;
 import com.github.cabutchei.rsp.wst.server.model.WSTServerStreamListener;
 import com.github.cabutchei.rsp.wst.server.model.publishing.WSTServerPublishStateModel;
@@ -25,10 +31,14 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerPublishModel;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
+import com.github.cabutchei.rsp.server.eap.servertype.IEapServerAttributes;
 import com.github.cabutchei.rsp.server.eap.servertype.publishing.EapPublishController;
+
+
 
 public class EapServerDelegate extends AbstractServerDelegate implements IServerDelegate, IModuleStateProvider {
 	private static final String PROCESS_ID_KEY = "process.id.key";
+    private static final String DEBUG_PORT_KEY = "com.github.cabutchei.rsp.server.eap.debugPort";
 
 	private WSTServerContext wstServerFacade;
 	private final LaunchStreamAttacher launchStreamAttacher;
@@ -117,7 +127,13 @@ public class EapServerDelegate extends AbstractServerDelegate implements IServer
 			s = StatusConverter.convert(stat);
 			return new StartServerResponse(s, null);
 		}
+		CommandLineDetails details = new CommandLineDetails();
 		try {
+			if (ILaunchModes.DEBUG.equals(mode)) {
+				Integer debugPort = findFreePort();
+				addDebugDetails(debugPort, details);
+				EapServerAccess.getControllableServerBehavior(getServer()).putSharedData(DEBUG_PORT_KEY, debugPort);
+			}
 			launchStreamAttacher.reset();
 			launchStreamAttacher.attach();
 			this.wstServerFacade.startAsync(mode);
@@ -126,14 +142,11 @@ public class EapServerDelegate extends AbstractServerDelegate implements IServer
 			s = StatusConverter.convert(e.getStatus());
 			return new StartServerResponse(s, null);
 		}
-		return new StartServerResponse(StatusConverter.convert(Status.OK_STATUS), null);
+		return new StartServerResponse(StatusConverter.convert(Status.OK_STATUS), details);
 	}
 
 	@Override
 	public IStatus canStart(String mode) {
-		if (ILaunchModes.DEBUG.equals(mode)) {
-			return new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Debug mode is not implemented for this server.");
-		}
 		return this.wstServerFacade.canStart(mode);
 	}
 
@@ -184,4 +197,27 @@ public class EapServerDelegate extends AbstractServerDelegate implements IServer
 		}
 		return publishController;
 	}
+
+	private void addDebugDetails(int port, CommandLineDetails details) {
+		if (port == 0) {
+			return;
+		}
+		Map<String, String> props = details.getProperties();
+		if (props == null) {
+			props = new HashMap<>();
+			details.setProperties(props);
+		}
+		props.put(LaunchingDebugProperties.DEBUG_DETAILS_TYPE, LaunchingDebugProperties.DEBUG_DETAILS_TYPE_JAVA);
+		props.put(LaunchingDebugProperties.DEBUG_DETAILS_HOST, "localhost");
+		props.put(LaunchingDebugProperties.DEBUG_DETAILS_PORT, Integer.toString(port));
+	}
+
+	private Integer findFreePort() {
+		try (ServerSocket socket = new ServerSocket(0)) {
+			return socket.getLocalPort();
+		} catch (IOException e) {
+		}
+		return -1;
+	}
+
 }

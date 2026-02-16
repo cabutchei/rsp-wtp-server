@@ -1,0 +1,89 @@
+package com.github.cabutchei.rsp.server.eap.servertype.launch;
+
+
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.debug.core.ILaunch;
+import org.eclipse.debug.core.ILaunchConfiguration;
+import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
+import org.eclipse.debug.core.ILaunchManager;
+import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
+import org.eclipse.wst.server.core.IServerAttributes;
+import org.jboss.tools.as.core.server.controllable.subsystems.internal.LocalJBossLaunchController;
+import org.jboss.ide.eclipse.as.wtp.core.debug.RemoteDebugUtils;
+import org.jboss.ide.eclipse.as.wtp.core.server.behavior.ControllableServerBehavior;
+import org.jboss.ide.eclipse.as.wtp.core.server.behavior.IControllableServerBehavior;
+import org.jboss.ide.eclipse.as.wtp.core.server.behavior.IServerShutdownController;
+
+
+/**
+    This custom controller allows us inject jdwp args
+ */
+public class LaunchController extends LocalJBossLaunchController {
+
+    private static final String DEBUG_PORT_KEY = "com.github.cabutchei.rsp.server.eap.debugPort";
+
+    @Override
+    public void setupLaunchConfiguration(ILaunchConfigurationWorkingCopy workingCopy, IProgressMonitor monitor)
+            throws CoreException {
+        super.setupLaunchConfiguration(workingCopy, monitor);
+
+        int port = getDebugPort(getServer());
+
+        String vmArgs = workingCopy.getAttribute(IJavaLaunchConfigurationConstants.ATTR_VM_ARGUMENTS, "");
+        vmArgs = stripExistingDebugArgs(vmArgs);
+
+        String jdwp = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=localhost:" + port;
+        String updated = vmArgs.isEmpty() ? jdwp : (vmArgs + " " + jdwp);
+
+        workingCopy.setAttribute(IJavaLaunchConfigurationConstants.ATTR_VM_ARGUMENTS, updated);
+    }
+
+    @Override
+    public void launch(ILaunchConfiguration configuration, String mode, ILaunch launch, IProgressMonitor monitor) throws CoreException {
+        boolean isDebug = ILaunchManager.DEBUG_MODE.equals(mode);
+        // flipping from 'debug' to 'run' bypasses StandardVMDebugger and prevents port randomization
+        String effectiveMode = ILaunchManager.DEBUG_MODE.equals(mode) ? ILaunchManager.RUN_MODE : mode;
+        super.launch(configuration, effectiveMode, launch, monitor);
+        if (isDebug) {
+            // we have flip back in order to make the server appear as debug mode
+            IControllableServerBehavior beh = getControllableBehavior();
+            if (beh instanceof ControllableServerBehavior) {
+                ((ControllableServerBehavior) beh).setRunMode(ILaunchManager.DEBUG_MODE);
+            }
+        }
+
+    }
+
+    private int getDebugPort(IServerAttributes server) {
+        String raw;
+        int port;
+        try {
+            raw = server.getAttribute(RemoteDebugUtils.DEBUG_PORT, (String)null);
+            port = Integer.parseInt(raw);
+        } catch (NumberFormatException e) {}
+        try {
+            port = (Integer) this.getControllableBehavior().getSharedData(DEBUG_PORT_KEY);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+        return port;
+    }
+
+    private static String stripExistingDebugArgs(String vmArgs) {
+        if (vmArgs == null || vmArgs.isEmpty()) return "";
+        String out = vmArgs;
+        out = out.replaceAll("(^|\\s)-agentlib:jdwp=\\S+", " ");
+        out = out.replaceAll("(^|\\s)-Xrunjdwp:\\S+", " ");
+        out = out.replaceAll("(^|\\s)-Xdebug(\\s|$)", " ");
+        out = out.replaceAll("(^|\\s)-Xnoagent(\\s|$)", " ");
+        out = out.replaceAll("\\s+", " ").trim();
+        return out;
+    }
+
+    @Override
+    public IServerShutdownController getShutdownController() {
+        System.out.println();
+        return super.getShutdownController();
+    }
+}

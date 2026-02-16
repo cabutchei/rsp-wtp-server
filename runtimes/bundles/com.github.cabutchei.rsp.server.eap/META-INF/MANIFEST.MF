@@ -36,7 +36,8 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.wst.common.project.facet.core,
  org.eclipse.wst.server.discovery,
  org.eclipse.jdt.core,
- org.eclipse.jdt.launching
+ org.eclipse.jdt.launching,
+ org.jboss.ide.eclipse.as.core
 Export-Package: com.github.cabutchei.rsp.server.eap.beans,
  com.github.cabutchei.rsp.server.eap.impl,
  com.github.cabutchei.rsp.server.eap.servertype

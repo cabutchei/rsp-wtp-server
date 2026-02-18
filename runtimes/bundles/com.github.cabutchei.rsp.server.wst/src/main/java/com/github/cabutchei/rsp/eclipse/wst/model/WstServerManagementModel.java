@@ -3,14 +3,15 @@ package com.github.cabutchei.rsp.eclipse.wst.model;
 import java.util.Collections;
 import java.util.Objects;
 
+import com.github.cabutchei.rsp.eclipse.workspace.EclipseProjectImporter;
+import com.github.cabutchei.rsp.eclipse.workspace.ProjectsManager;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstIntegrationService;
+import com.github.cabutchei.rsp.eclipse.wst.wtp.WTPService;
 import com.github.cabutchei.rsp.server.model.ServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.model.IDataStoreModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
-
-import com.github.cabutchei.rsp.eclipse.wst.workspace.EclipseProjectImporter;
-import com.github.cabutchei.rsp.eclipse.wst.workspace.ProjectsManager;
+import com.github.cabutchei.rsp.server.spi.workspace.IWTPService;
 
 
 
@@ -39,7 +40,8 @@ public class WstServerManagementModel extends ServerManagementModel {
 		if (integration == null) {
 			throw new IllegalStateException("WstIntegrationService must be provided before createProjectsManager()");
 		}
-		return new ProjectsManager(integration.getWorkspaceService(), integration.getFacade(),
+		IWTPService wtpService = new WTPService(integration.getWorkspaceService(), integration.getFacade());
+		return new ProjectsManager(integration.getWorkspaceService(), wtpService,
 				Collections.singletonList(new EclipseProjectImporter(integration.getWorkspaceService())));
 	}
 

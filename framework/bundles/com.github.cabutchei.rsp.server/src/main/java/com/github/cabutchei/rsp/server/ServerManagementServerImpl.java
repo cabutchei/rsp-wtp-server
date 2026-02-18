@@ -102,6 +102,7 @@ import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
 import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
+import com.github.cabutchei.rsp.server.spi.workspace.IWTPService;
 import com.github.cabutchei.rsp.server.workspace.WorkspaceFolderChangeHandler;
 
 
@@ -699,7 +700,12 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			resp.setStatus(errorStatus("Projects manager unavailable"));
 			return resp;
 		}
-		List<DeployableArtifact> resources = projectsManager.listDeployableResources(server);
+		IWTPService wtpService = getWTPService(projectsManager);
+		if (wtpService == null) {
+			resp.setStatus(errorStatus("WTP service unavailable"));
+			return resp;
+		}
+		List<DeployableArtifact> resources = wtpService.listDeployableResources(server);
 		List<DeployableReference> refs = new ArrayList<>();
 		if (resources != null) {
 			refs = resources.stream()
@@ -753,6 +759,11 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			resp.setStatus(errorStatus("Projects manager unavailable"));
 			return resp;
 		}
+		IWTPService wtpService = getWTPService(projectsManager);
+		if (wtpService == null) {
+			resp.setStatus(errorStatus("WTP service unavailable"));
+			return resp;
+		}
 		java.nio.file.Path projectPath = null;
 		if (pathString != null && !pathString.isEmpty()) {
 			try {
@@ -763,7 +774,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			}
 		}
 		List<com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject> projects =
-				projectsManager.listDeploymentAssemblyProjects(projectPath, projectName);
+				wtpService.listDeploymentAssemblyProjects(projectPath, projectName);
 		List<WorkspaceProject> mapped = new ArrayList<>();
 		if (projects != null) {
 			mapped = projects.stream()
@@ -810,6 +821,11 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			resp.setStatus(errorStatus("Projects manager unavailable"));
 			return resp;
 		}
+		IWTPService wtpService = getWTPService(projectsManager);
+		if (wtpService == null) {
+			resp.setStatus(errorStatus("WTP service unavailable"));
+			return resp;
+		}
 		java.nio.file.Path projectPath = null;
 		if (pathString != null && !pathString.isEmpty()) {
 			try {
@@ -819,7 +835,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 				return resp;
 			}
 		}
-		List<DeploymentAssemblyEntry> entries = projectsManager.getDeploymentAssembly(projectPath, projectName);
+		List<DeploymentAssemblyEntry> entries = wtpService.getDeploymentAssembly(projectPath, projectName);
 		if (entries == null) {
 			resp.setEntries(new ArrayList<>());
 			resp.setStatus(errorStatus("Deployment assembly unavailable for project"));
@@ -854,6 +870,10 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		if (projectsManager == null) {
 			return errorStatus("Projects manager unavailable");
 		}
+		IWTPService wtpService = getWTPService(projectsManager);
+		if (wtpService == null) {
+			return errorStatus("WTP service unavailable");
+		}
 		java.nio.file.Path projectPath = null;
 		if (pathString != null && !pathString.isEmpty()) {
 			try {
@@ -868,11 +888,15 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 				request.getEntry().getSourceKind(),
 				request.getEntry().getDeployKind());
 		IStatus status = add
-				? projectsManager.addDeploymentAssemblyEntry(projectPath, projectName, entry)
-				: projectsManager.removeDeploymentAssemblyEntry(projectPath, projectName, entry);
+				? wtpService.addDeploymentAssemblyEntry(projectPath, projectName, entry)
+				: wtpService.removeDeploymentAssemblyEntry(projectPath, projectName, entry);
 		return StatusConverter.convert(status == null
 				? new com.github.cabutchei.rsp.eclipse.core.runtime.Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Operation failed")
 				: status);
+	}
+
+	private IWTPService getWTPService(IProjectsManager projectsManager) {
+		return projectsManager == null ? null : projectsManager.getWTPService();
 	}
 
 	@Override

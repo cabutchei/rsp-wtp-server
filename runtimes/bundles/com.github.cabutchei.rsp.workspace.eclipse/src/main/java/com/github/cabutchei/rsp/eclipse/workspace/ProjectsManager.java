@@ -1,4 +1,4 @@
-package com.github.cabutchei.rsp.eclipse.wst.workspace;
+package com.github.cabutchei.rsp.eclipse.workspace;
 
 import java.nio.file.Path;
 import java.net.URI;
@@ -22,25 +22,20 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
-import com.github.cabutchei.rsp.api.dao.ServerHandle;
-import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
-import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 import com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerEntry;
 import com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerMapping;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectImporter;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
+import com.github.cabutchei.rsp.server.spi.workspace.IWTPService;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
 import com.github.cabutchei.rsp.server.spi.workspace.JreContainerMapping;
 import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject;
-import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
-
-import com.github.cabutchei.rsp.eclipse.wst.core.WSTFacade;
 
 
 
 public class ProjectsManager implements IProjectsManager {
 	private final IWorkspaceService workspaceService;
-	private final WSTFacade wstFacade;
+	private final IWTPService wtpService;
 	private final List<IProjectImporter> projectImporters;
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
 	private boolean initialized;
@@ -49,9 +44,9 @@ public class ProjectsManager implements IProjectsManager {
 		this(workspaceService, null, projectImporters);
 	}
 
-	public ProjectsManager(IWorkspaceService workspaceService, WSTFacade wstFacade, List<IProjectImporter> projectImporters) {
+	public ProjectsManager(IWorkspaceService workspaceService, IWTPService wtpService, List<IProjectImporter> projectImporters) {
 		this.workspaceService = workspaceService;
-		this.wstFacade = wstFacade;
+		this.wtpService = wtpService;
 		this.projectImporters = projectImporters == null ? Collections.emptyList() : new ArrayList<>(projectImporters);
 	}
 
@@ -61,6 +56,9 @@ public class ProjectsManager implements IProjectsManager {
 		synchronized (this.workspaceRoots) {
 			this.workspaceRoots.clear();
 			this.workspaceRoots.addAll(normalizedRoots);
+		}
+		if (wtpService != null) {
+			wtpService.setWorkspaceRoots(normalizedRoots);
 		}
 		initialized = true;
 		notifyImportersInit(normalizedRoots);
@@ -74,41 +72,10 @@ public class ProjectsManager implements IProjectsManager {
 			workspaceRoots.removeAll(removedRoots);
 			workspaceRoots.addAll(addedRoots);
 		}
+		if (wtpService != null) {
+			wtpService.setWorkspaceRoots(getWorkspaceRootsSnapshot());
+		}
 		notifyImportersUpdate(addedRoots, removedRoots);
-	}
-
-	@Override
-	public List<DeployableArtifact> listDeployableResources(ServerHandle server) {
-		List<DeployableArtifact> deployables;
-		if (wstFacade != null && server != null) {
-			deployables = wstFacade.listDeployableResources(server);
-		} else if (workspaceService != null) {
-			deployables = workspaceService.listDeployables();
-		} else {
-			deployables = Collections.emptyList();
-		}
-		if (deployables == null || deployables.isEmpty()) {
-			return Collections.emptyList();
-		}
-		Collection<Path> roots = getWorkspaceRootsSnapshot();
-		if (roots.isEmpty()) {
-			return deployables;
-		}
-		List<DeployableArtifact> filtered = new ArrayList<>();
-		for (DeployableArtifact deployable : deployables) {
-			if (deployable == null) {
-				continue;
-			}
-			Path deployPath = deployable.getDeployPath();
-			if (deployPath == null) {
-				continue;
-			}
-			Path normalized = deployPath.toAbsolutePath().normalize();
-			if (isContainedInAny(normalized, roots)) {
-				filtered.add(deployable);
-			}
-		}
-		return filtered;
 	}
 
 	@Override
@@ -118,51 +85,6 @@ public class ProjectsManager implements IProjectsManager {
 		}
 		List<WorkspaceProject> projects = workspaceService.listProjects();
 		return projects == null ? Collections.emptyList() : projects;
-	}
-
-	@Override
-	public List<WorkspaceProject> listDeploymentAssemblyProjects(Path projectPath, String projectName) {
-		if (wstFacade == null) {
-			return Collections.emptyList();
-		}
-		List<IProject> projects = wstFacade.listDeploymentAssemblyProjects(projectPath, projectName);
-		if (projects == null || projects.isEmpty()) {
-			return Collections.emptyList();
-		}
-		List<WorkspaceProject> mapped = new ArrayList<>();
-		for (IProject project : projects) {
-			if (project == null) {
-				continue;
-			}
-			IPath location = project.getLocation();
-			Path path = location == null ? null : location.toFile().toPath();
-			mapped.add(new WorkspaceProject(project.getName(), path, project.isOpen()));
-		}
-		return mapped;
-	}
-
-	@Override
-	public List<DeploymentAssemblyEntry> getDeploymentAssembly(Path projectPath, String projectName) {
-		if (workspaceService == null) {
-			return null;
-		}
-		return workspaceService.getDeploymentAssembly(projectPath, projectName);
-	}
-
-	@Override
-	public IStatus addDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry) {
-		if (workspaceService == null) {
-			return null;
-		}
-		return workspaceService.addDeploymentAssemblyEntry(projectPath, projectName, entry);
-	}
-
-	@Override
-	public IStatus removeDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry) {
-		if (workspaceService == null) {
-			return null;
-		}
-		return workspaceService.removeDeploymentAssemblyEntry(projectPath, projectName, entry);
 	}
 
 	@Override
@@ -333,6 +255,11 @@ public class ProjectsManager implements IProjectsManager {
 	@Override
 	public boolean isInitialized() {
 		return initialized;
+	}
+
+	@Override
+	public IWTPService getWTPService() {
+		return wtpService;
 	}
 
 	private Collection<Path> getWorkspaceRootsSnapshot() {

@@ -6,7 +6,7 @@ import com.github.cabutchei.rsp.eclipse.wst.api.IWstIntegrationService;
 import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
 
-import com.github.cabutchei.rsp.eclipse.wst.workspace.EclipseWorkspaceService;
+import com.github.cabutchei.rsp.eclipse.workspace.EclipseWorkspaceService;
 
 /**
  * Owns WST integration components
@@ -25,9 +25,6 @@ public final class WstIntegrationService implements IWstIntegrationService {
 		this.registry = Objects.requireNonNull(registry, "registry");
 		this.workspaceService = new EclipseWorkspaceService();
 		this.facade = new WSTFacade(this.registry, this.workspaceService);
-		if (this.workspaceService instanceof EclipseWorkspaceService) {
-			((EclipseWorkspaceService) this.workspaceService).setWstFacade(this.facade);
-		}
 	}
 
 	@Override

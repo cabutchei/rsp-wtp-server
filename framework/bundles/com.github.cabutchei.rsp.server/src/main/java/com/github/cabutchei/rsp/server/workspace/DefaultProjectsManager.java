@@ -13,13 +13,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import com.github.cabutchei.rsp.api.dao.ServerHandle;
-import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
-import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
-import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
-import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 import com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerMapping;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
+import com.github.cabutchei.rsp.server.spi.workspace.IWTPService;
 import com.github.cabutchei.rsp.server.spi.workspace.JreContainerMapping;
 import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject;
 
@@ -37,33 +33,8 @@ public class DefaultProjectsManager implements IProjectsManager {
 	}
 
 	@Override
-	public List<DeployableArtifact> listDeployableResources(ServerHandle server) {
-		return Collections.emptyList();
-	}
-
-	@Override
 	public List<WorkspaceProject> listWorkspaceProjects() {
 		return Collections.emptyList();
-	}
-
-	@Override
-	public List<WorkspaceProject> listDeploymentAssemblyProjects(Path projectPath, String projectName) {
-		return Collections.emptyList();
-	}
-
-	@Override
-	public List<DeploymentAssemblyEntry> getDeploymentAssembly(Path projectPath, String projectName) {
-		return null;
-	}
-
-	@Override
-	public IStatus addDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry) {
-		return Status.OK_STATUS;
-	}
-
-	@Override
-	public IStatus removeDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry) {
-		return Status.OK_STATUS;
 	}
 
 	@Override
@@ -79,5 +50,10 @@ public class DefaultProjectsManager implements IProjectsManager {
 	@Override
 	public boolean isInitialized() {
 		return initialized;
+	}
+
+	@Override
+	public IWTPService getWTPService() {
+		return null;
 	}
 }

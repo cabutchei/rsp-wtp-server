@@ -1,4 +1,4 @@
-package com.github.cabutchei.rsp.eclipse.wst.workspace;
+package com.github.cabutchei.rsp.eclipse.workspace;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;

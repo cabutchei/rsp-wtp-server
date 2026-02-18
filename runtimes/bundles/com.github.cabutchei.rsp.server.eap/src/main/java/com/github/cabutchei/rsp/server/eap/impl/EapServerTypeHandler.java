@@ -9,7 +9,7 @@ import org.jboss.ide.eclipse.as.wtp.core.server.behavior.ControllableServerBehav
 import org.jboss.ide.eclipse.as.wtp.core.server.behavior.ILaunchServerController;
 
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
-import com.github.cabutchei.rsp.eclipse.wst.WstServerTypeHandler;
+import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandler;
 import com.github.cabutchei.rsp.server.eap.servertype.IEapServerAttributes;
 
 final class EapServerTypeHandler implements WstServerTypeHandler {

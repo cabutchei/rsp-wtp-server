@@ -1,6 +1,6 @@
 package com.github.cabutchei.rsp.server.liberty.impl;
 
-import com.github.cabutchei.rsp.eclipse.wst.WstServerManagementModelFactory;
+import com.github.cabutchei.rsp.eclipse.wst.api.WstServerManagementModelFactory;
 import com.github.cabutchei.rsp.server.LauncherSingleton;
 import com.github.cabutchei.rsp.server.RSPFlags;
 import com.github.cabutchei.rsp.server.ServerManagementServerLauncher;

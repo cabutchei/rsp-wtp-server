@@ -7,7 +7,7 @@ import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.api.dao.ServerLaunchMode;
 import com.github.cabutchei.rsp.api.dao.ServerType;
 import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
-import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;
+import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
 import com.github.cabutchei.rsp.launching.java.ILaunchModes;
 import com.github.cabutchei.rsp.server.eap.impl.Activator;
 import com.github.cabutchei.rsp.server.eap.impl.EapServerDelegate;

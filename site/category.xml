@@ -14,7 +14,6 @@
    <bundle id="com.github.cabutchei.rsp.foundation.core"/>
    <bundle id="com.github.cabutchei.rsp.runtime.core"/>
    <bundle id="com.github.cabutchei.rsp.server"/>
-   <bundle id="com.github.cabutchei.rsp.server.redhat.download"/>
 
 </site>
 

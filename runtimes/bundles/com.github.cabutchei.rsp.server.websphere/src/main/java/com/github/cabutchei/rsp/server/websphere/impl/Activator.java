@@ -4,8 +4,8 @@ import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.LauncherSingleton;
 import com.github.cabutchei.rsp.server.spi.RSPExtensionBundle;
 
-import com.github.cabutchei.rsp.eclipse.wst.IWstIntegrationService;
-import com.github.cabutchei.rsp.eclipse.wst.WstServerTypeHandlerRegistry;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstIntegrationService;
+import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandlerRegistry;
 
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;

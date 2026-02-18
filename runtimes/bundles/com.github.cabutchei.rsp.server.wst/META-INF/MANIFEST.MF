@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: com.github.cabutchei.rsp.server.wst
 Bundle-SymbolicName: com.github.cabutchei.rsp.server.wst
-Bundle-Activator: com.github.cabutchei.rsp.eclipse.wst.WstBootstrapActivator
+Bundle-Activator: com.github.cabutchei.rsp.eclipse.wst.bootstrap.WstBootstrapActivator
 Automatic-Module-Name: com.github.cabutchei.rsp.server.wst
 Bundle-Version: 0.1.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-11
@@ -61,7 +61,10 @@ Require-Bundle: org.eclipse.osgi.util,
  org.eclipse.wst.server.discovery,
  org.eclipse.jdt.core,
  org.eclipse.jdt.launching
-Export-Package: com.github.cabutchei.rsp.eclipse.wst,
- com.github.cabutchei.rsp.eclipse.workspace,
- com.github.cabutchei.rsp.wst.server.model,
- com.github.cabutchei.rsp.wst.server.model.publishing
+Export-Package: com.github.cabutchei.rsp.eclipse.wst.api,
+ com.github.cabutchei.rsp.eclipse.wst.adapter,
+ com.github.cabutchei.rsp.eclipse.wst.core,
+ com.github.cabutchei.rsp.eclipse.wst.proxy,
+ com.github.cabutchei.rsp.eclipse.wst.stream,
+ com.github.cabutchei.rsp.eclipse.wst.publishing,
+ com.github.cabutchei.rsp.eclipse.wst.workspace

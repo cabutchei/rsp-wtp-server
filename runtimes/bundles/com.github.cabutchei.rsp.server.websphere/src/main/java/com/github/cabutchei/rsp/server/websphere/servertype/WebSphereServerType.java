@@ -13,7 +13,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 
 import com.github.cabutchei.rsp.server.websphere.impl.Activator;
-import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;
+import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
 import com.github.cabutchei.rsp.server.servertype.impl.IWebSphereServerAttributes;
 import com.github.cabutchei.rsp.server.websphere.impl.WebSphereServerDelegate;
 

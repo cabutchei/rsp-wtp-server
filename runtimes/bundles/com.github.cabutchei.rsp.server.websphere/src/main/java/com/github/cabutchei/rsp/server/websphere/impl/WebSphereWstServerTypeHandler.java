@@ -10,7 +10,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 
-import com.github.cabutchei.rsp.eclipse.wst.WstServerTypeHandler;
+import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandler;
 import com.github.cabutchei.rsp.server.servertype.impl.IWebSphereServerAttributes;
 
 import com.ibm.ws.ast.st.common.core.internal.util.ProfileChangeHelper;

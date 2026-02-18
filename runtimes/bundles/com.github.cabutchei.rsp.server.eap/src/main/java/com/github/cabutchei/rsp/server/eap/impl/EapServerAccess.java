@@ -4,8 +4,8 @@ import org.jboss.ide.eclipse.as.core.server.internal.v7.Wildfly8Server;
 
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
-import com.github.cabutchei.rsp.eclipse.wst.IWstServerDelegateAccess;
-import com.github.cabutchei.rsp.eclipse.wst.WstModelAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerDelegateAccess;
+import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
 import com.github.cabutchei.rsp.server.eap.servertype.launch.LaunchController;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerAttributes;
 import org.jboss.ide.eclipse.as.core.util.JBossServerBehaviorUtils;

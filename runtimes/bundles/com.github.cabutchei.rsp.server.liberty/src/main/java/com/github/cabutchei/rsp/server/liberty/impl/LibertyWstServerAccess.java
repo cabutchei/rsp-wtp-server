@@ -3,7 +3,7 @@ package com.github.cabutchei.rsp.server.liberty.impl;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
-import com.github.cabutchei.rsp.eclipse.wst.IWstServerDelegateAccess;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerDelegateAccess;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerAttributes;
 import com.ibm.ws.st.core.internal.WebSphereServer;
 import com.ibm.ws.st.core.internal.WebSphereServerInfo;

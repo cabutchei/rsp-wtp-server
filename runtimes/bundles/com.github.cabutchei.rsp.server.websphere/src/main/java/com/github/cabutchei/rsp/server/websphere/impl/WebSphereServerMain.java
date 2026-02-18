@@ -5,7 +5,7 @@ import com.github.cabutchei.rsp.server.LauncherSingleton;
 import com.github.cabutchei.rsp.server.RSPFlags;
 import com.github.cabutchei.rsp.server.ServerManagementServerLauncher;
 
-import com.github.cabutchei.rsp.eclipse.wst.WstServerManagementModelFactory;
+import com.github.cabutchei.rsp.eclipse.wst.api.WstServerManagementModelFactory;
 
 public class WebSphereServerMain extends ServerManagementServerLauncher {
 

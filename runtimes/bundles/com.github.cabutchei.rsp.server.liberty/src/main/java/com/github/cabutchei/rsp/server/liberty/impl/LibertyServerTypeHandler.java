@@ -8,7 +8,7 @@ import org.eclipse.wst.server.core.IRuntimeWorkingCopy;
 import org.eclipse.wst.server.core.IServerWorkingCopy;
 
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
-import com.github.cabutchei.rsp.eclipse.wst.WstServerTypeHandler;
+import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandler;
 import com.github.cabutchei.rsp.server.tomcat.servertype.impl.ILibertyServerAttributes;
 
 

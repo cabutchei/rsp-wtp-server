@@ -11,7 +11,7 @@ import org.eclipse.debug.core.ILaunchesListener2;
 import org.eclipse.wst.server.core.ServerCore;
 import org.eclipse.wst.server.core.ServerUtil;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
-import com.github.cabutchei.rsp.eclipse.wst.WstLaunchProxy;
+import com.github.cabutchei.rsp.eclipse.wst.proxy.WstLaunchProxy;
 
 final class LaunchStreamAttacher {
 	private final Object lock = new Object();

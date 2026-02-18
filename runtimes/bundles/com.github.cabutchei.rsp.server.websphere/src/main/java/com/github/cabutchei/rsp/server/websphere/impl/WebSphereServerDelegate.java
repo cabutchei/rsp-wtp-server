@@ -2,7 +2,7 @@ package com.github.cabutchei.rsp.server.websphere.impl;
 
 import com.github.cabutchei.rsp.api.dao.DeployableState;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
-import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;
+import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
 import com.github.cabutchei.rsp.server.servertype.impl.WebSphereContextRootSupport;
 
 public class WebSphereServerDelegate extends AbstractWebSphereServerDelegate {

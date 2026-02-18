@@ -6,7 +6,7 @@ import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.api.dao.ServerLaunchMode;
 import com.github.cabutchei.rsp.api.dao.ServerType;
 import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
-import com.github.cabutchei.rsp.eclipse.wst.WSTServerContext;
+import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
 import com.github.cabutchei.rsp.server.liberty.impl.Activator;
 import com.github.cabutchei.rsp.server.liberty.impl.LibertyServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.AbstractServerType;

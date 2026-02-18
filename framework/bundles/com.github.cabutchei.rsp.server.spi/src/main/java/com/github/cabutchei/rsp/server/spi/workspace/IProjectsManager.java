@@ -12,7 +12,34 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+
 public interface IProjectsManager extends IWTPServiceProvider {
+	/**
+	 * Import the project located at the given project root.
+	 */
+	IStatus importProject(Path projectRoot);
+
+	/**
+	 * Import all discoverable projects under tracked workspace roots.
+	 */
+	IStatus importAllWorkspaceProjects();
+
+	/**
+	 * Import projects from the provided roots.
+	 */
+	IStatus importProjects(List<Path> projectRoots);
+
+	/**
+	 * Import projects from the provided roots.
+	 */
+	IStatus importProjects(Path[] projectRoots);
+
+	/**
+	 * Refresh a project from disk.
+	 */
+	IStatus refreshProject(String projectName);
+
 	/**
 	 * Initialize the workspace projects from the provided workspace roots.
 	 * 

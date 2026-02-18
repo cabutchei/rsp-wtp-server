@@ -13,6 +13,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerMapping;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import com.github.cabutchei.rsp.server.spi.workspace.IWTPService;
@@ -20,7 +22,33 @@ import com.github.cabutchei.rsp.server.spi.workspace.JreContainerMapping;
 import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject;
 
 public class DefaultProjectsManager implements IProjectsManager {
+	private static final String BUNDLE_ID = "com.github.cabutchei.rsp.server";
 	private boolean initialized;
+
+	@Override
+	public IStatus importProject(Path projectRoot) {
+		return new Status(IStatus.ERROR, BUNDLE_ID, "Workspace projects are not supported by default manager");
+	}
+
+	@Override
+	public IStatus importAllWorkspaceProjects() {
+		return Status.OK_STATUS;
+	}
+
+	@Override
+	public IStatus importProjects(List<Path> projectRoots) {
+		return Status.OK_STATUS;
+	}
+
+	@Override
+	public IStatus importProjects(Path[] projectRoots) {
+		return Status.OK_STATUS;
+	}
+
+	@Override
+	public IStatus refreshProject(String projectName) {
+		return new Status(IStatus.ERROR, BUNDLE_ID, "Workspace projects are not supported by default manager");
+	}
 
 	@Override
 	public void initializeProjects(Collection<Path> workspaceRoots) {

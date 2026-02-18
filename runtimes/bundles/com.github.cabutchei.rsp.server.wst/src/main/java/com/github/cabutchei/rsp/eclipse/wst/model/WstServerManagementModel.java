@@ -3,7 +3,6 @@ package com.github.cabutchei.rsp.eclipse.wst.model;
 import java.util.Collections;
 import java.util.Objects;
 
-import com.github.cabutchei.rsp.eclipse.workspace.EclipseProjectImporter;
 import com.github.cabutchei.rsp.eclipse.workspace.ProjectsManager;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstIntegrationService;
 import com.github.cabutchei.rsp.eclipse.wst.wtp.WTPService;
@@ -40,9 +39,8 @@ public class WstServerManagementModel extends ServerManagementModel {
 		if (integration == null) {
 			throw new IllegalStateException("WstIntegrationService must be provided before createProjectsManager()");
 		}
-		IWTPService wtpService = new WTPService(integration.getWorkspaceService(), integration.getFacade());
-		return new ProjectsManager(integration.getWorkspaceService(), wtpService,
-				Collections.singletonList(new EclipseProjectImporter(integration.getWorkspaceService())));
+		IWTPService wtpService = new WTPService(integration.getFacade());
+		return new ProjectsManager(integration.getWorkspaceService(), wtpService, Collections.emptyList());
 	}
 
 	private static IDataStoreModel captureIntegration(IDataStoreModel dataLocation, IWstIntegrationService wstIntegrationService) {

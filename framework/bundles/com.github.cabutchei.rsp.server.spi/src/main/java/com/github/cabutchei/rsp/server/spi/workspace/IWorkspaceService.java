@@ -8,31 +8,43 @@
  ******************************************************************************/
 package com.github.cabutchei.rsp.server.spi.workspace;
 
-import java.nio.file.Path;
-import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
-import org.eclipse.core.resources.IProject;
-import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.IWorkspaceRoot;
 
 public interface IWorkspaceService {
+	/**
+	 * Return the workspace service, or {@code null} if unavailable.
+	 */
+	IWorkspace getWorkspace();
 
-	Path getWorkspaceRoot();
+	/**
+	 * Return the workspace root, or {@code null} if unavailable.
+	 */
+	IWorkspaceRoot getWorkspaceRoot();
 
-	IStatus openWorkspace(Path workspaceRoot);
+	/**
+	 * @return whether the workspace service is currently available.
+	 */
+	boolean isAvailable();
 
-	IProject getProject(String projectName);
+	/**
+	 * Complete when a workspace becomes available.
+	 */
+	CompletableFuture<IWorkspace> whenAvailable();
 
-	IStatus importProject(Path projectRoot);
+	/**
+	 * Run the given operation once the workspace is available.
+	 */
+	void whenAvailable(Consumer<IWorkspace> operation);
 
-	IStatus importAllProjects();
-
-	IStatus importAllWorkspaceProjects();
-
-	IStatus importProjects(List<Path> projectRoots);
-
-	IStatus importProjects(Path[] projectRoots);
-
-	IStatus refreshProject(String projectName);
-
-	List<WorkspaceProject> listProjects();
+	/**
+	 * Wait for the workspace service to become available.
+	 *
+	 * @param timeoutMs timeout in milliseconds
+	 * @return workspace instance or {@code null} if unavailable before timeout
+	 */
+	IWorkspace awaitWorkspace(long timeoutMs);
 }

@@ -1,217 +1,197 @@
 package com.github.cabutchei.rsp.eclipse.workspace;
 
-import java.io.IOException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IProjectDescription;
-import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.IWorkspaceDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.core.runtime.Path;
-import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
-import com.github.cabutchei.rsp.eclipse.core.runtime.MultiStatus;
-import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
-import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
-import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.util.tracker.ServiceTracker;
 
-// TODO: clean obsolete methods
-public class EclipseWorkspaceService implements IWorkspaceService {
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceInitializationService;
+import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
+import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceInitializationRequest;
+import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceInitializationSnapshot;
+
+/**
+ * Thin workspace service for availability/wait semantics and initialization policy
+ * application.
+ */
+public class EclipseWorkspaceService implements IWorkspaceService, IWorkspaceInitializationService {
 	private static final String BUNDLE_ID = "com.github.cabutchei.rsp.workspace.eclipse";
+	private static final long DEFAULT_WORKSPACE_WAIT_MS = 50000;
+
+	private final Object initLock = new Object();
+	private final Map<String, WorkspaceInitializationRequest> clientRequests = new LinkedHashMap<>();
+	private String ownerClientId;
 
 	@Override
-	public java.nio.file.Path getWorkspaceRoot() {
-		IPath rootLocation = null;
-		if (rootLocation == null) {
+	public IWorkspace getWorkspace() {
+		BundleContext context = getBundleContext();
+		if (context == null) {
 			return null;
 		}
-		return rootLocation.toFile().toPath();
-	}
-
-	@Override
-	public IStatus openWorkspace(java.nio.file.Path workspaceRoot) {
-		if (workspaceRoot == null) {
-			return errorStatus("Workspace root cannot be null", null);
-		}
-		java.nio.file.Path current = getWorkspaceRoot();
-		if (current == null) {
-			return errorStatus("Workspace root is not available", null);
-		}
-		if (!current.equals(workspaceRoot)) {
-			return errorStatus("Workspace root is already set to " + current, null);
-		}
-		return Status.OK_STATUS;
-	}
-
-	public IWorkspace getWorkspace() {
-		return ResourcesPlugin.getWorkspace();
-	}
-
-	public IWorkspaceRoot getWorkspaceRootResource() {
-		return getWorkspace().getRoot();
-	}
-
-	@Override
-	public IProject getProject(String projectName) {
-		return getWorkspaceRootResource().getProject(projectName);
-	}
-
-	@Override
-	public IStatus importProject(java.nio.file.Path projectRoot) {
-		if (projectRoot == null) {
-			return errorStatus("Project root cannot be null", null);
-		}
-		IWorkspace workspace = ResourcesPlugin.getWorkspace();
-		IPath projectDescriptionPath = new Path(projectRoot.resolve(".project").toString());
+		ServiceTracker<IWorkspace, IWorkspace> tracker = new ServiceTracker<>(context, IWorkspace.class, null);
+		tracker.open();
 		try {
-			IProjectDescription description = workspace.loadProjectDescription(projectDescriptionPath);
-			IProject project = workspace.getRoot().getProject(description.getName());
-			NullProgressMonitor monitor = new NullProgressMonitor();
-			if (!project.exists()) {
-				project.create(description, monitor);
+			return tracker.getService();
+		} finally {
+			tracker.close();
+		}
+	}
+
+	@Override
+	public IWorkspaceRoot getWorkspaceRoot() {
+		IWorkspace workspace = getWorkspace();
+		return workspace == null ? null : workspace.getRoot();
+	}
+
+	@Override
+	public boolean isAvailable() {
+		return getWorkspace() != null;
+	}
+
+	@Override
+	public CompletableFuture<IWorkspace> whenAvailable() {
+		IWorkspace existing = getWorkspace();
+		if (existing != null) {
+			return CompletableFuture.completedFuture(existing);
+		}
+		CompletableFuture<IWorkspace> future = new CompletableFuture<>();
+		BundleContext context = getBundleContext();
+		if (context == null) {
+			future.completeExceptionally(new IllegalStateException("Workspace service unavailable"));
+			return future;
+		}
+		ServiceTracker<IWorkspace, IWorkspace> tracker = new ServiceTracker<>(context, IWorkspace.class, null);
+		Thread waiter = new Thread(() -> {
+			tracker.open();
+			try {
+				IWorkspace workspace = tracker.waitForService(DEFAULT_WORKSPACE_WAIT_MS);
+				if (workspace != null) {
+					future.complete(workspace);
+				} else {
+					future.completeExceptionally(new IllegalStateException("Workspace service unavailable"));
+				}
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				future.completeExceptionally(e);
+			} finally {
+				tracker.close();
 			}
-			if (!project.isOpen()) {
-				project.open(monitor);
+		}, "EclipseWorkspaceService Availability Waiter");
+		waiter.setDaemon(true);
+		waiter.start();
+		return future;
+	}
+
+	@Override
+	public void whenAvailable(Consumer<IWorkspace> operation) {
+		if (operation == null) {
+			return;
+		}
+		whenAvailable().thenAccept(operation);
+	}
+
+	@Override
+	public IWorkspace awaitWorkspace(long timeoutMs) {
+		BundleContext context = getBundleContext();
+		if (context == null) {
+			return null;
+		}
+		ServiceTracker<IWorkspace, IWorkspace> tracker = new ServiceTracker<>(context, IWorkspace.class, null);
+		tracker.open();
+		try {
+			return tracker.waitForService(timeoutMs);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return null;
+		} finally {
+			tracker.close();
+		}
+	}
+
+	@Override
+	public IStatus applyInitialization(String clientId, WorkspaceInitializationRequest request) {
+		if (clientId == null || clientId.trim().isEmpty()) {
+			return errorStatus("Client id cannot be null or empty", null);
+		}
+		if (request == null) {
+			return errorStatus("Initialization request cannot be null", null);
+		}
+		synchronized (initLock) {
+			if (ownerClientId != null && !ownerClientId.equals(clientId)) {
+				return errorStatus("Workspace initialization is owned by client " + ownerClientId, null);
 			}
+			ownerClientId = clientId;
+			clientRequests.put(clientId, request);
+		}
+		return reapplyEffectivePolicy();
+	}
+
+	@Override
+	public IStatus releaseInitialization(String clientId) {
+		if (clientId == null || clientId.trim().isEmpty()) {
+			return errorStatus("Client id cannot be null or empty", null);
+		}
+		synchronized (initLock) {
+			clientRequests.remove(clientId);
+			if (clientId.equals(ownerClientId)) {
+				ownerClientId = null;
+				if (!clientRequests.isEmpty()) {
+					ownerClientId = clientRequests.keySet().iterator().next();
+				}
+			}
+		}
+		return reapplyEffectivePolicy();
+	}
+
+	@Override
+	public WorkspaceInitializationSnapshot snapshot() {
+		synchronized (initLock) {
+			WorkspaceInitializationRequest effective = ownerClientId == null ? null : clientRequests.get(ownerClientId);
+			return new WorkspaceInitializationSnapshot(ownerClientId, effective, clientRequests);
+		}
+	}
+
+	@Override
+	public IStatus reapplyEffectivePolicy() {
+		WorkspaceInitializationRequest effective = snapshot().getEffectiveRequest();
+		if (effective == null) {
 			return Status.OK_STATUS;
-		} catch (CoreException ce) {
-			return errorStatus("Failed to import project at " + projectRoot, ce);
 		}
-	}
-
-	@Override
-	public IStatus importAllProjects() {
-		java.nio.file.Path workspaceRoot = getWorkspaceRoot();
-		if (workspaceRoot == null) {
-			return errorStatus("Workspace root is not available", null);
-		}
-		if (!Files.isDirectory(workspaceRoot)) {
-			return errorStatus("Workspace root is not a directory: " + workspaceRoot, null);
-		}
-		List<IStatus> failures = new ArrayList<>();
-		java.nio.file.Path rootProject = workspaceRoot.resolve(".project");
-		if (Files.isRegularFile(rootProject)) {
-			IStatus status = importProject(workspaceRoot);
-			if (!status.isOK()) {
-				failures.add(status);
-			}
-			return aggregateImportResults(failures);
-		}
-		try (DirectoryStream<java.nio.file.Path> stream = Files.newDirectoryStream(workspaceRoot)) {
-			for (java.nio.file.Path child : stream) {
-				if (!Files.isDirectory(child)) {
-					continue;
-				}
-				java.nio.file.Path projectFile = child.resolve(".project");
-				if (!Files.isRegularFile(projectFile)) {
-					continue;
-				}
-				IStatus status = importProject(child);
-				if (!status.isOK()) {
-					failures.add(status);
-				}
-			}
-		} catch (IOException e) {
-			return errorStatus("Failed to scan workspace root " + workspaceRoot, e);
-		}
-		return aggregateImportResults(failures);
-	}
-
-	@Override
-	public IStatus importAllWorkspaceProjects() {
-		/* we're now reading the project paths from a property passed to the process by the client
-		Good enough for now, but I feel like they should be passed to the server via json/rpc request as part of
-		the initialization process*/
-		String[] workspaceProjectsPaths = System.getProperty("com.github.cabutchei.workspace.projects").split(",");
-		java.nio.file.Path[] paths = Arrays.asList(workspaceProjectsPaths).stream().map(p -> java.nio.file.Paths.get(p)).toArray(java.nio.file.Path[]::new);
-		return importProjects(paths);
-	}
-
-	@Override
-	public IStatus importProjects(List<java.nio.file.Path> projectRoots) {
-		if (projectRoots == null) {
-			return errorStatus("Project roots cannot be null", null);
-		}
-		if (projectRoots.isEmpty()) {
+		IWorkspace workspace = getWorkspace();
+		if (workspace == null) {
 			return Status.OK_STATUS;
 		}
-		List<IStatus> failures = new ArrayList<>();
-		for (java.nio.file.Path projectRoot : projectRoots) {
-			if (projectRoot == null) {
-				failures.add(errorStatus("Project root cannot be null", null));
-				continue;
-			}
-			IStatus status = importProject(projectRoot);
-			if (!status.isOK()) {
-				failures.add(status);
-			}
-		}
-		return aggregateImportResults(failures);
-	}
-
-	@Override
-	public IStatus importProjects(java.nio.file.Path[] projectRoots) {
-		if (projectRoots == null) {
-			return errorStatus("Project roots cannot be null", null);
-		}
-		return importProjects(Arrays.asList(projectRoots));
-	}
-
-	@Override
-	public IStatus refreshProject(String projectName) {
-		if (projectName == null || projectName.isEmpty()) {
-			return errorStatus("Project name cannot be null or empty", null);
-		}
-		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-		IProject project = root.getProject(projectName);
-		if (!project.exists()) {
-			return errorStatus("Project " + projectName + " does not exist", null);
+		Boolean autoBuilding = effective.getAutoBuilding();
+		if (autoBuilding == null) {
+			return Status.OK_STATUS;
 		}
 		try {
-			NullProgressMonitor monitor = new NullProgressMonitor();
-			if (!project.isOpen()) {
-				project.open(monitor);
-			}
-			project.refreshLocal(IResource.DEPTH_INFINITE, monitor);
+			IWorkspaceDescription description = workspace.getDescription();
+			description.setAutoBuilding(autoBuilding.booleanValue());
+			workspace.setDescription(description);
 			return Status.OK_STATUS;
 		} catch (CoreException ce) {
-			return errorStatus("Failed to refresh project " + projectName, ce);
+			return errorStatus("Failed to apply workspace initialization policy", ce);
 		}
 	}
 
-	@Override
-	public List<WorkspaceProject> listProjects() {
-		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-		IProject[] projects = root.getProjects();
-		List<WorkspaceProject> result = new ArrayList<>(projects.length);
-		for (IProject project : projects) {
-			IPath location = project.getLocation();
-			java.nio.file.Path path = location == null ? null : location.toFile().toPath();
-			result.add(new WorkspaceProject(project.getName(), path, project.isOpen()));
-		}
-		return Collections.unmodifiableList(result);
+	private BundleContext getBundleContext() {
+		Bundle bundle = FrameworkUtil.getBundle(IWorkspace.class);
+		return bundle == null ? null : bundle.getBundleContext();
 	}
 
 	private IStatus errorStatus(String message, Throwable t) {
 		return new Status(IStatus.ERROR, BUNDLE_ID, message, t);
-	}
-
-	private IStatus aggregateImportResults(List<IStatus> failures) {
-		if (failures.isEmpty()) {
-			return Status.OK_STATUS;
-		}
-		MultiStatus status = new MultiStatus(BUNDLE_ID, IStatus.ERROR,
-				failures.toArray(new IStatus[0]), "One or more projects failed to import", null);
-		return status;
 	}
 }

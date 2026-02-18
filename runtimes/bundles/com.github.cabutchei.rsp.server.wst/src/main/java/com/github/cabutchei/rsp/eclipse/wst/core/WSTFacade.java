@@ -62,7 +62,6 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
-import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
 import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 
 // import com.ibm.ws.st.core.internal.WebSphereRuntime;
@@ -78,11 +77,9 @@ public class WSTFacade {
 		private static final String KIND_ARCHIVE = "archive";
 
 		private final ServerHandleRegistry registry;
-		private final IWorkspaceService workspaceService;
 
-		public WSTFacade(ServerHandleRegistry registry, IWorkspaceService workspaceService) {
+		public WSTFacade(ServerHandleRegistry registry) {
 			this.registry = Objects.requireNonNull(registry, "registry");
-			this.workspaceService = workspaceService;
 		}
 
 	public ServerHandleRegistry getRegistry() {
@@ -100,7 +97,7 @@ public class WSTFacade {
 	}
 
 	public List<DeployableArtifact> listDeployableResources(ServerHandle server) {
-		if (workspaceService == null || server == null) {
+		if (server == null) {
 			return Collections.emptyList();
 		}
 		org.eclipse.wst.server.core.IServer wstServer = getWstServer(server.getId());
@@ -263,7 +260,7 @@ public class WSTFacade {
 	}
 
 	public IStatus addDeployable(DeployableReference ref, ServerHandle server) {
-		IProject project = this.workspaceService.getProject(ref.getLabel());
+		IProject project = getProject(ref.getLabel());
 		IModule[] modules = ServerUtil.getModules(project);
 		try {
 			modules = getRootModules(project, server);
@@ -284,7 +281,7 @@ public class WSTFacade {
 	}
 
 	public IStatus canAddDeployable(DeployableReference ref, ServerHandle server) {
-		IProject project = this.workspaceService.getProject(ref.getLabel());
+		IProject project = getProject(ref.getLabel());
 		if (!project.exists()) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, NLS.bind("{0} isn't bound to any workspace project", ref.getLabel()));
 		}
@@ -304,7 +301,7 @@ public class WSTFacade {
 	}
 
 	public IStatus removeDeployable(DeployableReference ref, ServerHandle server) {
-		IProject project = this.workspaceService.getProject(ref.getLabel());
+		IProject project = getProject(ref.getLabel());
 		if (!project.exists()) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, NLS.bind("{0} isn't bound to any workspace project", ref.getLabel()));
 		}
@@ -332,7 +329,7 @@ public class WSTFacade {
 	}
 
 	public IStatus canRemoveDeployable(DeployableReference ref, ServerHandle server) {
-		IProject project = this.workspaceService.getProject(ref.getLabel());
+		IProject project = getProject(ref.getLabel());
 		if (!project.exists()) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, NLS.bind("{0} isn't bound to any workspace project", ref.getLabel()));
 		}
@@ -839,10 +836,7 @@ public class WSTFacade {
 
 	private IVirtualComponent resolveReferencedComponent(IProject project, DeploymentAssemblyEntry entry) {
 		if (KIND_PROJECT.equals(entry.getSourceKind())) {
-			if (workspaceService == null) {
-				return null;
-			}
-			IProject referenced = workspaceService.getProject(entry.getSourcePath());
+			IProject referenced = getProject(entry.getSourcePath());
 			return referenced == null ? null : ComponentCore.createComponent(referenced);
 		}
 		if (KIND_ARCHIVE.equals(entry.getSourceKind())) {
@@ -912,8 +906,8 @@ public class WSTFacade {
 	}
 
 	private IProject resolveProject(java.nio.file.Path projectPath, String projectName) {
-		if (workspaceService != null && projectName != null && !projectName.isEmpty()) {
-			IProject project = workspaceService.getProject(projectName);
+		if (projectName != null && !projectName.isEmpty()) {
+			IProject project = getProject(projectName);
 			if (project != null && project.exists()) {
 				return project;
 			}
@@ -940,5 +934,12 @@ public class WSTFacade {
 			}
 		}
 		return bestMatch;
+	}
+
+	private IProject getProject(String projectName) {
+		if (projectName == null || projectName.isEmpty()) {
+			return null;
+		}
+		return ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
 	}
 }

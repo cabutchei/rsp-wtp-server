@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstIntegrationService;
 import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceInitializationService;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
 
 import com.github.cabutchei.rsp.eclipse.workspace.EclipseWorkspaceService;
@@ -24,7 +25,7 @@ public final class WstIntegrationService implements IWstIntegrationService {
 	public WstIntegrationService(ServerHandleRegistry registry) {
 		this.registry = Objects.requireNonNull(registry, "registry");
 		this.workspaceService = new EclipseWorkspaceService();
-		this.facade = new WSTFacade(this.registry, this.workspaceService);
+		this.facade = new WSTFacade(this.registry);
 	}
 
 	@Override
@@ -40,6 +41,13 @@ public final class WstIntegrationService implements IWstIntegrationService {
 	@Override
 	public IWorkspaceService getWorkspaceService() {
 		return workspaceService;
+	}
+
+	@Override
+	public IWorkspaceInitializationService getWorkspaceInitializationService() {
+		return workspaceService instanceof IWorkspaceInitializationService
+				? (IWorkspaceInitializationService) workspaceService
+				: null;
 	}
 
 	@Override

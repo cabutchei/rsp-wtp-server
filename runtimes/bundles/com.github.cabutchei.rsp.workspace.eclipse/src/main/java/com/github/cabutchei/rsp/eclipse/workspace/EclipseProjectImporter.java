@@ -17,7 +17,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectImporter;
-import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
+import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,10 +25,10 @@ public class EclipseProjectImporter implements IProjectImporter {
 	private static final Logger LOG = LoggerFactory.getLogger(EclipseProjectImporter.class);
 	private static final String PROJECT_FILE = ".project";
 
-	private final IWorkspaceService workspaceService;
+	private final IProjectsManager projectsManager;
 
-	public EclipseProjectImporter(IWorkspaceService workspaceService) {
-		this.workspaceService = workspaceService;
+	public EclipseProjectImporter(IProjectsManager projectsManager) {
+		this.projectsManager = projectsManager;
 	}
 
 	@Override
@@ -47,7 +47,7 @@ public class EclipseProjectImporter implements IProjectImporter {
 	}
 
 	private void importProjects(Collection<Path> roots) {
-		if (workspaceService == null || roots == null || roots.isEmpty()) {
+		if (projectsManager == null || roots == null || roots.isEmpty()) {
 			return;
 		}
 		List<Path> projectRoots = new ArrayList<>();
@@ -57,7 +57,7 @@ public class EclipseProjectImporter implements IProjectImporter {
 		if (projectRoots.isEmpty()) {
 			return;
 		}
-		IStatus status = workspaceService.importProjects(projectRoots);
+		IStatus status = projectsManager.importProjects(projectRoots);
 		if (status != null && !status.isOK()) {
 			LOG.warn("Workspace import reported issues: {}", status.getMessage());
 		}

@@ -24,7 +24,6 @@ import com.github.cabutchei.rsp.eclipse.wst.core.WSTFacade;
 import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
 import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 import com.github.cabutchei.rsp.server.spi.workspace.IWTPService;
-import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
 import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject;
 
 /**
@@ -33,12 +32,10 @@ import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject;
 public class WTPService implements IWTPService {
 	private static final String BUNDLE_ID = "com.github.cabutchei.rsp.server.wst";
 
-	private final IWorkspaceService workspaceService;
 	private final WSTFacade wstFacade;
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
 
-	public WTPService(IWorkspaceService workspaceService, WSTFacade wstFacade) {
-		this.workspaceService = workspaceService;
+	public WTPService(WSTFacade wstFacade) {
 		this.wstFacade = wstFacade;
 	}
 
@@ -173,19 +170,13 @@ public class WTPService implements IWTPService {
 	}
 
 	private List<DeployableArtifact> listWorkspaceDeployables() {
-		if (workspaceService == null) {
-			return Collections.emptyList();
-		}
-		List<WorkspaceProject> projects = workspaceService.listProjects();
-		if (projects == null || projects.isEmpty()) {
+		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		IProject[] projects = root.getProjects();
+		if (projects == null || projects.length == 0) {
 			return Collections.emptyList();
 		}
 		List<DeployableArtifact> result = new ArrayList<>();
-		for (WorkspaceProject projectInfo : projects) {
-			if (projectInfo == null || !projectInfo.isOpen()) {
-				continue;
-			}
-			IProject project = workspaceService.getProject(projectInfo.getName());
+		for (IProject project : projects) {
 			if (project == null || !project.exists() || !project.isOpen()) {
 				continue;
 			}

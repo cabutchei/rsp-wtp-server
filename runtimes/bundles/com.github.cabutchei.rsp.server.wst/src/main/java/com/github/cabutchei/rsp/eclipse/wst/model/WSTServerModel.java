@@ -34,7 +34,6 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
-import com.github.cabutchei.rsp.eclipse.wst.core.WSTFacade;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerAdapter;
 import com.github.cabutchei.rsp.launching.utils.IStatusRunnableWithProgress;
 import com.github.cabutchei.rsp.secure.model.ISecureStorageProvider;
@@ -63,25 +62,22 @@ public class WSTServerModel implements IServerModel {
 	private static final String SERVERS_DIRECTORY = "servers";
 
 	private final IWstServerManager wstServerManager;
-	private final WSTFacade wstFacade;
 	private final Map<String, IServerType> serverTypes;
 	private final Map<String, IServer> servers;
 	private final Map<String, IServerDelegate> serverDelegates;
 	private final List<IServerModelListener> listeners = new ArrayList<>();
 	private final Set<String> approvedAttributeTypes = new HashSet<>();
 	private final IServerManagementModel managementModel;
-	private final Map<String, List<File>> failedServerLoads = new HashMap<String, List<File>>();
 
-	public WSTServerModel(IServerManagementModel managementModel, IWstServerManager wstServerManager, WSTFacade wstFacade) {
-		this(managementModel, wstServerManager, wstFacade, new HashMap<String, IServerType>(), new HashMap<String, IServer>(),
+	public WSTServerModel(IServerManagementModel managementModel, IWstServerManager wstServerManager) {
+		this(managementModel, wstServerManager, new HashMap<String, IServerType>(), new HashMap<String, IServer>(),
 				new HashMap<String, IServerDelegate>());
 	}
 
 	/** for testing purposes **/
-	protected WSTServerModel(IServerManagementModel managementModel, IWstServerManager wstServerManager, WSTFacade wstFacade,
+	protected WSTServerModel(IServerManagementModel managementModel, IWstServerManager wstServerManager,
 			Map<String, IServerType> serverTypes, Map<String, IServer> servers, Map<String, IServerDelegate> delegates) {
 		this.wstServerManager = Objects.requireNonNull(wstServerManager, "wstServerManager");
-		this.wstFacade = Objects.requireNonNull(wstFacade, "wstFacade");
 		this.serverTypes = serverTypes;
 		this.servers = servers;
 		this.serverDelegates = delegates;
@@ -177,7 +173,11 @@ public class WSTServerModel implements IServerModel {
 	
 	@Override
 	public void loadServers() throws CoreException {
-		refreshServers();
+		IServer[] loadedServers = this.wstServerManager.loadServers(managementModel);
+		this.wstServerManager.updateServerStatus();
+		for (IServer server : loadedServers) {
+			addServer(server);
+		}
 	}
 
 	private void log(Exception e) {
@@ -344,21 +344,12 @@ public class WSTServerModel implements IServerModel {
 		return serverFile;
 	}
 
-	public void refreshServers() {
-		IServer[] loadedServers = this.wstServerManager.loadServers(managementModel);
-		this.wstFacade.updateServerStatus();
-		for (IServer server : loadedServers) {
-			addServer(server);
-		}
-	}
-
 	protected void addServer(IServer server) {
 		if (server == null || server.getId() == null) {
 			return;
 		}
 		String serverId = server.getId();
 		IServer previous = this.servers.put(serverId, server);
-		this.wstFacade.getRegistry().register(server);
 		IServerDelegate delegate = server.getDelegate();
 		if (delegate != null) {
 			this.serverDelegates.put(serverId, delegate);
@@ -426,7 +417,6 @@ public class WSTServerModel implements IServerModel {
 		try {
 			toRemove.delete();
 			this.servers.remove(serverId);
-			this.wstFacade.getRegistry().unregister(serverId);
 			IServerDelegate s = serverDelegates.get(serverId);
 			serverDelegates.remove(serverId);
 			if( s != null ) s.dispose();

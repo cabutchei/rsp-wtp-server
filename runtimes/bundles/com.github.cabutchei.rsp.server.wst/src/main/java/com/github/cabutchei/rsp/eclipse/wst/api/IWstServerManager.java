@@ -13,4 +13,5 @@ public interface IWstServerManager {
 
 	IServerWorkingCopy createServer(IServerType serverType, String id, Map<String, Object> attributes,
 			IServerManagementModel model) throws CoreException;
+	default void updateServerStatus() {}
 }

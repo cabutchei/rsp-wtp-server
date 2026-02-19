@@ -7,7 +7,9 @@ import java.util.Objects;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.wst.server.core.ServerCore;
+import org.eclipse.wst.server.core.internal.UpdateServerJob;
 
 import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
@@ -33,6 +35,13 @@ public class WSTServerManager implements IWstServerManager {
 	@Override
 	public IServer[] loadServers(IServerManagementModel managementModel) {
 		return createServerProxies(ServerCore.getServers(), managementModel);
+	}
+
+	@Override
+	public void updateServerStatus() {
+		org.eclipse.wst.server.core.IServer[] servers = ServerCore.getServers();
+		Job job = new UpdateServerJob(servers);
+		job.schedule();
 	}
 
 	@Override

@@ -3,7 +3,6 @@ package com.github.cabutchei.rsp.eclipse.wst.adapter;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
-import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerBacked;
 import com.github.cabutchei.rsp.server.spi.util.IRspAdaptable;
 
 public final class WstServerAdapterAccess {
@@ -31,9 +30,6 @@ public final class WstServerAdapterAccess {
 				return server;
 			}
 		}
-		if (rspServerOrWorkingCopy instanceof IWstServerBacked) {
-			return ((IWstServerBacked) rspServerOrWorkingCopy).getWstServer();
-		}
 		throw unsupported("WST server");
 	}
 
@@ -47,11 +43,6 @@ public final class WstServerAdapterAccess {
 			if (adapted != null) {
 				return adapted;
 			}
-		}
-
-		if (rspServerOrWorkingCopy instanceof IWstServerBacked) {
-			org.eclipse.wst.server.core.IServer server = toWstServer(rspServerOrWorkingCopy);
-			return adapterType.cast(server.loadAdapter(adapterType, null));
 		}
 
 		throw unsupported("WST adapter " + adapterType.getName());

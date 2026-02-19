@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import org.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.api.dao.Attributes;
 import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
@@ -20,7 +19,6 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
-import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerBacked;
 import com.github.cabutchei.rsp.launching.memento.IMemento;
 import com.github.cabutchei.rsp.launching.memento.JSONMemento;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
@@ -35,7 +33,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 
 /** A proxy for a WST server that implements the IServer interface. */
 
-public class WstServerProxy implements IServer, IWstServerBacked {
+public class WstServerProxy implements IServer {
 	// TODO: do we need these properties?
 	public static final String TYPE_ID = "server-type-id";
 	private static final String MAP_PROPERTIES_KEY = "mapProperties";
@@ -67,11 +65,6 @@ public class WstServerProxy implements IServer, IWstServerBacked {
 		// if( this.delegate != null ) {
 		// 	this.delegate.setDependentDefaults(this);
 		// }
-	}
-
-	@Override
-	public org.eclipse.wst.server.core.IServer getWstServer() {
-		return wstServer;
 	}
 
 	public void setDelegate(IServerDelegate delegate) {

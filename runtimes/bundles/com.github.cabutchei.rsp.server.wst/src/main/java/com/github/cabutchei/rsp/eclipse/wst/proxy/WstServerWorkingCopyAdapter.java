@@ -17,13 +17,13 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 
-public class WstServerWorkingCopyProxy implements IServerWorkingCopy, IServer {
+public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IServer {
 	private final org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy;
 	private final IServerManagementModel managementModel;
 	private final IServerModel serverModel;
     private IServerDelegate delegate;
 
-	public WstServerWorkingCopyProxy(org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy,
+	public WstServerWorkingCopyAdapter(org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy,
 			IServerManagementModel managementModel) {
 		this.wstServerWorkingCopy = Objects.requireNonNull(wstServerWorkingCopy, "wstServerWorkingCopy");
 		this.managementModel = managementModel;
@@ -121,7 +121,7 @@ public class WstServerWorkingCopyProxy implements IServerWorkingCopy, IServer {
     public IServer save(boolean force, IProgressMonitor monitor) throws CoreException {
         try {
             org.eclipse.wst.server.core.IServer server = wstServerWorkingCopy.save(force, new NullProgressMonitor());
-            return new WstServerProxy(server, managementModel);
+            return new WstServerAdapter(server, managementModel);
         } catch (org.eclipse.core.runtime.CoreException e) {
             throw new CoreException(WstModelAdapter.toRspStatus(e.getStatus()));
         }

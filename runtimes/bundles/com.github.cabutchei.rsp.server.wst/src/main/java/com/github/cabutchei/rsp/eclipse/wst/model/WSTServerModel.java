@@ -35,7 +35,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
 import com.github.cabutchei.rsp.eclipse.wst.core.WSTFacade;
-import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerProxy;
+import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerAdapter;
 import com.github.cabutchei.rsp.launching.utils.IStatusRunnableWithProgress;
 import com.github.cabutchei.rsp.secure.model.ISecureStorageProvider;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
@@ -708,13 +708,13 @@ public class WSTServerModel implements IServerModel {
 		
 		String[] unchangeable = new String[] {
 				// Base.PROP_ID and Base.PROP_ID_SET are protected
-				WstServerProxy.TYPE_ID, "id", "id-set"
+				WstServerAdapter.TYPE_ID, "id", "id-set"
 		};
 		for (int i = 0; i < unchangeable.length; i++) {
 			String key = unchangeable[i];
 			String dsValue = ds.getAttribute(key, (String) null);
 			String current;
-			if (WstServerProxy.TYPE_ID.equals(key)) {
+			if (WstServerAdapter.TYPE_ID.equals(key)) {
 				current = server.getTypeId();
 			} else if ("id".equals(key)) {
 				current = server.getId();

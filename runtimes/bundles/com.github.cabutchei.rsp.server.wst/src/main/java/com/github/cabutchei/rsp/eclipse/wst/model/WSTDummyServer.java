@@ -10,7 +10,7 @@ import java.util.Map;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
-import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerProxy;
+import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerAdapter;
 import com.github.cabutchei.rsp.launching.memento.IMemento;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
@@ -32,7 +32,7 @@ public class WSTDummyServer extends WSTBase implements IServer {
 			IServerManagementModel managementModel) throws CoreException {
 		WSTDummyServer ds = new WSTDummyServer(smodel, managementModel);
 		ds.loadFromJson(json);
-		String serverTypeId = ds.getAttribute(WstServerProxy.TYPE_ID, (String) null);
+		String serverTypeId = ds.getAttribute(WstServerAdapter.TYPE_ID, (String) null);
 		IServerType type = smodel.getIServerType(serverTypeId);
 		if (type == null) {
 			throw new CoreException(new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 0,
@@ -80,7 +80,7 @@ public class WSTDummyServer extends WSTBase implements IServer {
 		if (serverType != null) {
 			return serverType.getId();
 		}
-		return getAttribute(WstServerProxy.TYPE_ID, (String) null);
+		return getAttribute(WstServerAdapter.TYPE_ID, (String) null);
 	}
 
 	@Override

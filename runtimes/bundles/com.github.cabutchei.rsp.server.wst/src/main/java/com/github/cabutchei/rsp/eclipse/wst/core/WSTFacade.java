@@ -49,7 +49,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
-import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerProxy;
+import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerAdapter;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerModel;
@@ -471,7 +471,7 @@ public class WSTFacade {
 	}
 
 	public void addServerListener(String id, IServerListener listener) {
-		WstServerProxy server = (WstServerProxy) getRspServer(id);
+		WstServerAdapter server = (WstServerAdapter) getRspServer(id);
 		if (server == null) {
 			throw new IllegalArgumentException("Server does not exist");
 		}

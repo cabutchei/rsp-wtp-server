@@ -17,8 +17,8 @@ import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
 import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandler;
 import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandlerRegistry;
-import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerProxy;
-import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerWorkingCopyProxy;
+import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerWorkingCopyAdapter;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
@@ -85,13 +85,13 @@ public class WSTServerManager implements IWstServerManager {
 	private IServerWorkingCopy createServerWorkingCopyProxy(
 			org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy, IServerManagementModel managementModel) {
 		Objects.requireNonNull(wstServerWorkingCopy, "wstServerWorkingCopy");
-		return new WstServerWorkingCopyProxy(wstServerWorkingCopy, managementModel);
+		return new WstServerWorkingCopyAdapter(wstServerWorkingCopy, managementModel);
 	}
 
 	private IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer,
 			IServerManagementModel managementModel, IServerDelegate delegate) {
 		Objects.requireNonNull(wstServer, "wstServer");
-		WstServerProxy proxy = new WstServerProxy(wstServer, managementModel);
+		WstServerAdapter proxy = new WstServerAdapter(wstServer, managementModel);
 		if (delegate != null) {
 			proxy.setDelegate(delegate);
 		}

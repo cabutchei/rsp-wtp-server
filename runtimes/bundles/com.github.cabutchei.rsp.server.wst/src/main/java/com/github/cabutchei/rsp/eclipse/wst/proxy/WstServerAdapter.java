@@ -33,7 +33,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 
 /** A proxy for a WST server that implements the IServer interface. */
 
-public class WstServerProxy implements IServer {
+public class WstServerAdapter implements IServer {
 	// TODO: do we need these properties?
 	public static final String TYPE_ID = "server-type-id";
 	private static final String MAP_PROPERTIES_KEY = "mapProperties";
@@ -47,7 +47,7 @@ public class WstServerProxy implements IServer {
 	private final IServerModel serverModel;
 	private IServerDelegate delegate;
 
-	public WstServerProxy(org.eclipse.wst.server.core.IServer wstServer, IServerManagementModel managementModel) {
+	public WstServerAdapter(org.eclipse.wst.server.core.IServer wstServer, IServerManagementModel managementModel) {
 		this.wstServer = Objects.requireNonNull(wstServer, "wstServer");
 		this.managementModel = managementModel;
 		this.serverModel = managementModel.getServerModel();
@@ -110,7 +110,7 @@ public class WstServerProxy implements IServer {
 	@Override
 	public IServerWorkingCopy createWorkingCopy() {
 		org.eclipse.wst.server.core.IServerWorkingCopy copy = wstServer.createWorkingCopy();
-		return new WstServerWorkingCopyProxy(copy, managementModel);
+		return new WstServerWorkingCopyAdapter(copy, managementModel);
 	}
 
 	@Override
@@ -323,7 +323,7 @@ public class WstServerProxy implements IServer {
 		org.eclipse.wst.server.core.IServerListener wrapper = new org.eclipse.wst.server.core.IServerListener() {
 			public void serverChanged(org.eclipse.wst.server.core.ServerEvent event) {
 				com.github.cabutchei.rsp.server.spi.servertype.ServerEvent rspEvent = WstModelAdapter.toRspServerEvent(event,
-						WstServerProxy.this);
+						WstServerAdapter.this);
 				listener.serverChanged(rspEvent);
 			}
 		};

@@ -65,6 +65,7 @@ Require-Bundle: org.eclipse.osgi.util,
 Export-Package: com.github.cabutchei.rsp.eclipse.wst.api,
  com.github.cabutchei.rsp.eclipse.wst.adapter,
  com.github.cabutchei.rsp.eclipse.wst.core,
+ com.github.cabutchei.rsp.eclipse.wst.model.delegate,
  com.github.cabutchei.rsp.eclipse.wst.proxy,
  com.github.cabutchei.rsp.eclipse.wst.stream,
  com.github.cabutchei.rsp.eclipse.wst.publishing

@@ -1,4 +1,4 @@
-package com.github.cabutchei.rsp.server.liberty.impl;
+package com.github.cabutchei.rsp.eclipse.wst.model.launch;
 
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -10,39 +10,40 @@ import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunchesListener2;
 import org.eclipse.wst.server.core.ServerCore;
 import org.eclipse.wst.server.core.ServerUtil;
+
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstLaunchProxy;
 
-final class LaunchStreamAttacher {
+public final class WstLaunchStreamAttacher {
 	private final Object lock = new Object();
 	private final String serverId;
 	private final Consumer<ILaunch> onLaunchReady;
 	private ILaunchesListener2 launchListener;
 	private volatile CompletableFuture<ILaunch> launchWithProcessFuture = new CompletableFuture<>();
 
-	LaunchStreamAttacher(String serverId, Consumer<ILaunch> onLaunchReady) {
+	public WstLaunchStreamAttacher(String serverId, Consumer<ILaunch> onLaunchReady) {
 		this.serverId = Objects.requireNonNull(serverId, "serverId");
 		this.onLaunchReady = Objects.requireNonNull(onLaunchReady, "onLaunchReady");
 	}
 
-	void attach() {
+	public void attach() {
 		registerLaunchListener();
 		org.eclipse.debug.core.ILaunch wstLaunch = getWstLaunch();
 		tryAttachLaunch(wstLaunch);
 	}
 
-	void reset() {
-		synchronized(lock) {
+	public void reset() {
+		synchronized (lock) {
 			removeLaunchListenerLocked();
 			launchWithProcessFuture = new CompletableFuture<>();
 		}
 	}
 
-	void dispose() {
+	public void dispose() {
 		reset();
 	}
 
-	ILaunch awaitLaunchWithProcess(long timeoutMillis) {
+	public ILaunch awaitLaunchWithProcess(long timeoutMillis) {
 		CompletableFuture<ILaunch> future = launchWithProcessFuture;
 		try {
 			return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
@@ -62,11 +63,11 @@ final class LaunchStreamAttacher {
 	}
 
 	private boolean tryAttachLaunch(org.eclipse.debug.core.ILaunch wstLaunch) {
-		if( wstLaunch == null ) {
+		if (wstLaunch == null) {
 			return false;
 		}
 		org.eclipse.debug.core.model.IProcess[] processes = wstLaunch.getProcesses();
-		if( processes == null || processes.length == 0 ) {
+		if (processes == null || processes.length == 0) {
 			return false;
 		}
 		ILaunch launch = new WstLaunchProxy(wstLaunch);
@@ -76,8 +77,8 @@ final class LaunchStreamAttacher {
 	}
 
 	private void registerLaunchListener() {
-		synchronized(lock) {
-			if( launchListener != null ) {
+		synchronized (lock) {
+			if (launchListener != null) {
 				return;
 			}
 			launchListener = new ILaunchesListener2() {
@@ -106,11 +107,11 @@ final class LaunchStreamAttacher {
 	}
 
 	private void handleLaunches(org.eclipse.debug.core.ILaunch[] launches) {
-		if( launches == null ) {
+		if (launches == null) {
 			return;
 		}
-		for( org.eclipse.debug.core.ILaunch launch : launches ) {
-			if( !isLaunchForServer(launch) ) {
+		for (org.eclipse.debug.core.ILaunch launch : launches) {
+			if (!isLaunchForServer(launch)) {
 				continue;
 			}
 			tryAttachLaunch(launch);
@@ -118,7 +119,7 @@ final class LaunchStreamAttacher {
 	}
 
 	private boolean isLaunchForServer(org.eclipse.debug.core.ILaunch launch) {
-		if( launch == null || launch.getLaunchConfiguration() == null ) {
+		if (launch == null || launch.getLaunchConfiguration() == null) {
 			return false;
 		}
 		try {
@@ -130,23 +131,17 @@ final class LaunchStreamAttacher {
 	}
 
 	private void completeLaunchFuture(ILaunch launch) {
-		if( launch == null ) {
+		if (launch == null) {
 			return;
 		}
 		CompletableFuture<ILaunch> future = launchWithProcessFuture;
-		if( future != null && !future.isDone() ) {
+		if (future != null && !future.isDone()) {
 			future.complete(launch);
 		}
 	}
 
-	private void removeLaunchListener() {
-		synchronized(lock) {
-			removeLaunchListenerLocked();
-		}
-	}
-
 	private void removeLaunchListenerLocked() {
-		if( launchListener != null ) {
+		if (launchListener != null) {
 			DebugPlugin.getDefault().getLaunchManager().removeLaunchListener(launchListener);
 			launchListener = null;
 		}

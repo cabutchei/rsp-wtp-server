@@ -15,7 +15,8 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.server.discovery.serverbeans.ServerBeanLoader;
-import com.github.cabutchei.rsp.server.model.AbstractServerDelegate;
+import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
+import com.github.cabutchei.rsp.eclipse.wst.model.delegate.AbstractWstServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.CreateServerValidation;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
@@ -24,7 +25,7 @@ import com.github.cabutchei.rsp.server.tomcat.servertype.impl.ILibertyServerAttr
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 import com.github.cabutchei.rsp.server.liberty.servertype.LibertyServerType;
 
-public abstract class AbstractLibertyServerDelegate extends AbstractServerDelegate {
+public abstract class AbstractLibertyServerDelegate extends AbstractWstServerDelegate {
 	private static final String DEFAULT_LIBERTY_ID = "defaultServer";
 	private static final String DEFAULT_SERVER_HTTP_PORT = LibertyServerType.ATTR_HTTP_PORT;
 	private static final String DEFAULT_CLASSPATH_ADDITIONS = LibertyServerType.ATTR_CLASSPATH_ADDITIONS;
@@ -34,8 +35,8 @@ public abstract class AbstractLibertyServerDelegate extends AbstractServerDelega
 
 	private ILaunch startLaunch;
 
-	protected AbstractLibertyServerDelegate(IServer server) {
-		super(server);
+	protected AbstractLibertyServerDelegate(IServer server, WSTServerContext wstServerFacade) {
+		super(server, wstServerFacade);
 	}
 
 	protected ILaunch getStartLaunch() {

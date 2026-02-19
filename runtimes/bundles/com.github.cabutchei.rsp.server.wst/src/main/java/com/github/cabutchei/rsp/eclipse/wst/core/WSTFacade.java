@@ -40,7 +40,6 @@ import org.eclipse.wst.server.core.ServerCore;
 import org.eclipse.wst.server.core.ServerUtil;
 import org.eclipse.wst.server.core.internal.UpdateServerJob;
 import org.eclipse.wst.server.core.IServer.IOperationListener;
-import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.api.dao.DeployableState;
 import com.github.cabutchei.rsp.api.dao.ModuleReference;
@@ -49,15 +48,11 @@ import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
-import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandler;
-import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandlerRegistry;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerProxy;
-import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerWorkingCopyProxy;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
-import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
@@ -77,9 +72,11 @@ public class WSTFacade {
 		private static final String KIND_ARCHIVE = "archive";
 
 		private final ServerHandleRegistry registry;
+		private final WSTServerManager serverManager;
 
-		public WSTFacade(ServerHandleRegistry registry) {
+		public WSTFacade(ServerHandleRegistry registry, WSTServerManager serverManager) {
 			this.registry = Objects.requireNonNull(registry, "registry");
+			this.serverManager = Objects.requireNonNull(serverManager, "serverManager");
 		}
 
 	public ServerHandleRegistry getRegistry() {
@@ -209,38 +206,8 @@ public class WSTFacade {
 		return removeReference(project, entry);
 	}
 
-	private IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer, IServerManagementModel managementModel) {
-		return createServerProxy(wstServer, managementModel, null);
-	}
-	
-	private IServerWorkingCopy createServerWorkingCopyProxy(org.eclipse.wst.server.core.IServerWorkingCopy wstServer, IServerManagementModel managementModel) {
-		return createServerWorkingCopyProxy(wstServer, managementModel, null);
-	}
-
-	private IServerWorkingCopy createServerWorkingCopyProxy(org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy,
-			IServerManagementModel managementModel, IServerDelegate delegate) {
-		Objects.requireNonNull(wstServerWorkingCopy, "wstServerWorkingCopy");
-		WstServerWorkingCopyProxy proxy = new WstServerWorkingCopyProxy(
-			wstServerWorkingCopy, managementModel);
-		return proxy;
-	}
-	public IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer,
-			IServerManagementModel managementModel, IServerDelegate delegate) {
-		Objects.requireNonNull(wstServer, "wstServer");
-		WstServerProxy proxy = new WstServerProxy(
-			wstServer, managementModel);
-		if (delegate != null) {
-			proxy.setDelegate(delegate);
-		}
-		return proxy;
-	}
-
 	public IServer[] createServeProxies(IServerManagementModel managementModel) {
-		List<IServer> rspServers = new ArrayList<>();
-		for (org.eclipse.wst.server.core.IServer wstServer : ServerCore.getServers()) {
-			rspServers.add(createServerProxy(wstServer, managementModel));
-		}
-		return rspServers.toArray(new IServer[rspServers.size()]);
+		return serverManager.loadServers(managementModel);
 	}
 
 	public void dispose() {
@@ -487,62 +454,7 @@ public class WSTFacade {
 
 
 	public IServerWorkingCopy createServer(IServerType serverType, String id, Map<String, Object> attributes, IServerManagementModel model) throws CoreException {
-		org.eclipse.wst.server.core.IServer wstServer = null;
-		if (serverType == null) {
-			throw new IllegalArgumentException("serverType cannot be null");
-			}
-			org.eclipse.core.runtime.IProgressMonitor monitor = new NullProgressMonitor();
-			org.eclipse.wst.server.core.IServerType wstServerType = WstModelAdapter.toWstServerType(serverType);
-			if (wstServerType == null) {
-				throw new CoreException(new Status(IStatus.ERROR, "", "Server Type " + serverType.getId() + " is unknown by this Eclipse application"));
-			}
-		org.eclipse.wst.server.core.IRuntimeType wstRuntimeType = wstServerType.getRuntimeType();
-		org.eclipse.wst.server.core.IRuntimeWorkingCopy runtimeWC;
-		try {
-			runtimeWC = wstRuntimeType.createRuntime((String)null, monitor);
-			runtimeWC.setLocation(new org.eclipse.core.runtime.Path((String) attributes.get(DefaultServerAttributes.SERVER_HOME_DIR)));
-			// TODO: let the user choose the vm?
-			// runtimeWC.getAdapter(RuntimeWorkingCopy.class).setAttribute("vm-install-id", "/Users/cabutchei/.sdkman/candidates/java/21.0.2-open");
-			// runtimeWC.getAdapter(RuntimeWorkingCopy.class).setAttribute("vm-install-type-id", "org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType");
-			org.eclipse.wst.server.core.IRuntime run = runtimeWC.save(true, monitor);
-			// set same id so we can retrieve the rsp-wst pairs
-			org.eclipse.wst.server.core.IServerWorkingCopy server = wstServerType.createServer(id, null, run, monitor);
-			server.setName(id);
-			applyAttributes(server, attributes);
-			WstServerTypeHandler handler = WstServerTypeHandlerRegistry.find(serverType.getId());
-			if( handler != null ) {
-				handler.configureServer(server, runtimeWC, attributes, monitor);
-			}
-			return createServerWorkingCopyProxy(server, model);
-		} catch (org.eclipse.core.runtime.CoreException e) {
-			e.printStackTrace();
-			throw new CoreException(WstModelAdapter.toRspStatus(e.getStatus()));
-		}
-	}
-
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private void applyAttributes(org.eclipse.wst.server.core.IServerWorkingCopy server, Map<String, Object> attributes) {
-		if (server == null || attributes == null || attributes.isEmpty()) {
-			return;
-		}
-		for (Map.Entry<String, Object> entry : attributes.entrySet()) {
-			String key = entry.getKey();
-			Object value = entry.getValue();
-			if (key == null || value == null) {
-				continue;
-			}
-			if (value instanceof Integer) {
-				server.setAttribute(key, ((Integer) value).intValue());
-			} else if (value instanceof Boolean) {
-				server.setAttribute(key, ((Boolean) value).booleanValue());
-			} else if (value instanceof String) {
-				server.setAttribute(key, (String) value);
-			} else if (value instanceof List) {
-				server.setAttribute(key, (List) value);
-			} else if (value instanceof Map) {
-				server.setAttribute(key, (Map) value);
-			}
-		}
+		return serverManager.createServer(serverType, id, attributes, model);
 	}
 
 	public IServer getRspServer(String id) {

@@ -1,0 +1,122 @@
+package com.github.cabutchei.rsp.eclipse.wst.core;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.wst.server.core.ServerCore;
+
+import com.github.cabutchei.rsp.api.DefaultServerAttributes;
+import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandler;
+import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandlerRegistry;
+import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerProxy;
+import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerWorkingCopyProxy;
+import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
+
+/**
+ * Boundary for WST ServerCore server discovery/proxying and server creation.
+ */
+public class WSTServerManager {
+
+	public IServer[] loadServers(IServerManagementModel managementModel) {
+		return createServerProxies(ServerCore.getServers(), managementModel);
+	}
+
+	public IServerWorkingCopy createServer(IServerType serverType, String id, Map<String, Object> attributes,
+			IServerManagementModel model) throws CoreException {
+		if (serverType == null) {
+			throw new IllegalArgumentException("serverType cannot be null");
+		}
+		IProgressMonitor monitor = new NullProgressMonitor();
+		org.eclipse.wst.server.core.IServerType wstServerType = WstModelAdapter.toWstServerType(serverType);
+		if (wstServerType == null) {
+			throw new CoreException(new Status(IStatus.ERROR, "",
+					"Server Type " + serverType.getId() + " is unknown by this Eclipse application"));
+		}
+		org.eclipse.wst.server.core.IRuntimeType wstRuntimeType = wstServerType.getRuntimeType();
+		try {
+			org.eclipse.wst.server.core.IRuntimeWorkingCopy runtimeWC = wstRuntimeType.createRuntime((String) null,
+					monitor);
+			runtimeWC.setLocation(
+					new org.eclipse.core.runtime.Path((String) attributes.get(DefaultServerAttributes.SERVER_HOME_DIR)));
+			org.eclipse.wst.server.core.IRuntime run = runtimeWC.save(true, monitor);
+			org.eclipse.wst.server.core.IServerWorkingCopy server = wstServerType.createServer(id, null, run, monitor);
+			server.setName(id);
+			applyAttributes(server, attributes);
+			WstServerTypeHandler handler = WstServerTypeHandlerRegistry.find(serverType.getId());
+			if (handler != null) {
+				handler.configureServer(server, runtimeWC, attributes, monitor);
+			}
+			return createServerWorkingCopyProxy(server, model);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			throw new CoreException(WstModelAdapter.toRspStatus(e.getStatus()));
+		}
+	}
+
+	private IServer[] createServerProxies(org.eclipse.wst.server.core.IServer[] wstServers,
+			IServerManagementModel managementModel) {
+		if (wstServers == null || wstServers.length == 0) {
+			return new IServer[0];
+		}
+		List<IServer> rspServers = new ArrayList<>();
+		for (org.eclipse.wst.server.core.IServer wstServer : wstServers) {
+			if (wstServer == null) {
+				continue;
+			}
+			rspServers.add(createServerProxy(wstServer, managementModel, null));
+		}
+		return rspServers.toArray(new IServer[0]);
+	}
+
+	private IServerWorkingCopy createServerWorkingCopyProxy(
+			org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy, IServerManagementModel managementModel) {
+		Objects.requireNonNull(wstServerWorkingCopy, "wstServerWorkingCopy");
+		return new WstServerWorkingCopyProxy(wstServerWorkingCopy, managementModel);
+	}
+
+	private IServer createServerProxy(org.eclipse.wst.server.core.IServer wstServer,
+			IServerManagementModel managementModel, IServerDelegate delegate) {
+		Objects.requireNonNull(wstServer, "wstServer");
+		WstServerProxy proxy = new WstServerProxy(wstServer, managementModel);
+		if (delegate != null) {
+			proxy.setDelegate(delegate);
+		}
+		return proxy;
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void applyAttributes(org.eclipse.wst.server.core.IServerWorkingCopy server, Map<String, Object> attributes) {
+		if (server == null || attributes == null || attributes.isEmpty()) {
+			return;
+		}
+		for (Map.Entry<String, Object> entry : attributes.entrySet()) {
+			String key = entry.getKey();
+			Object value = entry.getValue();
+			if (key == null || value == null) {
+				continue;
+			}
+			if (value instanceof Integer) {
+				server.setAttribute(key, ((Integer) value).intValue());
+			} else if (value instanceof Boolean) {
+				server.setAttribute(key, ((Boolean) value).booleanValue());
+			} else if (value instanceof String) {
+				server.setAttribute(key, (String) value);
+			} else if (value instanceof List) {
+				server.setAttribute(key, (List) value);
+			} else if (value instanceof Map) {
+				server.setAttribute(key, (Map) value);
+			}
+		}
+	}
+}

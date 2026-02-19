@@ -244,7 +244,7 @@ public class WSTServerModel implements IServerModel {
 						getInvalidAttributeKeys(validAttributes));
 			}
 
-			IServerWorkingCopy serverWc = this.wstIntegrationService.getFacade().createServer(type, id, attributes, managementModel);
+			IServerWorkingCopy serverWc = this.wstIntegrationService.getServerManager().createServer(type, id, attributes, managementModel);
 			IServerDelegate del = serverWc.getDelegate();
 			if( del == null ) {
 				return new CreateServerResponse(
@@ -368,7 +368,7 @@ public class WSTServerModel implements IServerModel {
 	}
 
 	public void refreshServers() {
-		IServer[] servers = this.wstIntegrationService.getFacade().createServeProxies(managementModel);
+		IServer[] servers = this.wstIntegrationService.getServerManager().loadServers(managementModel);
 		this.wstIntegrationService.getFacade().updateServerStatus();
 		for (IServer server : servers) {
 			addServer(server);

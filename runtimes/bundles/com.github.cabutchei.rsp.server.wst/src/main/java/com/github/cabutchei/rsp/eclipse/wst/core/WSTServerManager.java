@@ -14,6 +14,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
 import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandler;
 import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandlerRegistry;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerProxy;
@@ -27,12 +28,14 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 /**
  * Boundary for WST ServerCore server discovery/proxying and server creation.
  */
-public class WSTServerManager {
+public class WSTServerManager implements IWstServerManager {
 
+	@Override
 	public IServer[] loadServers(IServerManagementModel managementModel) {
 		return createServerProxies(ServerCore.getServers(), managementModel);
 	}
 
+	@Override
 	public IServerWorkingCopy createServer(IServerType serverType, String id, Map<String, Object> attributes,
 			IServerManagementModel model) throws CoreException {
 		if (serverType == null) {

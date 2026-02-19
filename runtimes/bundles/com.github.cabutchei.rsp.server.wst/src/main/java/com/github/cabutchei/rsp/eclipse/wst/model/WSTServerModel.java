@@ -7,16 +7,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import org.eclipse.core.resources.ResourcesPlugin;
 import com.github.cabutchei.rsp.api.RSPWTPClient;
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.api.dao.Attributes;
@@ -37,8 +33,8 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.MultiStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
-import com.github.cabutchei.rsp.eclipse.wst.api.IWstIntegrationService;
-import com.github.cabutchei.rsp.eclipse.wst.core.WstIntegrationService;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
+import com.github.cabutchei.rsp.eclipse.wst.core.WSTFacade;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerProxy;
 import com.github.cabutchei.rsp.launching.utils.IStatusRunnableWithProgress;
 import com.github.cabutchei.rsp.secure.model.ISecureStorageProvider;
@@ -57,54 +53,39 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 import com.github.cabutchei.rsp.server.spi.servertype.ServerEvent;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
-import com.ibm.ws.st.core.internal.WebSphereServer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 
-/** The registry in WstIntegrationService is the truth source for all servers. The model just reads and returns.  */
-
 public class WSTServerModel implements IServerModel {
 	private static final Logger LOG = LoggerFactory.getLogger(WSTServerModel.class);
 
 	private static final String SERVERS_DIRECTORY = "servers";
 
-	private final IWstIntegrationService wstIntegrationService;
+	private final IWstServerManager wstServerManager;
+	private final WSTFacade wstFacade;
 	private final Map<String, IServerType> serverTypes;
+	private final Map<String, IServer> servers;
 	private final Map<String, IServerDelegate> serverDelegates;
 	private final List<IServerModelListener> listeners = new ArrayList<>();
 	private final Set<String> approvedAttributeTypes = new HashSet<>();
 	private final IServerManagementModel managementModel;
 	private final Map<String, List<File>> failedServerLoads = new HashMap<String, List<File>>();
 
-	public WSTServerModel(IServerManagementModel managementModel, IWstIntegrationService wstIntegrationService) {
-		this(managementModel, wstIntegrationService, new HashMap<String, IServerType>(),
+	public WSTServerModel(IServerManagementModel managementModel, IWstServerManager wstServerManager, WSTFacade wstFacade) {
+		this(managementModel, wstServerManager, wstFacade, new HashMap<String, IServerType>(), new HashMap<String, IServer>(),
 				new HashMap<String, IServerDelegate>());
 	}
 
 	/** for testing purposes **/
-	protected WSTServerModel(IServerManagementModel managementModel, 
+	protected WSTServerModel(IServerManagementModel managementModel, IWstServerManager wstServerManager, WSTFacade wstFacade,
 			Map<String, IServerType> serverTypes, Map<String, IServer> servers, Map<String, IServerDelegate> delegates) {
-		this(managementModel, new WstIntegrationService(), serverTypes, delegates);
-	}
-
-	protected WSTServerModel(IServerManagementModel managementModel, IWstIntegrationService wstIntegrationService,
-			Map<String, IServerType> serverTypes, Map<String, IServer> servers, Map<String, IServerDelegate> delegates) {
-		this(managementModel, wstIntegrationService, serverTypes, delegates);
-	}
-
-	/** for testing purposes **/
-	protected WSTServerModel(IServerManagementModel managementModel, 
-			Map<String, IServerType> serverTypes, Map<String, IServerDelegate> delegates) {
-		this(managementModel, new WstIntegrationService(), serverTypes, delegates);
-	}
-
-	protected WSTServerModel(IServerManagementModel managementModel, IWstIntegrationService wstIntegrationService,
-			Map<String, IServerType> serverTypes, Map<String, IServerDelegate> delegates) {
-		this.wstIntegrationService = Objects.requireNonNull(wstIntegrationService, "wstIntegrationService");
+		this.wstServerManager = Objects.requireNonNull(wstServerManager, "wstServerManager");
+		this.wstFacade = Objects.requireNonNull(wstFacade, "wstFacade");
 		this.serverTypes = serverTypes;
+		this.servers = servers;
 		this.serverDelegates = delegates;
 		this.managementModel = managementModel;
 
@@ -173,14 +154,12 @@ public class WSTServerModel implements IServerModel {
 
 	@Override
 	public IServer getServer(String id) {
-		return this.wstIntegrationService.getRegistry().getRsp(id);
+		return servers.get(id);
 	}
 	
 	@Override
 	public Map<String, IServer> getServers() {
-		return Collections.unmodifiableMap(
-				this.wstIntegrationService.getFacade().getServers()
-		);
+		return Collections.unmodifiableMap(servers);
 	} 
 	
 	@Override
@@ -200,7 +179,7 @@ public class WSTServerModel implements IServerModel {
 	
 	@Override
 	public void loadServers() throws CoreException {
-		// no-op
+		refreshServers();
 	}
 
 	private void log(Exception e) {
@@ -244,7 +223,7 @@ public class WSTServerModel implements IServerModel {
 						getInvalidAttributeKeys(validAttributes));
 			}
 
-			IServerWorkingCopy serverWc = this.wstIntegrationService.getServerManager().createServer(type, id, attributes, managementModel);
+			IServerWorkingCopy serverWc = this.wstServerManager.createServer(type, id, attributes, managementModel);
 			IServerDelegate del = serverWc.getDelegate();
 			if( del == null ) {
 				return new CreateServerResponse(
@@ -368,20 +347,37 @@ public class WSTServerModel implements IServerModel {
 	}
 
 	public void refreshServers() {
-		IServer[] servers = this.wstIntegrationService.getServerManager().loadServers(managementModel);
-		this.wstIntegrationService.getFacade().updateServerStatus();
-		for (IServer server : servers) {
+		IServer[] loadedServers = this.wstServerManager.loadServers(managementModel);
+		this.wstFacade.updateServerStatus();
+		for (IServer server : loadedServers) {
 			addServer(server);
 		}
 	}
 
 	protected void addServer(IServer server) {
-		this.wstIntegrationService.getRegistry().register(server);
-		this.serverDelegates.put(server.getId(), server.getDelegate());
-		this.wstIntegrationService.getFacade().addServerListener(server.getId(),
+		if (server == null || server.getId() == null) {
+			return;
+		}
+		String serverId = server.getId();
+		IServer previous = this.servers.put(serverId, server);
+		this.wstFacade.getRegistry().register(server);
+		IServerDelegate delegate = server.getDelegate();
+		if (delegate != null) {
+			this.serverDelegates.put(serverId, delegate);
+		}
+
+		boolean shouldAttachListener = delegate != null
+				&& (previous == null || previous.getDelegate() == null);
+		if (shouldAttachListener) {
+			this.wstFacade.addServerListener(serverId,
 			new IServerListener() {
 				public void serverChanged(ServerEvent event) {
-					ServerState state = event.getServer().getDelegate().getServerState();
+					IServer eventServer = event.getServer();
+					IServerDelegate eventDelegate = eventServer == null ? null : eventServer.getDelegate();
+					if (eventDelegate == null) {
+						return;
+					}
+					ServerState state = eventDelegate.getServerState();
 					// ignore unknown->unknown state changes,  which can happen on server creation before the initial state is set
 					if (state.getState() == ServerManagementAPIConstants.STATE_UNKNOWN &&
 						event.getState() == state.getState()) {
@@ -390,7 +386,10 @@ public class WSTServerModel implements IServerModel {
 					WSTServerModel.this.fireServerStateChanged(server, state);
 				}
 			});
-		fireServerAdded(server);
+		}
+		if (previous == null) {
+			fireServerAdded(server);
+		}
 	}
 
 	private void fireServerAdded(IServer server) {
@@ -450,7 +449,8 @@ public class WSTServerModel implements IServerModel {
 		String serverId = toRemove.getId();
 		try {
 			toRemove.delete();
-			this.wstIntegrationService.getRegistry().unregister(serverId);
+			this.servers.remove(serverId);
+			this.wstFacade.getRegistry().unregister(serverId);
 			IServerDelegate s = serverDelegates.get(serverId);
 			serverDelegates.remove(serverId);
 			if( s != null ) s.dispose();

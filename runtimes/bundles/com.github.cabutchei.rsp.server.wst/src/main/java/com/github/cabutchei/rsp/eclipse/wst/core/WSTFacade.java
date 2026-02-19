@@ -48,6 +48,7 @@ import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerProxy;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
@@ -72,9 +73,9 @@ public class WSTFacade {
 		private static final String KIND_ARCHIVE = "archive";
 
 		private final ServerHandleRegistry registry;
-		private final WSTServerManager serverManager;
+		private final IWstServerManager serverManager;
 
-		public WSTFacade(ServerHandleRegistry registry, WSTServerManager serverManager) {
+		public WSTFacade(ServerHandleRegistry registry, IWstServerManager serverManager) {
 			this.registry = Objects.requireNonNull(registry, "registry");
 			this.serverManager = Objects.requireNonNull(serverManager, "serverManager");
 		}

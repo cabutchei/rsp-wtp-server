@@ -3,6 +3,7 @@ package com.github.cabutchei.rsp.eclipse.wst.core;
 import java.util.Objects;
 
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstIntegrationService;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
 import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceInitializationService;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
@@ -16,7 +17,7 @@ public final class WstIntegrationService implements IWstIntegrationService {
 
 	private final ServerHandleRegistry registry;
 	private final WSTFacade facade;
-	private final WSTServerManager serverManager;
+	private final IWstServerManager serverManager;
 	private final IWorkspaceService workspaceService;
 
 	public WstIntegrationService() {
@@ -41,7 +42,7 @@ public final class WstIntegrationService implements IWstIntegrationService {
 	}
 
 	@Override
-	public WSTServerManager getServerManager() {
+	public IWstServerManager getServerManager() {
 		return serverManager;
 	}
 

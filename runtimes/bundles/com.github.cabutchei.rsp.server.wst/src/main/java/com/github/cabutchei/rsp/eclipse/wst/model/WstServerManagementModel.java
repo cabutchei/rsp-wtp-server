@@ -5,6 +5,8 @@ import java.util.Objects;
 
 import com.github.cabutchei.rsp.eclipse.workspace.ProjectsManager;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstIntegrationService;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
+import com.github.cabutchei.rsp.eclipse.wst.core.WSTFacade;
 import com.github.cabutchei.rsp.eclipse.wst.wtp.WTPService;
 import com.github.cabutchei.rsp.server.model.ServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.model.IDataStoreModel;
@@ -17,15 +19,15 @@ import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceInitializationSer
 
 
 public class WstServerManagementModel extends ServerManagementModel implements IWorkspaceModelCapability {
-	private static final ThreadLocal<IWstIntegrationService> PENDING_INTEGRATION = new ThreadLocal<>();
+	private static final ThreadLocal<IWstServerManager> PENDING_SERVER_MANAGER = new ThreadLocal<>();
+	private static final ThreadLocal<WSTFacade> PENDING_FACADE = new ThreadLocal<>();
 	private final IProjectsManager projectsManager;
 	private final IWorkspaceInitializationService workspaceInitializationService;
 
 	public WstServerManagementModel(IDataStoreModel dataLocation, IWstIntegrationService wstIntegrationService) {
-		// TODO: find a cleaner way to pass the integration service
-		// this captureIntegration thing feels hacky, but it's a way to get the integration service into the createServerModel() method.
-		super(captureIntegration(dataLocation, Objects.requireNonNull(wstIntegrationService, "wstIntegrationService")));
-		PENDING_INTEGRATION.remove();
+		super(captureDependencies(dataLocation, Objects.requireNonNull(wstIntegrationService, "wstIntegrationService")));
+		PENDING_SERVER_MANAGER.remove();
+		PENDING_FACADE.remove();
 		IWstIntegrationService integration = Objects.requireNonNull(wstIntegrationService, "wstIntegrationService");
 		IWTPService wtpService = new WTPService(integration.getFacade());
 		this.projectsManager = new ProjectsManager(integration.getWorkspaceService(), wtpService, Collections.emptyList());
@@ -34,11 +36,12 @@ public class WstServerManagementModel extends ServerManagementModel implements I
 
 	@Override
 	protected IServerModel createServerModel() {
-		IWstIntegrationService integration = PENDING_INTEGRATION.get();
-		if (integration == null) {
-			throw new IllegalStateException("WstIntegrationService must be provided before createServerModel()");
+		IWstServerManager serverManager = PENDING_SERVER_MANAGER.get();
+		WSTFacade facade = PENDING_FACADE.get();
+		if (serverManager == null || facade == null) {
+			throw new IllegalStateException("WST dependencies must be provided before createServerModel()");
 		}
-		return new WSTServerModel(this, integration);
+		return new WSTServerModel(this, serverManager, facade);
 	}
 
 	@Override
@@ -51,8 +54,10 @@ public class WstServerManagementModel extends ServerManagementModel implements I
 		return workspaceInitializationService;
 	}
 
-	private static IDataStoreModel captureIntegration(IDataStoreModel dataLocation, IWstIntegrationService wstIntegrationService) {
-		PENDING_INTEGRATION.set(Objects.requireNonNull(wstIntegrationService, "wstIntegrationService"));
+	private static IDataStoreModel captureDependencies(IDataStoreModel dataLocation, IWstIntegrationService wstIntegrationService) {
+		IWstIntegrationService integration = Objects.requireNonNull(wstIntegrationService, "wstIntegrationService");
+		PENDING_SERVER_MANAGER.set(integration.getServerManager());
+		PENDING_FACADE.set(integration.getFacade());
 		return dataLocation;
 	}
 }

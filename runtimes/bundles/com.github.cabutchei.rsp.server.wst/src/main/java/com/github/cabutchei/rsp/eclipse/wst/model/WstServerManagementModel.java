@@ -26,7 +26,7 @@ public class WstServerManagementModel extends ServerManagementModel implements I
 		super(captureDependencies(dataLocation, Objects.requireNonNull(wstIntegrationService, "wstIntegrationService")));
 		PENDING_SERVER_MANAGER.remove();
 		IWstIntegrationService integration = Objects.requireNonNull(wstIntegrationService, "wstIntegrationService");
-		IWTPService wtpService = new WTPService(integration.getFacade());
+		IWTPService wtpService = new WTPService();
 		this.projectsManager = new ProjectsManager(integration.getWorkspaceService(), wtpService, Collections.emptyList());
 		this.workspaceInitializationService = integration.getWorkspaceInitializationService();
 	}

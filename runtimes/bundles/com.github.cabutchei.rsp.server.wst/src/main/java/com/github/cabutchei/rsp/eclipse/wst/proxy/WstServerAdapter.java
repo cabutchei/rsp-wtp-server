@@ -373,18 +373,32 @@ public class WstServerAdapter implements IWstServerControl {
 		return null;
 	}
 
-	private int getModulePublishState(IModule module) {
-		if (module == null) {
+	private int getModulePublishState(IModule[] modulePath) {
+		if (modulePath == null || modulePath.length == 0) {
 			return ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN;
 		}
-		return WstRspMapper.toRspPublishState(wstServer.getModulePublishState(new IModule[] { module }));
+		return WstRspMapper.toRspPublishState(wstServer.getModulePublishState(modulePath));
 	}
 
-	private int getModuleRunState(IModule module) {
-		if (module == null) {
+	private int getModuleRunState(IModule[] modulePath) {
+		if (modulePath == null || modulePath.length == 0) {
 			return ServerManagementAPIConstants.STATE_UNKNOWN;
 		}
-		return WstRspMapper.toRspServerState(wstServer.getModuleState(new IModule[] { module }));
+		int moduleState = WstRspMapper.toRspServerState(wstServer.getModuleState(modulePath));
+		// int serverState = getServerRunState();
+		// if (serverState == ServerManagementAPIConstants.STATE_STOPPED
+		// 		|| serverState == ServerManagementAPIConstants.STATE_STOPPING) {
+		// 	return serverState;
+		// }
+		// if (serverState == ServerManagementAPIConstants.STATE_UNKNOWN
+		// 		&& moduleState == ServerManagementAPIConstants.STATE_STARTED) {
+		// 	return ServerManagementAPIConstants.STATE_UNKNOWN;
+		// }
+		// if (serverState == ServerManagementAPIConstants.STATE_STARTED
+		// 		&& moduleState == ServerManagementAPIConstants.STATE_UNKNOWN) {
+		// 	return ServerManagementAPIConstants.STATE_STARTED;
+		// }
+		return moduleState;
 	}
 
 	private DeployableReference toDeployableReference(IModule module) {
@@ -399,16 +413,25 @@ public class WstServerAdapter implements IWstServerControl {
 		return new ModuleReference(module.getId(), module.getName(), typeId);
 	}
 
-	private List<IModule> collectChildModules(IModule module) {
-		List<IModule> result = new ArrayList<>();
-		IModule[] children = wstServer.getChildModules(new IModule[] { module }, new NullProgressMonitor());
+	private void collectModuleStates(DeployableReference deployable, IModule[] parentPath, List<ModuleState> out) {
+		IModule[] children = wstServer.getChildModules(parentPath, new NullProgressMonitor());
 		if (children == null) {
-			return result;
+			return;
 		}
 		for (IModule child : children) {
-			result.add(child);
-			result.addAll(collectChildModules(child));
+			IModule[] childPath = append(parentPath, child);
+			ModuleReference moduleRef = toModuleReference(child);
+			int runState = getModuleRunState(childPath);
+			int publishState = getModulePublishState(childPath);
+			out.add(new ModuleState(deployable, moduleRef, runState, publishState));
+			collectModuleStates(deployable, childPath, out);
 		}
+	}
+
+	private IModule[] append(IModule[] path, IModule module) {
+		IModule[] result = new IModule[path.length + 1];
+		System.arraycopy(path, 0, result, 0, path.length);
+		result[path.length] = module;
 		return result;
 	}
 
@@ -547,8 +570,9 @@ public class WstServerAdapter implements IWstServerControl {
 		ServerHandle handle = getServerHandle();
 		for (IModule module : getModules()) {
 			DeployableReference reference = toDeployableReference(module);
-			int runState = getModuleRunState(module);
-			int publishState = getModulePublishState(module);
+			IModule[] modulePath = new IModule[] { module };
+			int runState = getModuleRunState(modulePath);
+			int publishState = getModulePublishState(modulePath);
 			states.add(new DeployableState(handle, reference, runState, publishState));
 		}
 		return states;
@@ -559,12 +583,7 @@ public class WstServerAdapter implements IWstServerControl {
 		List<ModuleState> states = new ArrayList<>();
 		for (IModule module : getModules()) {
 			DeployableReference deployable = toDeployableReference(module);
-			for (IModule child : collectChildModules(module)) {
-				ModuleReference moduleRef = toModuleReference(child);
-				int runState = getModuleRunState(child);
-				int publishState = getModulePublishState(child);
-				states.add(new ModuleState(deployable, moduleRef, runState, publishState));
-			}
+			collectModuleStates(deployable, new IModule[] { module }, states);
 		}
 		return states;
 	}
@@ -578,7 +597,9 @@ public class WstServerAdapter implements IWstServerControl {
 		if (module == null) {
 			return null;
 		}
-		return new DeployableState(getServerHandle(), reference, getModuleRunState(module), getModulePublishState(module));
+		IModule[] modulePath = new IModule[] { module };
+		return new DeployableState(getServerHandle(), reference, getModuleRunState(modulePath),
+				getModulePublishState(modulePath));
 	}
 
 	@Override

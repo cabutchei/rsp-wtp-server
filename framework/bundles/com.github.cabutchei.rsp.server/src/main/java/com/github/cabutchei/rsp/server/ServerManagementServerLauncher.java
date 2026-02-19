@@ -110,6 +110,7 @@ public class ServerManagementServerLauncher {
 
 	public void launch(int port) throws Exception {
 		// persistenceEventManager.loadState();
+		this.getModel().getServerModel().loadServers();
 		startListening(port, serverImpl);
 	}
 	

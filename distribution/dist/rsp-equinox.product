@@ -57,14 +57,14 @@
 		
 	</plugins>
 	<configurations>
+		<plugin id="org.eclipse.equinox.simpleconfigurator" autoStart="true" startLevel="0"/>
+		<plugin id="org.eclipse.core.runtime" autoStart="true" startLevel="1"/>
+		<plugin id="org.eclipse.core.resources" autoStart="true" startLevel="1"/>
+		<plugin id="org.apache.felix.scr" autoStart="true" startLevel="1"/>
 		<plugin id="com.github.cabutchei.rsp.server.wst" autoStart="true" startLevel="2"/>
 		<plugin id="com.github.cabutchei.rsp.server.liberty" autoStart="true" startLevel="3"/>
 		<plugin id="com.github.cabutchei.rsp.server.websphere" autoStart="true" startLevel="3"/>
 		<plugin id="com.github.cabutchei.rsp.server.eap" autoStart="true" startLevel="3"/>
 		<plugin id="com.github.cabutchei.rsp.server" autoStart="true" startLevel="4"/>
-		<plugin id="org.eclipse.core.runtime" autoStart="true" startLevel="0"/>
-		<plugin id="org.eclipse.core.resources" autoStart="true" startLevel="0"/>
-		<plugin id="org.eclipse.equinox.simpleconfigurator" autoStart="true" startLevel="1"/>
-		<plugin id="org.apache.felix.scr" autoStart="true" startLevel="3"/>
 	</configurations>
 </product>

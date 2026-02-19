@@ -34,10 +34,14 @@ public abstract class AbstractWstServerDelegate extends AbstractServerDelegate i
 			if (event == null) {
 				return;
 			}
-			if ((event.getKind() & ServerEvent.STATE_CHANGE) == 0) {
+			int kind = event.getKind();
+			if ((kind & ServerEvent.STATE_CHANGE) == 0) {
 				return;
 			}
-			setDelegateRunState(event.getState(), true);
+			if ((kind & ServerEvent.SERVER_CHANGE) == 0) {
+				return;
+			}
+			syncRunStateFromControl(true);
 		}
 	};
 

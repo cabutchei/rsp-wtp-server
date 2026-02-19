@@ -91,8 +91,12 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 			int kind = event.getKind();
 			if ((kind & ServerEvent.PUBLISH_STATE_CHANGE) != 0
 					|| (kind & ServerEvent.MODULE_CHANGE) != 0) {
-				synchronizeStatesFromControl();
+				boolean deployableStatesChanged = synchronizeStatesFromControl();
+				int previousPublishState = getServerPublishState();
 				updateServerPublishStateFromDeployments(true);
+				if (deployableStatesChanged && previousPublishState == getServerPublishState()) {
+					fireState();
+				}
 			}
 			if ((kind & ServerEvent.PUBLISH_STATE_CHANGE) == 0 || !isAutoPublisherEnabled()) {
 				return;
@@ -159,10 +163,10 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		return wstServerControl;
 	}
 
-	private void synchronizeStatesFromControl() {
+	private boolean synchronizeStatesFromControl() {
 		IWstServerControl control = resolveWstServerControl();
 		if (control == null) {
-			return;
+			return false;
 		}
 		List<DeployableState> fromControl = control.getDeployableStates();
 		Map<String, DeployableState> next = new LinkedHashMap<>();
@@ -176,6 +180,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 				next.put(key, cloneDeployableState(reference, state));
 			}
 		}
+		boolean changed = !sameDeployableStates(states, next);
 
 		List<DeployableReference> removed = new ArrayList<>();
 		for (Map.Entry<String, DeployableState> entry : states.entrySet()) {
@@ -197,6 +202,47 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		}
 		states.clear();
 		states.putAll(next);
+		return changed;
+	}
+
+	private boolean sameDeployableStates(Map<String, DeployableState> current, Map<String, DeployableState> next) {
+		if (current == next) {
+			return true;
+		}
+		if (current == null || next == null || current.size() != next.size()) {
+			return false;
+		}
+		for (Map.Entry<String, DeployableState> entry : current.entrySet()) {
+			DeployableState nextState = next.get(entry.getKey());
+			if (!sameDeployableState(entry.getValue(), nextState)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private boolean sameDeployableState(DeployableState left, DeployableState right) {
+		if (left == right) {
+			return true;
+		}
+		if (left == null || right == null) {
+			return false;
+		}
+		if (left.getState() != right.getState()) {
+			return false;
+		}
+		if (left.getPublishState() != right.getPublishState()) {
+			return false;
+		}
+		DeployableReference leftRef = left.getReference();
+		DeployableReference rightRef = right.getReference();
+		if (leftRef == rightRef) {
+			return true;
+		}
+		if (leftRef == null || rightRef == null) {
+			return false;
+		}
+		return leftRef.equals(rightRef);
 	}
 
 	private void addMissingState(DeployableReference reference) {

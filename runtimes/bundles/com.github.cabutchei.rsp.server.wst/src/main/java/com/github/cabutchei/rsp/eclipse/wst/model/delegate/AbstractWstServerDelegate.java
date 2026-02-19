@@ -19,18 +19,34 @@ import com.github.cabutchei.rsp.eclipse.wst.stream.WSTServerStreamListener;
 import com.github.cabutchei.rsp.server.model.AbstractServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerPublishModel;
+import com.github.cabutchei.rsp.server.spi.servertype.ServerEvent;
 
 public abstract class AbstractWstServerDelegate extends AbstractServerDelegate implements IModuleStateProvider {
 	private static final String PROCESS_ID_KEY = "process.id.key";
 
 	private final IWstServerControl wstServerControl;
 	private final WstLaunchStreamAttacher launchStreamAttacher;
+	private final IServerListener serverStateListener = new IServerListener() {
+		@Override
+		public void serverChanged(ServerEvent event) {
+			if (event == null) {
+				return;
+			}
+			if ((event.getKind() & ServerEvent.STATE_CHANGE) == 0) {
+				return;
+			}
+			setDelegateRunState(event.getState(), true);
+		}
+	};
 
 	protected AbstractWstServerDelegate(IServer server) {
 		super(server);
 		this.wstServerControl = adaptWstServerControl(server);
 		this.launchStreamAttacher = new WstLaunchStreamAttacher(server.getId(), this::handleLaunchReady);
+		registerWstStateListener();
+		syncRunStateFromControl(false);
 	}
 
 	private IWstServerControl adaptWstServerControl(IServer server) {
@@ -81,7 +97,7 @@ public abstract class AbstractWstServerDelegate extends AbstractServerDelegate i
 
 	@Override
 	public int getServerRunState() {
-		return wstServerControl.getServerRunState();
+		return super.getServerRunState();
 	}
 
 	@Override
@@ -103,6 +119,18 @@ public abstract class AbstractWstServerDelegate extends AbstractServerDelegate i
 	public IStatus stop(boolean force) {
 		wstServerControl.stop(force);
 		return Status.OK_STATUS;
+	}
+
+	private void registerWstStateListener() {
+		wstServerControl.addServerListener(serverStateListener);
+	}
+
+	private void syncRunStateFromControl(boolean fire) {
+		setDelegateRunState(wstServerControl.getServerRunState(), fire);
+	}
+
+	private void setDelegateRunState(int state, boolean fire) {
+		super.setServerState(state, fire);
 	}
 
 	@Override

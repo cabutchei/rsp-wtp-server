@@ -15,7 +15,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
-import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.adapter.WstRspMapper;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
@@ -132,7 +132,7 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IServer,
             org.eclipse.wst.server.core.IServer server = wstServerWorkingCopy.save(force, new NullProgressMonitor());
             return new WstServerAdapter(server, managementModel);
         } catch (org.eclipse.core.runtime.CoreException e) {
-            throw new CoreException(WstModelAdapter.toRspStatus(e.getStatus()));
+            throw new CoreException(WstRspMapper.toRspStatus(e.getStatus()));
         }
     }
 
@@ -141,7 +141,7 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IServer,
         try {
             wstServerWorkingCopy.save(false, new NullProgressMonitor());
         } catch (org.eclipse.core.runtime.CoreException e) {
-            throw new CoreException(WstModelAdapter.toRspStatus(e.getStatus()));
+            throw new CoreException(WstRspMapper.toRspStatus(e.getStatus()));
         }
     }
 
@@ -156,7 +156,7 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IServer,
 
 	@Override
 	public IServerType getServerType() {
-		return WstModelAdapter.toRspServerType(wstServerWorkingCopy.getServerType(), serverModel);
+		return WstRspMapper.toRspServerType(wstServerWorkingCopy.getServerType(), serverModel);
 	}
 
 	@Override

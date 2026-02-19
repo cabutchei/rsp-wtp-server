@@ -7,7 +7,7 @@ import com.github.cabutchei.rsp.eclipse.debug.core.DebugPluginConstants;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
 import com.github.cabutchei.rsp.eclipse.debug.core.model.IStreamsProxy;
-import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.adapter.WstRspMapper;
 
 public class WstProcessProxy implements IProcess {
 	private final org.eclipse.debug.core.model.IProcess wstProcess;
@@ -61,7 +61,7 @@ public class WstProcessProxy implements IProcess {
 		try {
 			return wstProcess.getExitValue();
 		} catch (org.eclipse.debug.core.DebugException e) {
-			throw new DebugException(WstModelAdapter.toRspStatus(e.getStatus()));
+			throw new DebugException(WstRspMapper.toRspStatus(e.getStatus()));
 		}
 	}
 
@@ -80,7 +80,7 @@ public class WstProcessProxy implements IProcess {
 		try {
 			wstProcess.terminate();
 		} catch (org.eclipse.debug.core.DebugException e) {
-			throw new DebugException(WstModelAdapter.toRspStatus(e.getStatus()));
+			throw new DebugException(WstRspMapper.toRspStatus(e.getStatus()));
 		}
 	}
 }

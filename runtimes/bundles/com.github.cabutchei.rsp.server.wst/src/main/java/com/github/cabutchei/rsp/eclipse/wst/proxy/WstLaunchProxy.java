@@ -7,7 +7,7 @@ import java.util.Objects;
 import com.github.cabutchei.rsp.eclipse.debug.core.DebugException;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
-import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.adapter.WstRspMapper;
 
 
 
@@ -102,7 +102,7 @@ public class WstLaunchProxy implements ILaunch {
 		try {
 			wstLaunch.terminate();
 		} catch (org.eclipse.debug.core.DebugException e) {
-			throw new DebugException(WstModelAdapter.toRspStatus(e.getStatus()));
+			throw new DebugException(WstRspMapper.toRspStatus(e.getStatus()));
 		}
 	}
 }

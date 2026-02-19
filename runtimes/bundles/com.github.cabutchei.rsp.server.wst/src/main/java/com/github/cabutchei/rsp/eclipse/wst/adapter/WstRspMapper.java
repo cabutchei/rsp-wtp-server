@@ -20,10 +20,10 @@ import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 /**
  * Adapts WST/Eclipse runtime objects to the RSP runtime equivalents.
  */
-public final class WstModelAdapter {
+public final class WstRspMapper {
 	private static final String UNKNOWN_PLUGIN_ID = "unknown";
 
-	private WstModelAdapter() {
+	private WstRspMapper() {
 		// utility class
 	}
 

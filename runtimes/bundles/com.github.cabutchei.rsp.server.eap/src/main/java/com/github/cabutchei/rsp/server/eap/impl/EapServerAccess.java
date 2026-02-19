@@ -5,7 +5,7 @@ import org.jboss.ide.eclipse.as.core.server.internal.v7.Wildfly8Server;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerDelegateAccess;
-import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.adapter.WstRspMapper;
 import com.github.cabutchei.rsp.server.eap.servertype.launch.LaunchController;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerAttributes;
 import org.jboss.ide.eclipse.as.core.util.JBossServerBehaviorUtils;
@@ -26,7 +26,7 @@ public class EapServerAccess implements IWstServerDelegateAccess<Wildfly8Server>
             ISubsystemController controller = behavior.getController("launch.my.local");
             return (LaunchController) controller;
         } catch (org.eclipse.core.runtime.CoreException e) {
-            IStatus status = WstModelAdapter.toRspStatus(e.getStatus());
+            IStatus status = WstRspMapper.toRspStatus(e.getStatus());
             throw new CoreException(status);
         }
     }

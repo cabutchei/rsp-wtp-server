@@ -30,7 +30,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
-import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.adapter.WstRspMapper;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
 import com.github.cabutchei.rsp.launching.memento.IMemento;
 import com.github.cabutchei.rsp.launching.memento.JSONMemento;
@@ -109,7 +109,7 @@ public class WstServerAdapter implements IWstServerControl {
 
 	@Override
 	public IServerType getServerType() {
-		return WstModelAdapter.toRspServerType(wstServer.getServerType(), serverModel);
+		return WstRspMapper.toRspServerType(wstServer.getServerType(), serverModel);
 	}
 
 	public void setServerType(IServerType type) {
@@ -170,7 +170,7 @@ public class WstServerAdapter implements IWstServerControl {
 		try {
 			wstServer.delete();
 		} catch (org.eclipse.core.runtime.CoreException ce) {
-			throw new CoreException(WstModelAdapter.toRspStatus(ce.getStatus()));
+			throw new CoreException(WstRspMapper.toRspStatus(ce.getStatus()));
 		}
 	}
 
@@ -377,14 +377,14 @@ public class WstServerAdapter implements IWstServerControl {
 		if (module == null) {
 			return ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN;
 		}
-		return WstModelAdapter.toRspPublishState(wstServer.getModulePublishState(new IModule[] { module }));
+		return WstRspMapper.toRspPublishState(wstServer.getModulePublishState(new IModule[] { module }));
 	}
 
 	private int getModuleRunState(IModule module) {
 		if (module == null) {
 			return ServerManagementAPIConstants.STATE_UNKNOWN;
 		}
-		return WstModelAdapter.toRspServerState(wstServer.getModuleState(new IModule[] { module }));
+		return WstRspMapper.toRspServerState(wstServer.getModuleState(new IModule[] { module }));
 	}
 
 	private DeployableReference toDeployableReference(IModule module) {
@@ -432,7 +432,7 @@ public class WstServerAdapter implements IWstServerControl {
 		try {
 			modules = getRootModules(project);
 		} catch (org.eclipse.core.runtime.CoreException e) {
-			return WstModelAdapter.toRspStatus(e.getStatus());
+			return WstRspMapper.toRspStatus(e.getStatus());
 		}
 		org.eclipse.wst.server.core.IServerWorkingCopy serverWc = wstServer.createWorkingCopy();
 		try {
@@ -440,7 +440,7 @@ public class WstServerAdapter implements IWstServerControl {
 			serverWc.save(false, new NullProgressMonitor());
 			return Status.OK_STATUS;
 		} catch (org.eclipse.core.runtime.CoreException e) {
-			return WstModelAdapter.toRspStatus(e.getStatus());
+			return WstRspMapper.toRspStatus(e.getStatus());
 		}
 	}
 
@@ -461,10 +461,10 @@ public class WstServerAdapter implements IWstServerControl {
 		try {
 			modules = getRootModules(project);
 		} catch (org.eclipse.core.runtime.CoreException e) {
-			return WstModelAdapter.toRspStatus(e.getStatus());
+			return WstRspMapper.toRspStatus(e.getStatus());
 		}
 		org.eclipse.core.runtime.IStatus status = wstServer.canModifyModules(modules, null, new NullProgressMonitor());
-		return WstModelAdapter.toRspStatus(status);
+		return WstRspMapper.toRspStatus(status);
 	}
 
 	@Override
@@ -481,7 +481,7 @@ public class WstServerAdapter implements IWstServerControl {
 		try {
 			modules = getRootModules(project);
 		} catch (org.eclipse.core.runtime.CoreException e) {
-			return WstModelAdapter.toRspStatus(e.getStatus());
+			return WstRspMapper.toRspStatus(e.getStatus());
 		}
 		if (modules == null || modules.length == 0) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
@@ -492,7 +492,7 @@ public class WstServerAdapter implements IWstServerControl {
 			copy.save(false, new NullProgressMonitor());
 			return Status.OK_STATUS;
 		} catch (org.eclipse.core.runtime.CoreException e) {
-			return WstModelAdapter.toRspStatus(e.getStatus());
+			return WstRspMapper.toRspStatus(e.getStatus());
 		}
 	}
 
@@ -510,35 +510,35 @@ public class WstServerAdapter implements IWstServerControl {
 		try {
 			modules = getRootModules(project);
 		} catch (org.eclipse.core.runtime.CoreException e) {
-			return WstModelAdapter.toRspStatus(e.getStatus());
+			return WstRspMapper.toRspStatus(e.getStatus());
 		}
 		if (modules == null || modules.length == 0) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
 		}
 		org.eclipse.core.runtime.IStatus status = wstServer.canModifyModules(null, modules, new NullProgressMonitor());
-		return WstModelAdapter.toRspStatus(status);
+		return WstRspMapper.toRspStatus(status);
 	}
 
 	@Override
 	public IStatus publish(int publishRequestType) {
 		org.eclipse.core.runtime.IStatus status = wstServer.publish(
-				WstModelAdapter.toWstPublishKind(publishRequestType), new NullProgressMonitor());
-		return WstModelAdapter.toRspStatus(status);
+				WstRspMapper.toWstPublishKind(publishRequestType), new NullProgressMonitor());
+		return WstRspMapper.toRspStatus(status);
 	}
 
 	@Override
 	public IStatus canPublish() {
-		return WstModelAdapter.toRspStatus(wstServer.canPublish());
+		return WstRspMapper.toRspStatus(wstServer.canPublish());
 	}
 
 	@Override
 	public int getServerPublishState() {
-		return WstModelAdapter.toRspPublishState(wstServer.getServerPublishState());
+		return WstRspMapper.toRspPublishState(wstServer.getServerPublishState());
 	}
 
 	@Override
 	public int getServerRunState() {
-		return WstModelAdapter.toRspServerState(wstServer.getServerState());
+		return WstRspMapper.toRspServerState(wstServer.getServerState());
 	}
 
 	@Override
@@ -590,7 +590,7 @@ public class WstServerAdapter implements IWstServerControl {
 
 	@Override
 	public IStatus canStart(String launchMode) {
-		return WstModelAdapter.toRspStatus(wstServer.canStart(launchMode));
+		return WstRspMapper.toRspStatus(wstServer.canStart(launchMode));
 	}
 
 	@Override
@@ -600,7 +600,7 @@ public class WstServerAdapter implements IWstServerControl {
 
 	@Override
 	public IStatus canStop() {
-		return WstModelAdapter.toRspStatus(wstServer.canStop());
+		return WstRspMapper.toRspStatus(wstServer.canStop());
 	}
 
 	@Override
@@ -628,7 +628,7 @@ public class WstServerAdapter implements IWstServerControl {
 	public void addServerListener(com.github.cabutchei.rsp.server.spi.servertype.IServerListener listener) {
 		org.eclipse.wst.server.core.IServerListener wrapper = new org.eclipse.wst.server.core.IServerListener() {
 			public void serverChanged(org.eclipse.wst.server.core.ServerEvent event) {
-				com.github.cabutchei.rsp.server.spi.servertype.ServerEvent rspEvent = WstModelAdapter.toRspServerEvent(event,
+				com.github.cabutchei.rsp.server.spi.servertype.ServerEvent rspEvent = WstRspMapper.toRspServerEvent(event,
 						WstServerAdapter.this);
 				listener.serverChanged(rspEvent);
 			}

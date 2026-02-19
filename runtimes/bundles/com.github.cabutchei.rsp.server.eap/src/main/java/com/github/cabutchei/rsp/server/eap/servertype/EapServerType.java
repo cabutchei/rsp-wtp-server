@@ -6,7 +6,6 @@ import com.github.cabutchei.rsp.api.dao.Attributes;
 import com.github.cabutchei.rsp.api.dao.ServerLaunchMode;
 import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
 import com.github.cabutchei.rsp.launching.java.ILaunchModes;
-import com.github.cabutchei.rsp.server.eap.impl.Activator;
 import com.github.cabutchei.rsp.server.eap.impl.EapServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.AbstractServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
@@ -23,9 +22,6 @@ public class EapServerType extends AbstractServerType {
 	@Override
 	public IServerDelegate createServerDelegate(IServer server) {
 		if (server == null) {
-			return null;
-		}
-		if (Activator.getWstIntegrationService() == null) {
 			return null;
 		}
 		return new EapServerDelegate(server);

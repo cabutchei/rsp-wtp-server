@@ -10,7 +10,6 @@ import com.github.cabutchei.rsp.server.spi.servertype.AbstractServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 
-import com.github.cabutchei.rsp.server.websphere.impl.Activator;
 import com.github.cabutchei.rsp.server.servertype.impl.IWebSphereServerAttributes;
 import com.github.cabutchei.rsp.server.websphere.impl.WebSphereServerDelegate;
 
@@ -28,9 +27,6 @@ public class WebSphereServerType extends AbstractServerType {
 	@Override
 	public IServerDelegate createServerDelegate(IServer server) {
 		if (server == null) {
-			return null;
-		}
-		if (Activator.getWstIntegrationService() == null) {
 			return null;
 		}
 		return new WebSphereServerDelegate(server);

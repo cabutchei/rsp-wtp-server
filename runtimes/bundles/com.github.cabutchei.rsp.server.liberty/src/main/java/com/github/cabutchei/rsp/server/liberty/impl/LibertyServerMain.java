@@ -10,7 +10,7 @@ public class LibertyServerMain extends ServerManagementServerLauncher {
 
 	public static void main(String[] args) throws Exception {
 		ServerManagementServerLauncher.setServerManagementModelFactory(
-				new WstServerManagementModelFactory(Activator.getWstIntegrationService()));
+				new WstServerManagementModelFactory());
 		LibertyServerMain instance = new LibertyServerMain("" + RSPFlags.DEFAULT_PORT);
 		LauncherSingleton.getDefault().setLauncher(instance);
 		instance.launch();

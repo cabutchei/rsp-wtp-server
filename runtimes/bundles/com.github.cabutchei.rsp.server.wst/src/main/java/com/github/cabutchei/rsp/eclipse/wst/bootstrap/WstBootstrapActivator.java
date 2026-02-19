@@ -2,22 +2,22 @@ package com.github.cabutchei.rsp.eclipse.wst.bootstrap;
 
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceDescription;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 
-import com.github.cabutchei.rsp.eclipse.wst.api.IWstIntegrationService;
+import com.github.cabutchei.rsp.eclipse.workspace.EclipseWorkspaceService;
 import com.github.cabutchei.rsp.eclipse.wst.api.WstServerManagementModelFactory;
-import com.github.cabutchei.rsp.eclipse.wst.core.WstIntegrationService;
-import com.github.cabutchei.rsp.eclipse.wst.model.WSTServerModel;
-import com.github.cabutchei.rsp.server.LauncherSingleton;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
+import com.github.cabutchei.rsp.eclipse.wst.core.WSTServerManager;
 import com.github.cabutchei.rsp.server.ServerManagementServerLauncher;
-import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
-import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceInitializationService;
+import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
+import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceInitializationRequest;
+import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceInitializationSnapshot;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.prefs.BackingStoreException;
 import org.osgi.service.prefs.Preferences;
-import org.osgi.util.tracker.ServiceTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,22 +25,23 @@ import org.slf4j.LoggerFactory;
 
 public class WstBootstrapActivator implements BundleActivator {
 	private static final Logger LOG = LoggerFactory.getLogger(WstBootstrapActivator.class);
-	private static final long LAUNCHER_WAIT_MS = 60000;
 	private static final long WORKSPACE_WAIT_MS = 60000;
-	private static final long WAIT_SLICE_MS = 200;
 	private static final String WST_SERVER_CORE_PLUGIN_ID = "org.eclipse.wst.server.core";
 	private static final String WST_PREF_AUTO_PUBLISH = "auto-publish";
-	private ServiceRegistration<IWstIntegrationService> registration;
-	private IWstIntegrationService integrationService;
-	private BundleContext bundleContext;
+	private static final boolean DEFAULT_AUTO_BUILDING = false;
+	private IWstServerManager serverManager;
+	private IWorkspaceService workspaceService;
+	private IWorkspaceInitializationService workspaceInitializationService;
 
 	@Override
 	public void start(BundleContext context) {
-		bundleContext = context;
-		integrationService = new WstIntegrationService();
-		registration = context.registerService(IWstIntegrationService.class, integrationService, null);
-		ServerManagementServerLauncher.setServerManagementModelFactory(
-			new WstServerManagementModelFactory(integrationService));
+		serverManager = new WSTServerManager();
+		workspaceService = new EclipseWorkspaceService();
+		workspaceInitializationService = workspaceService instanceof IWorkspaceInitializationService
+				? (IWorkspaceInitializationService) workspaceService
+				: null;
+		ServerManagementServerLauncher.setServerManagementModelFactory(new WstServerManagementModelFactory(
+				serverManager, workspaceService, workspaceInitializationService));
 		Thread thread = new Thread(this::bootstrap, "WST Bootstrap");
 		thread.setDaemon(true);
 		thread.start();
@@ -49,83 +50,49 @@ public class WstBootstrapActivator implements BundleActivator {
 	@Override
 	public void stop(BundleContext context) {
 		ServerManagementServerLauncher.clearServerManagementModelFactory();
-		if (registration != null) {
-			registration.unregister();
-			registration = null;
-		}
-		integrationService = null;
-		bundleContext = null;
+		serverManager = null;
+		workspaceInitializationService = null;
+		workspaceService = null;
 	}
 
 	private void bootstrap() {
-		ServerManagementServerLauncher launcher = waitForLauncher();
-		if (launcher == null) {
-			LOG.warn("WST bootstrap skipped: launcher not available.");
-			return;
-		}
-		if (!waitForWorkspace()) {
+		IWorkspace workspace = waitForWorkspace();
+		if (workspace == null) {
 			LOG.warn("WST bootstrap skipped: workspace not available.");
 			return;
 		}
-		IWstIntegrationService integration = integrationService;
-		if (integration == null) {
-			LOG.warn("WST bootstrap skipped: integration service unavailable.");
-			return;
-		}
-
-		IServerManagementModel model = launcher.getModel();
-		IServerModel serverModel = model == null ? null : model.getServerModel();
-		if (serverModel instanceof WSTServerModel) {
-			((WSTServerModel) serverModel).refreshServers();
-		} else if (serverModel != null) {
-			LOG.warn("WST bootstrap skipped server refresh: unexpected server model {}",
-					serverModel.getClass().getName());
-		} else {
-			LOG.warn("WST bootstrap skipped server refresh: server model unavailable.");
-		}
+		applyWorkspaceBootstrapPolicy(workspace);
 		disableGlobalWstAutoPublishing();
 	}
 
-	private ServerManagementServerLauncher waitForLauncher() {
-		long deadline = System.currentTimeMillis() + LAUNCHER_WAIT_MS;
-		ServerManagementServerLauncher launcher = LauncherSingleton.getDefault().getLauncher();
-		while (launcher == null && System.currentTimeMillis() < deadline) {
-			sleep(WAIT_SLICE_MS);
-			launcher = LauncherSingleton.getDefault().getLauncher();
+	private IWorkspace waitForWorkspace() {
+		IWorkspaceService workspaceSvc = workspaceService;
+		if (workspaceSvc == null) {
+			return null;
 		}
-		return launcher;
+		return workspaceSvc.awaitWorkspace(WORKSPACE_WAIT_MS);
 	}
 
-	private boolean waitForWorkspace() {
-		BundleContext context = bundleContext;
-		if (context == null) {
-			return false;
-		}
-		ServiceTracker<IWorkspace, IWorkspace> tracker = new ServiceTracker<>(context, IWorkspace.class, null);
-		tracker.open();
-		long deadline = System.currentTimeMillis() + WORKSPACE_WAIT_MS;
-		try {
-			IWorkspace workspace = tracker.getService();
-			while (workspace == null && System.currentTimeMillis() < deadline) {
-				sleep(WAIT_SLICE_MS);
-				workspace = tracker.getService();
+	private void applyWorkspaceBootstrapPolicy(IWorkspace workspace) {
+		IWorkspaceInitializationService initializationService = workspaceInitializationService;
+		if (initializationService != null) {
+			IWorkspaceInitializationService init = initializationService;
+			WorkspaceInitializationSnapshot snapshot = init.snapshot();
+			WorkspaceInitializationRequest effective = snapshot == null ? null : snapshot.getEffectiveRequest();
+			if (effective != null && effective.getAutoBuilding() != null) {
+				com.github.cabutchei.rsp.eclipse.core.runtime.IStatus status = init.reapplyEffectivePolicy();
+				if (status != null && !status.isOK()) {
+					LOG.warn("WST bootstrap failed to reapply workspace initialization policy: {}", status.getMessage());
+				}
+				return;
 			}
-			// return workspace != null;
-			if (workspace != null) {
-				IWorkspaceDescription desc = workspace.getDescription();
-    			desc.setAutoBuilding(false);
-			}
-			return workspace != null;
-		} finally {
-			tracker.close();
 		}
-	}
-
-	private void sleep(long millis) {
 		try {
-			Thread.sleep(millis);
-		} catch (InterruptedException ie) {
-			Thread.currentThread().interrupt();
+			IWorkspaceDescription description = workspace.getDescription();
+			description.setAutoBuilding(DEFAULT_AUTO_BUILDING);
+			workspace.setDescription(description);
+		} catch (CoreException ce) {
+			LOG.warn("WST bootstrap failed to configure workspace auto-building", ce);
 		}
 	}
 

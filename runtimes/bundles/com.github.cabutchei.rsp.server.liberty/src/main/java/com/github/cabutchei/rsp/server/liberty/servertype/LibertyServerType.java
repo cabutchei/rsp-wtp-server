@@ -4,7 +4,6 @@ import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.api.dao.Attributes;
 import com.github.cabutchei.rsp.api.dao.ServerLaunchMode;
 import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
-import com.github.cabutchei.rsp.server.liberty.impl.Activator;
 import com.github.cabutchei.rsp.server.liberty.impl.LibertyServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.AbstractServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
@@ -26,9 +25,6 @@ public class LibertyServerType extends AbstractServerType {
 	@Override
 	public IServerDelegate createServerDelegate(IServer server) {
 		if (server == null) {
-			return null;
-		}
-		if (Activator.getWstIntegrationService() == null) {
 			return null;
 		}
 		return new LibertyServerDelegate(server);

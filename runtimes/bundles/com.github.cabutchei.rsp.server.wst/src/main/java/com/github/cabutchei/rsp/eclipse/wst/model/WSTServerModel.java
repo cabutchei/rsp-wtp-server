@@ -48,10 +48,8 @@ import com.github.cabutchei.rsp.server.spi.model.IServerModelListener;
 import com.github.cabutchei.rsp.server.spi.servertype.CreateServerValidation;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
-import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
-import com.github.cabutchei.rsp.server.spi.servertype.ServerEvent;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
 
 import org.slf4j.Logger;
@@ -364,28 +362,6 @@ public class WSTServerModel implements IServerModel {
 		IServerDelegate delegate = server.getDelegate();
 		if (delegate != null) {
 			this.serverDelegates.put(serverId, delegate);
-		}
-
-		boolean shouldAttachListener = delegate != null
-				&& (previous == null || previous.getDelegate() == null);
-		if (shouldAttachListener) {
-			this.wstFacade.addServerListener(serverId,
-			new IServerListener() {
-				public void serverChanged(ServerEvent event) {
-					IServer eventServer = event.getServer();
-					IServerDelegate eventDelegate = eventServer == null ? null : eventServer.getDelegate();
-					if (eventDelegate == null) {
-						return;
-					}
-					ServerState state = eventDelegate.getServerState();
-					// ignore unknown->unknown state changes,  which can happen on server creation before the initial state is set
-					if (state.getState() == ServerManagementAPIConstants.STATE_UNKNOWN &&
-						event.getState() == state.getState()) {
-							return;
-						}
-					WSTServerModel.this.fireServerStateChanged(server, state);
-				}
-			});
 		}
 		if (previous == null) {
 			fireServerAdded(server);

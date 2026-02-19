@@ -3,11 +3,10 @@ package com.github.cabutchei.rsp.eclipse.wst.bootstrap;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceDescription;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.preferences.InstanceScope;
 
 import com.github.cabutchei.rsp.eclipse.workspace.EclipseWorkspaceService;
-import com.github.cabutchei.rsp.eclipse.wst.api.WstServerManagementModelFactory;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
+import com.github.cabutchei.rsp.eclipse.wst.api.WstServerManagementModelFactory;
 import com.github.cabutchei.rsp.eclipse.wst.core.WSTServerManager;
 import com.github.cabutchei.rsp.server.ServerManagementServerLauncher;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceInitializationService;
@@ -16,8 +15,6 @@ import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceInitializationRequ
 import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceInitializationSnapshot;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
-import org.osgi.service.prefs.BackingStoreException;
-import org.osgi.service.prefs.Preferences;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,8 +23,6 @@ import org.slf4j.LoggerFactory;
 public class WstBootstrapActivator implements BundleActivator {
 	private static final Logger LOG = LoggerFactory.getLogger(WstBootstrapActivator.class);
 	private static final long WORKSPACE_WAIT_MS = 60000;
-	private static final String WST_SERVER_CORE_PLUGIN_ID = "org.eclipse.wst.server.core";
-	private static final String WST_PREF_AUTO_PUBLISH = "auto-publish";
 	private static final boolean DEFAULT_AUTO_BUILDING = false;
 	private IWstServerManager serverManager;
 	private IWorkspaceService workspaceService;
@@ -62,7 +57,7 @@ public class WstBootstrapActivator implements BundleActivator {
 			return;
 		}
 		applyWorkspaceBootstrapPolicy(workspace);
-		disableGlobalWstAutoPublishing();
+		configureGlobalWstAutoPublishing();
 	}
 
 	private IWorkspace waitForWorkspace() {
@@ -96,14 +91,13 @@ public class WstBootstrapActivator implements BundleActivator {
 		}
 	}
 
-	private void disableGlobalWstAutoPublishing() {
-		try {
-			Preferences node = InstanceScope.INSTANCE.getNode(WST_SERVER_CORE_PLUGIN_ID);
-			node.putBoolean(WST_PREF_AUTO_PUBLISH, false);
-			node.flush();
-			LOG.info("Disabled WTP global auto-publish preference.");
-		} catch (BackingStoreException bse) {
-			LOG.warn("Unable to disable WTP global auto-publish preference.", bse);
+	private void configureGlobalWstAutoPublishing() {
+		IWstServerManager manager = serverManager;
+		if (manager == null) {
+			LOG.warn("WST bootstrap skipped auto-publish configuration: server manager unavailable.");
+			return;
 		}
+		manager.setGlobalAutoPublishing(false);
+		LOG.info("Disabled WTP global auto-publish.");
 	}
 }

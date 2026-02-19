@@ -26,6 +26,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
+import org.eclipse.wst.server.core.internal.ServerPreferences;
 
 /**
  * Boundary for WST ServerCore server discovery/proxying and server creation.
@@ -45,6 +46,13 @@ public class WSTServerManager implements IWstServerManager {
 	}
 
 	@Override
+	public void setGlobalAutoPublishing(boolean enabled) {
+		if (ServerCore.isAutoPublishing() != enabled) {
+			ServerPreferences.getInstance().setAutoPublishing(enabled);
+		}
+	}
+
+	@Override
 	public IServerWorkingCopy createServer(IServerType serverType, String id, Map<String, Object> attributes,
 			IServerManagementModel model) throws CoreException {
 		if (serverType == null) {
@@ -58,10 +66,8 @@ public class WSTServerManager implements IWstServerManager {
 		}
 		org.eclipse.wst.server.core.IRuntimeType wstRuntimeType = wstServerType.getRuntimeType();
 		try {
-			org.eclipse.wst.server.core.IRuntimeWorkingCopy runtimeWC = wstRuntimeType.createRuntime((String) null,
-					monitor);
-			runtimeWC.setLocation(
-					new org.eclipse.core.runtime.Path((String) attributes.get(DefaultServerAttributes.SERVER_HOME_DIR)));
+			org.eclipse.wst.server.core.IRuntimeWorkingCopy runtimeWC = createRuntimeWorkingCopy(wstRuntimeType,
+					attributes, monitor);
 			org.eclipse.wst.server.core.IRuntime run = runtimeWC.save(true, monitor);
 			org.eclipse.wst.server.core.IServerWorkingCopy server = wstServerType.createServer(id, null, run, monitor);
 			server.setName(id);
@@ -74,6 +80,17 @@ public class WSTServerManager implements IWstServerManager {
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			throw new CoreException(WstRspMapper.toRspStatus(e.getStatus()));
 		}
+	}
+
+	private org.eclipse.wst.server.core.IRuntimeWorkingCopy createRuntimeWorkingCopy(
+			org.eclipse.wst.server.core.IRuntimeType runtimeType, Map<String, Object> attributes, IProgressMonitor monitor)
+			throws org.eclipse.core.runtime.CoreException {
+		org.eclipse.wst.server.core.IRuntimeWorkingCopy runtimeWC = runtimeType.createRuntime((String) null, monitor);
+		Object serverHome = attributes == null ? null : attributes.get(DefaultServerAttributes.SERVER_HOME_DIR);
+		if (serverHome instanceof String && !((String) serverHome).isBlank()) {
+			runtimeWC.setLocation(new org.eclipse.core.runtime.Path((String) serverHome));
+		}
+		return runtimeWC;
 	}
 
 	private IServer[] createServerProxies(org.eclipse.wst.server.core.IServer[] wstServers,

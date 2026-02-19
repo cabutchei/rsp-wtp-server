@@ -7,17 +7,26 @@ import java.util.Objects;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
 
+import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
+import com.github.cabutchei.rsp.api.dao.DeployableReference;
+import com.github.cabutchei.rsp.api.dao.DeployableState;
+import com.github.cabutchei.rsp.api.dao.ModuleState;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
+import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 
-public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IServer {
+public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IServer, IWstServerControl {
 	private final org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy;
 	private final IServerManagementModel managementModel;
 	private final IServerModel serverModel;
@@ -191,5 +200,105 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IServer 
 	@Override
 	public IServerModel getServerModel() {
 		return serverModel;
+	}
+
+	private IStatus unsupported(String operation) {
+		return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
+				operation + " is not supported for server working copies");
+	}
+
+	@Override
+	public IStatus addDeployable(DeployableReference reference) {
+		return unsupported("addDeployable");
+	}
+
+	@Override
+	public IStatus canAddDeployable(DeployableReference reference) {
+		return unsupported("canAddDeployable");
+	}
+
+	@Override
+	public IStatus removeDeployable(DeployableReference reference) {
+		return unsupported("removeDeployable");
+	}
+
+	@Override
+	public IStatus canRemoveDeployable(DeployableReference reference) {
+		return unsupported("canRemoveDeployable");
+	}
+
+	@Override
+	public IStatus publish(int publishRequestType) {
+		return unsupported("publish");
+	}
+
+	@Override
+	public IStatus canPublish() {
+		return unsupported("canPublish");
+	}
+
+	@Override
+	public int getServerPublishState() {
+		return ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN;
+	}
+
+	@Override
+	public int getServerRunState() {
+		return ServerManagementAPIConstants.STATE_UNKNOWN;
+	}
+
+	@Override
+	public List<DeployableState> getDeployableStates() {
+		return Collections.emptyList();
+	}
+
+	@Override
+	public List<ModuleState> getModuleStates() {
+		return Collections.emptyList();
+	}
+
+	@Override
+	public DeployableState getDeployableState(DeployableReference reference) {
+		return null;
+	}
+
+	@Override
+	public void startAsync(String launchMode) throws CoreException {
+		throw new CoreException(unsupported("startAsync"));
+	}
+
+	@Override
+	public IStatus canStart(String launchMode) {
+		return unsupported("canStart");
+	}
+
+	@Override
+	public void stop(boolean force) {
+		// no-op for working copies
+	}
+
+	@Override
+	public IStatus canStop() {
+		return unsupported("canStop");
+	}
+
+	@Override
+	public void startModule(DeployableReference reference) {
+		// no-op for working copies
+	}
+
+	@Override
+	public void stopModule(DeployableReference reference) {
+		// no-op for working copies
+	}
+
+	@Override
+	public void addServerListener(IServerListener listener) {
+		// no-op for working copies
+	}
+
+	@Override
+	public String getMode() {
+		return null;
 	}
 }

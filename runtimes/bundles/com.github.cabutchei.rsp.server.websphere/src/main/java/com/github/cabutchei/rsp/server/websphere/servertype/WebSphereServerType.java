@@ -3,9 +3,7 @@ package com.github.cabutchei.rsp.server.websphere.servertype;
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 import com.github.cabutchei.rsp.api.dao.Attributes;
-import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.api.dao.ServerLaunchMode;
-import com.github.cabutchei.rsp.api.dao.ServerType;
 import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
 import com.github.cabutchei.rsp.launching.java.ILaunchModes;
 import com.github.cabutchei.rsp.server.spi.servertype.AbstractServerType;
@@ -13,7 +11,6 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 
 import com.github.cabutchei.rsp.server.websphere.impl.Activator;
-import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
 import com.github.cabutchei.rsp.server.servertype.impl.IWebSphereServerAttributes;
 import com.github.cabutchei.rsp.server.websphere.impl.WebSphereServerDelegate;
 
@@ -36,9 +33,7 @@ public class WebSphereServerType extends AbstractServerType {
 		if (Activator.getWstIntegrationService() == null) {
 			return null;
 		}
-		ServerHandle handle = toHandle(server);
-		WSTServerContext context = new WSTServerContext(handle, Activator.getWstIntegrationService().getFacade());
-		return new WebSphereServerDelegate(server, context);
+		return new WebSphereServerDelegate(server);
 	}
 
 	@Override
@@ -97,8 +92,4 @@ public class WebSphereServerType extends AbstractServerType {
 		};
 	}
 
-	private ServerHandle toHandle(IServer server) {
-		ServerType type = new ServerType(getId(), getName(), getDescription());
-		return new ServerHandle(server.getId(), type);
-	}
 }

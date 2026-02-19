@@ -3,11 +3,8 @@ package com.github.cabutchei.rsp.server.eap.servertype;
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 import com.github.cabutchei.rsp.api.dao.Attributes;
-import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.api.dao.ServerLaunchMode;
-import com.github.cabutchei.rsp.api.dao.ServerType;
 import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
-import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
 import com.github.cabutchei.rsp.launching.java.ILaunchModes;
 import com.github.cabutchei.rsp.server.eap.impl.Activator;
 import com.github.cabutchei.rsp.server.eap.impl.EapServerDelegate;
@@ -31,9 +28,7 @@ public class EapServerType extends AbstractServerType {
 		if (Activator.getWstIntegrationService() == null) {
 			return null;
 		}
-		ServerHandle handle = toHandle(server);
-		WSTServerContext context = new WSTServerContext(handle, Activator.getWstIntegrationService().getFacade());
-		return new EapServerDelegate(server, context);
+		return new EapServerDelegate(server);
 	}
 
 	@Override
@@ -100,8 +95,4 @@ public class EapServerType extends AbstractServerType {
 		};
 	}
 
-	private ServerHandle toHandle(IServer server) {
-		ServerType type = new ServerType(getId(), getName(), getDescription());
-		return new ServerHandle(server.getId(), type);
-	}
 }

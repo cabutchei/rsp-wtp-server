@@ -32,7 +32,6 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
 
-import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
 import com.github.cabutchei.rsp.server.servertype.impl.IWebSphereServerAttributes;
 import com.github.cabutchei.rsp.server.websphere.servertype.actions.WebSphereEditJvmPropertiesActionHandler;
 import com.github.cabutchei.rsp.server.websphere.servertype.actions.WebSphereEditServerConfigurationActionHandler;
@@ -50,8 +49,8 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 	private volatile CompletableFuture<Integer> debugPortFuture = new CompletableFuture<>();
 	private ILaunch startLaunch;
 
-	protected AbstractWebSphereServerDelegate(IServer server, WSTServerContext wstServerFacade) {
-		super(server, wstServerFacade);
+	protected AbstractWebSphereServerDelegate(IServer server) {
+		super(server);
 	}
 
 	protected ILaunch getStartLaunch() {
@@ -93,7 +92,7 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 				addDebugDetails(WebSphereWstServerAccess.getDebugPort(getServer()), details);
 			}
 			prepareLaunchAttacher();
-			getWSTServerFacade().startAsync(mode);
+			getWstServerControl().startAsync(mode);
 		} catch (CoreException e) {
 			resetLaunchAttacher();
 			s = StatusConverter.convert(e.getStatus());

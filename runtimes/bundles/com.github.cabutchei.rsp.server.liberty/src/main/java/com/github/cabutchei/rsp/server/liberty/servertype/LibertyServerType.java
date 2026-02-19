@@ -2,11 +2,8 @@ package com.github.cabutchei.rsp.server.liberty.servertype;
 
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.api.dao.Attributes;
-import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.api.dao.ServerLaunchMode;
-import com.github.cabutchei.rsp.api.dao.ServerType;
 import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
-import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
 import com.github.cabutchei.rsp.server.liberty.impl.Activator;
 import com.github.cabutchei.rsp.server.liberty.impl.LibertyServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.AbstractServerType;
@@ -34,9 +31,7 @@ public class LibertyServerType extends AbstractServerType {
 		if (Activator.getWstIntegrationService() == null) {
 			return null;
 		}
-		ServerHandle handle = toHandle(server);
-		WSTServerContext context = new WSTServerContext(handle, Activator.getWstIntegrationService().getFacade());
-		return new LibertyServerDelegate(server, context);
+		return new LibertyServerDelegate(server);
 	}
 
 	@Override
@@ -95,8 +90,4 @@ public class LibertyServerType extends AbstractServerType {
 		};
 	}
 
-	private ServerHandle toHandle(IServer server) {
-		ServerType type = new ServerType(getId(), getName(), getDescription());
-		return new ServerHandle(server.getId(), type);
-	}
 }

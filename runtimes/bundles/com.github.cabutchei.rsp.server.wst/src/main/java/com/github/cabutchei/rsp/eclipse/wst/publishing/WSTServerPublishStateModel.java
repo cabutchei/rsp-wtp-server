@@ -39,7 +39,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerPublishModel;
 import com.github.cabutchei.rsp.server.spi.servertype.ServerEvent;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 
-import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
@@ -63,8 +63,8 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	private final Map<String, DeploymentAssemblyFile> assembly = new HashMap<>();
 	
 	private AbstractServerDelegate delegate;
-    private WSTServerContext wstServerFacade;
-    private Supplier<WSTServerContext> facadeSupplier;
+    private IWstServerControl wstServerControl;
+    private Supplier<IWstServerControl> controlSupplier;
 	private IFileWatcherService fileWatcher;
 	private int publishState = AbstractServerDelegate.PUBLISH_STATE_UNKNOWN;
 	
@@ -102,23 +102,23 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 
 	private IFullPublishRequiredCallback fullPublishRequired;
 	
-	public WSTServerPublishStateModel(AbstractServerDelegate delegate, Supplier<WSTServerContext> facadeSupplier, IFileWatcherService fileWatcher) {
-		this(delegate, facadeSupplier, fileWatcher, null);
+	public WSTServerPublishStateModel(AbstractServerDelegate delegate, Supplier<IWstServerControl> controlSupplier, IFileWatcherService fileWatcher) {
+		this(delegate, controlSupplier, fileWatcher, null);
 	}
-	public WSTServerPublishStateModel(AbstractServerDelegate delegate, Supplier<WSTServerContext> facadeSupplier,
+	public WSTServerPublishStateModel(AbstractServerDelegate delegate, Supplier<IWstServerControl> controlSupplier,
 			IFileWatcherService fileWatcher, IFullPublishRequiredCallback fullPublishRequired) {
 		this.delegate = delegate;
-        this.facadeSupplier = facadeSupplier;
-		this.wstServerFacade = this.facadeSupplier.get();
+        this.controlSupplier = controlSupplier;
+		this.wstServerControl = this.controlSupplier.get();
 		this.fileWatcher = fileWatcher;
 		this.fullPublishRequired = fullPublishRequired;
 		this.deploymentOptions = new LinkedHashMap<>();
 	}
 
-	public WSTServerPublishStateModel(AbstractServerDelegate delegate, WSTServerContext wstServerFacade,
+	public WSTServerPublishStateModel(AbstractServerDelegate delegate, IWstServerControl wstServerControl,
 			IFileWatcherService fileWatcher, IFullPublishRequiredCallback fullPublishRequired) {
 		this.delegate = delegate;
-		this.wstServerFacade = wstServerFacade;
+		this.wstServerControl = wstServerControl;
 		this.fileWatcher = fileWatcher;
 		this.fullPublishRequired = fullPublishRequired;
 		this.deploymentOptions = new LinkedHashMap<>();
@@ -134,9 +134,9 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 			}
 		}
 
-		List<DeployableState> existing = wstServerFacade == null
+		List<DeployableState> existing = wstServerControl == null
 				? Collections.emptyList()
-				: wstServerFacade.getDeployableStates();
+				: wstServerControl.getDeployableStates();
 		if (existing != null && !existing.isEmpty()) {
 			for (DeployableState state : existing) {
 				DeployableReference ref = state.getReference();
@@ -261,7 +261,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	}
 
 	private IStatus addDeployableImpl(DeployableReference reference) {
-		IStatus status = this.wstServerFacade.addDeployable(reference);
+		IStatus status = this.wstServerControl.addDeployable(reference);
 		if (!status.isOK()) {
 			return status;
 		}
@@ -290,7 +290,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 					NLS.bind("Could not remove deploybale with path {0}: it doesn't exist", getKey(reference)),
 							null);
 		}
-		IStatus status = this.wstServerFacade.removeDeployable(reference);
+		IStatus status = this.wstServerControl.removeDeployable(reference);
 		if (!status.isOK()) {
 			return status;
 		}
@@ -316,10 +316,10 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	}
 
 	private List<DeployableState> getWstDeployableStates() {
-		if (wstServerFacade == null) {
+		if (wstServerControl == null) {
 			return Collections.emptyList();
 		}
-		List<DeployableState> states = wstServerFacade.getDeployableStates();
+		List<DeployableState> states = wstServerControl.getDeployableStates();
 		return states == null ? Collections.emptyList() : states;
 	}
 
@@ -419,10 +419,10 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 
 	@Override
 	public synchronized DeployableState getDeployableState(DeployableReference reference) {
-		if (reference == null || wstServerFacade == null) {
+		if (reference == null || wstServerControl == null) {
 			return null;
 		}
-		DeployableState state = wstServerFacade.getDeployableState(reference);
+		DeployableState state = wstServerControl.getDeployableState(reference);
 		if (state != null && state.getReference() != null) {
 			fillOptionsFromCache(state.getReference());
 		}
@@ -580,16 +580,16 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	}
 	
 	public synchronized void updateServerPublishStateFromDeployments(boolean fireEvent) {
-		if (wstServerFacade == null) {
+		if (wstServerControl == null) {
 			return;
 		}
-		setServerPublishState(wstServerFacade.getServerPublishState(), fireEvent);
+		setServerPublishState(wstServerControl.getServerPublishState(), fireEvent);
 	}
 
 	@Override
 	public synchronized int getServerPublishState() {
-		if (wstServerFacade != null) {
-			this.publishState = wstServerFacade.getServerPublishState();
+		if (wstServerControl != null) {
+			this.publishState = wstServerControl.getServerPublishState();
 		}
 		return this.publishState;
 	}
@@ -597,8 +597,8 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	@Override
 	public synchronized void setServerPublishState(int state, boolean fire) {
 		int nextState = state;
-		if (wstServerFacade != null) {
-			nextState = wstServerFacade.getServerPublishState();
+		if (wstServerControl != null) {
+			nextState = wstServerControl.getServerPublishState();
 		}
 		if (nextState != this.publishState) {
 			this.publishState = nextState;
@@ -705,8 +705,8 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 			cancelAutoPublishThread();
 			return;
 		}
-		if (hasPendingChanges() || (wstServerFacade != null
-				&& wstServerFacade.getServerPublishState() != ServerManagementAPIConstants.PUBLISH_STATE_NONE)) {
+		if (hasPendingChanges() || (wstServerControl != null
+				&& wstServerControl.getServerPublishState() != ServerManagementAPIConstants.PUBLISH_STATE_NONE)) {
 			launchOrUpdateAutopublishThread();
 		}
 	}
@@ -730,10 +730,10 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	}
 
 	private void registerPublishStateListener() {
-		if (publishStateListenerRegistered || wstServerFacade == null) {
+		if (publishStateListenerRegistered || wstServerControl == null) {
 			return;
 		}
-		wstServerFacade.addServerListener(publishStateListener);
+		wstServerControl.addServerListener(publishStateListener);
 		publishStateListenerRegistered = true;
 	}
 

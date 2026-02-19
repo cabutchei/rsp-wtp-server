@@ -15,7 +15,6 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.server.discovery.serverbeans.ServerBeanLoader;
-import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
 import com.github.cabutchei.rsp.eclipse.wst.model.delegate.AbstractWstServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.CreateServerValidation;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
@@ -35,8 +34,8 @@ public abstract class AbstractLibertyServerDelegate extends AbstractWstServerDel
 
 	private ILaunch startLaunch;
 
-	protected AbstractLibertyServerDelegate(IServer server, WSTServerContext wstServerFacade) {
-		super(server, wstServerFacade);
+	protected AbstractLibertyServerDelegate(IServer server) {
+		super(server);
 	}
 
 	protected ILaunch getStartLaunch() {

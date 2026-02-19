@@ -13,7 +13,6 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
-import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
 import com.github.cabutchei.rsp.eclipse.wst.model.delegate.AbstractWstServerDelegate;
 import com.github.cabutchei.rsp.launching.java.ILaunchModes;
 import com.github.cabutchei.rsp.launching.utils.LaunchingDebugProperties;
@@ -29,8 +28,8 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 
 	private EapPublishController publishController;
 
-	public EapServerDelegate(IServer server, WSTServerContext wstServerFacade) {
-		super(server, wstServerFacade);
+	public EapServerDelegate(IServer server) {
+		super(server);
 	}
 
 	@Override
@@ -70,7 +69,7 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 				EapServerAccess.getControllableServerBehavior(getServer()).putSharedData(DEBUG_PORT_KEY, debugPort);
 			}
 			prepareLaunchAttacher();
-			getWSTServerFacade().startAsync(mode);
+			getWstServerControl().startAsync(mode);
 		} catch (CoreException e) {
 			resetLaunchAttacher();
 			s = StatusConverter.convert(e.getStatus());
@@ -86,7 +85,7 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 
 	@Override
 	public IStatus stopModule(DeployableReference ref) {
-		getWSTServerFacade().stopModule(ref);
+		getWstServerControl().stopModule(ref);
 		return Status.OK_STATUS;
 	}
 

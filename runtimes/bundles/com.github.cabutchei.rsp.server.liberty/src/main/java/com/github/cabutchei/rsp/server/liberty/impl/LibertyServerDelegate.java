@@ -7,7 +7,6 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
-import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
 import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
@@ -17,8 +16,8 @@ import com.github.cabutchei.rsp.server.tomcat.servertype.impl.LibertyContextRoot
 
 public class LibertyServerDelegate extends AbstractLibertyServerDelegate implements IServerDelegate, IModuleStateProvider {
 
-	public LibertyServerDelegate(IServer server, WSTServerContext wstServerFacade) {
-		super(server, wstServerFacade);
+	public LibertyServerDelegate(IServer server) {
+		super(server);
 	}
 
 	@Override
@@ -41,7 +40,7 @@ public class LibertyServerDelegate extends AbstractLibertyServerDelegate impleme
 		}
 		try {
 			prepareLaunchAttacher();
-			getWSTServerFacade().startAsync(mode);
+			getWstServerControl().startAsync(mode);
 		} catch (CoreException e) {
 			resetLaunchAttacher();
 			s = StatusConverter.convert(e.getStatus());
@@ -58,7 +57,7 @@ public class LibertyServerDelegate extends AbstractLibertyServerDelegate impleme
 
 	@Override
 	public IStatus stopModule(DeployableReference ref) {
-		getWSTServerFacade().stopModule(ref);
+		getWstServerControl().stopModule(ref);
 		return Status.OK_STATUS;
 	}
 }

@@ -12,7 +12,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 import com.github.cabutchei.rsp.eclipse.debug.core.IStreamListener;
 import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
-import com.github.cabutchei.rsp.eclipse.wst.api.WSTServerContext;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
 import com.github.cabutchei.rsp.eclipse.wst.model.launch.WstLaunchStreamAttacher;
 import com.github.cabutchei.rsp.eclipse.wst.publishing.WSTServerPublishStateModel;
 import com.github.cabutchei.rsp.eclipse.wst.stream.WSTServerStreamListener;
@@ -24,46 +24,54 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerPublishModel;
 public abstract class AbstractWstServerDelegate extends AbstractServerDelegate implements IModuleStateProvider {
 	private static final String PROCESS_ID_KEY = "process.id.key";
 
-	private WSTServerContext wstServerFacade;
+	private final IWstServerControl wstServerControl;
 	private final WstLaunchStreamAttacher launchStreamAttacher;
 
-	protected AbstractWstServerDelegate(IServer server, WSTServerContext wstServerFacade) {
+	protected AbstractWstServerDelegate(IServer server) {
 		super(server);
-		this.wstServerFacade = wstServerFacade;
+		this.wstServerControl = adaptWstServerControl(server);
 		this.launchStreamAttacher = new WstLaunchStreamAttacher(server.getId(), this::handleLaunchReady);
+	}
+
+	private IWstServerControl adaptWstServerControl(IServer server) {
+		if (server instanceof IWstServerControl) {
+			return (IWstServerControl) server;
+		}
+		IWstServerControl adapted = server == null ? null : server.getAdapter(IWstServerControl.class);
+		if (adapted != null) {
+			return adapted;
+		}
+		throw new IllegalArgumentException("Server " + (server == null ? "<null>" : server.getId())
+				+ " does not provide IWstServerControl");
 	}
 
 	@Override
 	public IStatus canAddDeployable(DeployableReference ref) {
-		return wstServerFacade.canAddDeployable(ref);
+		return wstServerControl.canAddDeployable(ref);
 	}
 
 	@Override
 	public IStatus canRemoveDeployable(DeployableReference ref) {
-		return wstServerFacade.canRemoveDeployable(ref);
+		return wstServerControl.canRemoveDeployable(ref);
 	}
 
 	@Override
 	public IServerPublishModel createServerPublishModel() {
-		return new WSTServerPublishStateModel(this, wstServerFacade, getFileWatcherService(), getFullPublishRequiredCallback());
+		return new WSTServerPublishStateModel(this, wstServerControl, getFileWatcherService(), getFullPublishRequiredCallback());
 	}
 
-	public WSTServerContext getWSTServerFacade() {
-		return wstServerFacade;
-	}
-
-	public void setWSTServerFacade(WSTServerContext wstServerFacade) {
-		this.wstServerFacade = wstServerFacade;
+	public IWstServerControl getWstServerControl() {
+		return wstServerControl;
 	}
 
 	@Override
 	public IStatus canPublish() {
-		return wstServerFacade.canPublish();
+		return wstServerControl.canPublish();
 	}
 
 	@Override
 	public IStatus publish(int publishRequestType) {
-		IStatus status = wstServerFacade.publish(publishRequestType);
+		IStatus status = wstServerControl.publish(publishRequestType);
 		if (status != null && status.isOK() && getServerPublishModel() instanceof WSTServerPublishStateModel) {
 			((WSTServerPublishStateModel) getServerPublishModel()).markPublished();
 		}
@@ -73,36 +81,33 @@ public abstract class AbstractWstServerDelegate extends AbstractServerDelegate i
 
 	@Override
 	public int getServerRunState() {
-		return wstServerFacade.getServerRunState();
+		return wstServerControl.getServerRunState();
 	}
 
 	@Override
 	public List<ModuleState> getModuleStates() {
-		if (wstServerFacade == null) {
-			return Collections.emptyList();
-		}
-		return wstServerFacade.getModuleStates();
+		return wstServerControl == null ? Collections.emptyList() : wstServerControl.getModuleStates();
 	}
 
 	@Override
 	public String getMode() {
-		return wstServerFacade.getMode();
+		return wstServerControl.getMode();
 	}
 
 	@Override
 	public IStatus canStart(String mode) {
-		return wstServerFacade.canStart(mode);
+		return wstServerControl.canStart(mode);
 	}
 
 	@Override
 	public IStatus stop(boolean force) {
-		wstServerFacade.stop(force);
+		wstServerControl.stop(force);
 		return Status.OK_STATUS;
 	}
 
 	@Override
 	public IStatus startModule(DeployableReference ref) {
-		wstServerFacade.startModule(ref);
+		wstServerControl.startModule(ref);
 		return Status.OK_STATUS;
 	}
 

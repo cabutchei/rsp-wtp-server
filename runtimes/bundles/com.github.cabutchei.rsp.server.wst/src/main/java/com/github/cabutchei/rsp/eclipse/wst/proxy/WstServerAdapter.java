@@ -11,7 +11,19 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.osgi.util.NLS;
+import org.eclipse.wst.server.core.IModule;
+import org.eclipse.wst.server.core.ServerUtil;
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
+import com.github.cabutchei.rsp.api.dao.DeployableReference;
+import com.github.cabutchei.rsp.api.dao.DeployableState;
+import com.github.cabutchei.rsp.api.dao.ModuleReference;
+import com.github.cabutchei.rsp.api.dao.ModuleState;
+import com.github.cabutchei.rsp.api.dao.ServerHandle;
+import com.github.cabutchei.rsp.api.dao.ServerType;
 import com.github.cabutchei.rsp.api.dao.Attributes;
 import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
@@ -19,6 +31,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstModelAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
 import com.github.cabutchei.rsp.launching.memento.IMemento;
 import com.github.cabutchei.rsp.launching.memento.JSONMemento;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
@@ -33,7 +46,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 
 /** A proxy for a WST server that implements the IServer interface. */
 
-public class WstServerAdapter implements IServer {
+public class WstServerAdapter implements IWstServerControl {
 	// TODO: do we need these properties?
 	public static final String TYPE_ID = "server-type-id";
 	private static final String MAP_PROPERTIES_KEY = "mapProperties";
@@ -319,6 +332,299 @@ public class WstServerAdapter implements IServer {
 		}
 	}
 
+	private IProject getProject(String projectName) {
+		if (projectName == null || projectName.isEmpty()) {
+			return null;
+		}
+		return ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
+	}
+
+	private IModule[] getRootModules(IProject project) throws org.eclipse.core.runtime.CoreException {
+		IModule[] candidates = ServerUtil.getModules(project);
+		if (candidates == null || candidates.length == 0) {
+			return new IModule[0];
+		}
+		List<IModule> roots = new ArrayList<>();
+		for (IModule module : candidates) {
+			IModule[] allRoots = wstServer.getRootModules(module, null);
+			for (IModule root : allRoots) {
+				if (!roots.contains(root)) {
+					roots.add(root);
+				}
+			}
+		}
+		return roots.toArray(new IModule[0]);
+	}
+
+	private IModule[] getModules() {
+		IModule[] modules = wstServer.getModules();
+		return modules == null ? new IModule[0] : modules;
+	}
+
+	private IModule getModule(String name) {
+		if (name == null) {
+			return null;
+		}
+		for (IModule module : getModules()) {
+			if (name.equals(module.getName())) {
+				return module;
+			}
+		}
+		return null;
+	}
+
+	private int getModulePublishState(IModule module) {
+		if (module == null) {
+			return ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN;
+		}
+		return WstModelAdapter.toRspPublishState(wstServer.getModulePublishState(new IModule[] { module }));
+	}
+
+	private int getModuleRunState(IModule module) {
+		if (module == null) {
+			return ServerManagementAPIConstants.STATE_UNKNOWN;
+		}
+		return WstModelAdapter.toRspServerState(wstServer.getModuleState(new IModule[] { module }));
+	}
+
+	private DeployableReference toDeployableReference(IModule module) {
+		String label = module.getName();
+		String path = module.getProject() != null ? module.getProject().getLocation().toOSString() : module.getName();
+		String typeId = module.getModuleType() == null ? null : module.getModuleType().getId();
+		return new DeployableReference(label, path, typeId);
+	}
+
+	private ModuleReference toModuleReference(IModule module) {
+		String typeId = module.getModuleType() == null ? null : module.getModuleType().getId();
+		return new ModuleReference(module.getId(), module.getName(), typeId);
+	}
+
+	private List<IModule> collectChildModules(IModule module) {
+		List<IModule> result = new ArrayList<>();
+		IModule[] children = wstServer.getChildModules(new IModule[] { module }, new NullProgressMonitor());
+		if (children == null) {
+			return result;
+		}
+		for (IModule child : children) {
+			result.add(child);
+			result.addAll(collectChildModules(child));
+		}
+		return result;
+	}
+
+	private ServerHandle getServerHandle() {
+		IServerType type = getServerType();
+		ServerType serverType = type == null ? null : new ServerType(type.getId(), type.getName(), type.getDescription());
+		return new ServerHandle(getId(), serverType);
+	}
+
+	@Override
+	public IStatus addDeployable(DeployableReference reference) {
+		if (reference == null) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Deployable reference is required");
+		}
+		IProject project = getProject(reference.getLabel());
+		if (project == null || !project.exists()) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
+					NLS.bind("{0} isn't bound to any workspace project", reference.getLabel()));
+		}
+		IModule[] modules = ServerUtil.getModules(project);
+		try {
+			modules = getRootModules(project);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			return WstModelAdapter.toRspStatus(e.getStatus());
+		}
+		org.eclipse.wst.server.core.IServerWorkingCopy serverWc = wstServer.createWorkingCopy();
+		try {
+			serverWc.modifyModules(modules, null, new NullProgressMonitor());
+			serverWc.save(false, new NullProgressMonitor());
+			return Status.OK_STATUS;
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			return WstModelAdapter.toRspStatus(e.getStatus());
+		}
+	}
+
+	@Override
+	public IStatus canAddDeployable(DeployableReference reference) {
+		if (reference == null) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Deployable reference is required");
+		}
+		IProject project = getProject(reference.getLabel());
+		if (project == null || !project.exists()) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
+					NLS.bind("{0} isn't bound to any workspace project", reference.getLabel()));
+		}
+		IModule[] modules = ServerUtil.getModules(project);
+		if (modules == null || modules.length == 0) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
+		}
+		try {
+			modules = getRootModules(project);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			return WstModelAdapter.toRspStatus(e.getStatus());
+		}
+		org.eclipse.core.runtime.IStatus status = wstServer.canModifyModules(modules, null, new NullProgressMonitor());
+		return WstModelAdapter.toRspStatus(status);
+	}
+
+	@Override
+	public IStatus removeDeployable(DeployableReference reference) {
+		if (reference == null) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Deployable reference is required");
+		}
+		IProject project = getProject(reference.getLabel());
+		if (project == null || !project.exists()) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
+					NLS.bind("{0} isn't bound to any workspace project", reference.getLabel()));
+		}
+		IModule[] modules = ServerUtil.getModules(project);
+		try {
+			modules = getRootModules(project);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			return WstModelAdapter.toRspStatus(e.getStatus());
+		}
+		if (modules == null || modules.length == 0) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
+		}
+		org.eclipse.wst.server.core.IServerWorkingCopy copy = wstServer.createWorkingCopy();
+		try {
+			copy.modifyModules(null, modules, new NullProgressMonitor());
+			copy.save(false, new NullProgressMonitor());
+			return Status.OK_STATUS;
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			return WstModelAdapter.toRspStatus(e.getStatus());
+		}
+	}
+
+	@Override
+	public IStatus canRemoveDeployable(DeployableReference reference) {
+		if (reference == null) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Deployable reference is required");
+		}
+		IProject project = getProject(reference.getLabel());
+		if (project == null || !project.exists()) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
+					NLS.bind("{0} isn't bound to any workspace project", reference.getLabel()));
+		}
+		IModule[] modules = ServerUtil.getModules(project);
+		try {
+			modules = getRootModules(project);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			return WstModelAdapter.toRspStatus(e.getStatus());
+		}
+		if (modules == null || modules.length == 0) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
+		}
+		org.eclipse.core.runtime.IStatus status = wstServer.canModifyModules(null, modules, new NullProgressMonitor());
+		return WstModelAdapter.toRspStatus(status);
+	}
+
+	@Override
+	public IStatus publish(int publishRequestType) {
+		org.eclipse.core.runtime.IStatus status = wstServer.publish(
+				WstModelAdapter.toWstPublishKind(publishRequestType), new NullProgressMonitor());
+		return WstModelAdapter.toRspStatus(status);
+	}
+
+	@Override
+	public IStatus canPublish() {
+		return WstModelAdapter.toRspStatus(wstServer.canPublish());
+	}
+
+	@Override
+	public int getServerPublishState() {
+		return WstModelAdapter.toRspPublishState(wstServer.getServerPublishState());
+	}
+
+	@Override
+	public int getServerRunState() {
+		return WstModelAdapter.toRspServerState(wstServer.getServerState());
+	}
+
+	@Override
+	public List<DeployableState> getDeployableStates() {
+		List<DeployableState> states = new ArrayList<>();
+		ServerHandle handle = getServerHandle();
+		for (IModule module : getModules()) {
+			DeployableReference reference = toDeployableReference(module);
+			int runState = getModuleRunState(module);
+			int publishState = getModulePublishState(module);
+			states.add(new DeployableState(handle, reference, runState, publishState));
+		}
+		return states;
+	}
+
+	@Override
+	public List<ModuleState> getModuleStates() {
+		List<ModuleState> states = new ArrayList<>();
+		for (IModule module : getModules()) {
+			DeployableReference deployable = toDeployableReference(module);
+			for (IModule child : collectChildModules(module)) {
+				ModuleReference moduleRef = toModuleReference(child);
+				int runState = getModuleRunState(child);
+				int publishState = getModulePublishState(child);
+				states.add(new ModuleState(deployable, moduleRef, runState, publishState));
+			}
+		}
+		return states;
+	}
+
+	@Override
+	public DeployableState getDeployableState(DeployableReference reference) {
+		if (reference == null) {
+			return null;
+		}
+		IModule module = getModule(reference.getLabel());
+		if (module == null) {
+			return null;
+		}
+		return new DeployableState(getServerHandle(), reference, getModuleRunState(module), getModulePublishState(module));
+	}
+
+	@Override
+	public void startAsync(String launchMode) throws CoreException {
+		wstServer.start(launchMode, result -> {
+			// no-op; asynchronous start notification is handled by WST listeners
+		});
+	}
+
+	@Override
+	public IStatus canStart(String launchMode) {
+		return WstModelAdapter.toRspStatus(wstServer.canStart(launchMode));
+	}
+
+	@Override
+	public void stop(boolean force) {
+		wstServer.stop(force);
+	}
+
+	@Override
+	public IStatus canStop() {
+		return WstModelAdapter.toRspStatus(wstServer.canStop());
+	}
+
+	@Override
+	public void startModule(DeployableReference reference) {
+		IModule module = getModule(reference == null ? null : reference.getLabel());
+		if (module != null) {
+			wstServer.startModule(new IModule[] { module }, null);
+		}
+	}
+
+	@Override
+	public void stopModule(DeployableReference reference) {
+		IModule module = getModule(reference == null ? null : reference.getLabel());
+		if (module != null) {
+			wstServer.stopModule(new IModule[] { module }, null);
+		}
+	}
+
+	@Override
+	public String getMode() {
+		return wstServer.getMode();
+	}
+
+	@Override
 	public void addServerListener(com.github.cabutchei.rsp.server.spi.servertype.IServerListener listener) {
 		org.eclipse.wst.server.core.IServerListener wrapper = new org.eclipse.wst.server.core.IServerListener() {
 			public void serverChanged(org.eclipse.wst.server.core.ServerEvent event) {

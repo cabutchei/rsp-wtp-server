@@ -16,7 +16,6 @@ import com.github.cabutchei.rsp.server.spi.discovery.IDiscoveryPathModel;
 import com.github.cabutchei.rsp.server.spi.discovery.IServerBeanTypeManager;
 import com.github.cabutchei.rsp.server.spi.filewatcher.IFileWatcherService;
 import com.github.cabutchei.rsp.server.spi.jobs.IJobManager;
-import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 
 /**
  * This interface should probably be called IRSPModel instead. 
@@ -85,12 +84,6 @@ public interface IServerManagementModel {
 	 * @return
 	 */
 	public IJobManager getJobManager();
-
-	/**
-	 * Get the projects manager for tracking workspace folders and deployable resources.
-	 * @return
-	 */
-	public IProjectsManager getProjectsManager();
 	
 	/**
 	 * A client has been removed disconnected from the server 

@@ -43,8 +43,6 @@ import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerModelListener;
 import com.github.cabutchei.rsp.server.spi.model.ServerModelListenerAdapter;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
-import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
-import com.github.cabutchei.rsp.server.workspace.DefaultProjectsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +61,6 @@ public class ServerManagementModel implements IServerManagementModel {
 	private IFileWatcherService fileWatcherService;
 	private IDownloadRuntimesModel downloadRuntimeModel;
 	private IJobManager jobManager;
-	private IProjectsManager projectsManager;
 	private IDataStoreModel fDataStoreModel;
 	
 	public ServerManagementModel(IDataStoreModel dataLocation) {
@@ -80,7 +77,6 @@ public class ServerManagementModel implements IServerManagementModel {
 		this.fileWatcherService.start();
 		this.downloadRuntimeModel = createDownloadRuntimesModel();
 		this.jobManager = createJobManager();
-		this.projectsManager = createProjectsManager();
 	}
 	
 	@Override
@@ -88,11 +84,6 @@ public class ServerManagementModel implements IServerManagementModel {
 		return this.jobManager;
 	}
 
-	@Override
-	public IProjectsManager getProjectsManager() {
-		return this.projectsManager;
-	}
-	
 	@Override
 	public ISecureStorageProvider getSecureStorageProvider() {
 		return secureStorage;
@@ -189,10 +180,6 @@ public class ServerManagementModel implements IServerManagementModel {
 
 	protected IJobManager createJobManager() {
 		return new JobManager();
-	}
-
-	protected IProjectsManager createProjectsManager() {
-		return new DefaultProjectsManager();
 	}
 
 	@Override

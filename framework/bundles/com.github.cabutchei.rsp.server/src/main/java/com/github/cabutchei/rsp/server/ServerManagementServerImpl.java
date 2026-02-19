@@ -93,6 +93,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.github.cabutchei.rsp.server.spi.jobs.IJob;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.model.IWorkspaceModelCapability;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
@@ -695,7 +696,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 
 	private ListDeployableResourcesResponse getDeployableResourcesSync(ServerHandle server) {
 		ListDeployableResourcesResponse resp = new ListDeployableResourcesResponse();
-		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		IProjectsManager projectsManager = getProjectsManager();
 		if (projectsManager == null) {
 			resp.setStatus(errorStatus("Projects manager unavailable"));
 			return resp;
@@ -722,7 +723,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 
 	private ListWorkspaceProjectsResponse listWorkspaceProjectsSync() {
 		ListWorkspaceProjectsResponse resp = new ListWorkspaceProjectsResponse();
-		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		IProjectsManager projectsManager = getProjectsManager();
 		if (projectsManager == null) {
 			resp.setStatus(errorStatus("Projects manager unavailable"));
 			return resp;
@@ -754,7 +755,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			resp.setStatus(invalidParameterStatus());
 			return resp;
 		}
-		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		IProjectsManager projectsManager = getProjectsManager();
 		if (projectsManager == null) {
 			resp.setStatus(errorStatus("Projects manager unavailable"));
 			return resp;
@@ -816,7 +817,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			resp.setStatus(invalidParameterStatus());
 			return resp;
 		}
-		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		IProjectsManager projectsManager = getProjectsManager();
 		if (projectsManager == null) {
 			resp.setStatus(errorStatus("Projects manager unavailable"));
 			return resp;
@@ -866,7 +867,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		if (request.getEntry() == null) {
 			return invalidParameterStatus();
 		}
-		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		IProjectsManager projectsManager = getProjectsManager();
 		if (projectsManager == null) {
 			return errorStatus("Projects manager unavailable");
 		}
@@ -899,16 +900,27 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		return projectsManager == null ? null : projectsManager.getWTPService();
 	}
 
+	private IProjectsManager getProjectsManager() {
+		IWorkspaceModelCapability capability = getWorkspaceModelCapability();
+		return capability == null ? null : capability.getProjectsManager();
+	}
+
+	private IWorkspaceModelCapability getWorkspaceModelCapability() {
+		return managementModel instanceof IWorkspaceModelCapability
+				? (IWorkspaceModelCapability) managementModel
+				: null;
+	}
+
 	@Override
 	public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params) {
-		WorkspaceFolderChangeHandler handler = new WorkspaceFolderChangeHandler(managementModel.getProjectsManager());
+		WorkspaceFolderChangeHandler handler = new WorkspaceFolderChangeHandler(getProjectsManager());
 		handler.update(params);
 		notifyJdtlsJreContainers();
 		notifyJdtlsClasspathContainers();
 	}
 
 	private void notifyJdtlsJreContainers() {
-		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		IProjectsManager projectsManager = getProjectsManager();
 		if (projectsManager == null) {
 			return;
 		}
@@ -941,7 +953,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	}
 
 	private void notifyJdtlsClasspathContainers() {
-		IProjectsManager projectsManager = managementModel.getProjectsManager();
+		IProjectsManager projectsManager = getProjectsManager();
 		if (projectsManager == null) {
 			return;
 		}

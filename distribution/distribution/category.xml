@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
    <description>
-      Runtime Server Protocol : Distribution Repository
+      Runtime Server Protocol : Equinox Product Repository
    </description>
    <bundle id="ch.qos.logback.classic"/>
    <bundle id="ch.qos.logback.core"/>
@@ -23,7 +23,7 @@
    <bundle id="com.github.cabutchei.rsp.server.spi"/>
    <bundle id="com.github.cabutchei.rsp.server"/>
    <bundle id="com.github.cabutchei.rsp.server.generic"/>
-   <bundle id="com.github.cabutchei.rsp.server.redhat.download"/>
-   <bundle id="com.github.cabutchei.rsp.server.wildfly"/>
-   <bundle id="com.github.cabutchei.rsp.server.minishift"/>
+   <!-- <bundle id="com.github.cabutchei.rsp.server.redhat.download"/> -->
+   <!-- <bundle id="com.github.cabutchei.rsp.server.liberty"/> -->
+   <product id="com.github.cabutchei.rsp.server.product"/>
 </site>

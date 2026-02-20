@@ -19,7 +19,6 @@
   </properties>
 
   <modules>
-    <!-- <module>distribution</module> -->
-    <module>dist</module>
+    <module>distribution</module>
   </modules>
 </project>

@@ -43,16 +43,9 @@
 	<properties>
 		<tycho-version>1.3.0</tycho-version>
 		<jacoco.version>0.8.4</jacoco.version>
-		<sonar.code.codeCoveragePlugin>jacoco</sonar.code.codeCoveragePlugin>
-		<sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
 		<moduleProperties></moduleProperties>
-		<jboss.releases.repo.id>jboss-releases-repository</jboss.releases.repo.id>
-		<jboss.releases.repo.url>https://repository.jboss.org/nexus/service/local/staging/deploy/maven2/</jboss.releases.repo.url>
-		<jboss.snapshots.repo.id>jboss-snapshots-repository</jboss.snapshots.repo.id>
-		<jboss.snapshots.repo.url>https://repository.jboss.org/nexus/content/repositories/snapshots/</jboss.snapshots.repo.url>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven-surefire-plugin.version>3.0.0-M3</maven-surefire-plugin.version>
-		<download-maven-plugin.version>1.4.1</download-maven-plugin.version>
 	</properties>
 
 	<modules>
@@ -80,11 +73,6 @@
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>${maven-surefire-plugin.version}</version>
-				</plugin>
-				<plugin>
-					<groupId>com.googlecode.maven-download-plugin</groupId>
-					<artifactId>download-maven-plugin</artifactId>
-					<version>${download-maven-plugin.version}</version>
 				</plugin>
 			</plugins>
 		</pluginManagement>

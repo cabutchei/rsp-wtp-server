@@ -12,87 +12,35 @@
 	</parent>
 
 	<groupId>com.github.cabutchei.rsp.distribution</groupId>
-	<artifactId>org.jboss.tools.rsp.distribution</artifactId>
-	<name>Runtime Server Protocol : Distribution</name>
+	<artifactId>com.github.cabutchei.rsp.distribution.product</artifactId>
+	<name>Runtime Server Protocol : Equinox Product Distribution</name>
 	<packaging>eclipse-repository</packaging>
 
-	<properties>
-        <felix.version>7.0.3</felix.version>
-	<felix.hash>f4d53ba31cc5457afbfef00935dde810d4e6b420</felix.hash>
-        <felix.folder>felix-framework-${felix.version}</felix.folder>
-        <rsp-distribution.folder>rsp-distribution</rsp-distribution.folder>
-	</properties>
-	
 	<build>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<configuration>
-						<testFailureIgnore>true</testFailureIgnore>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
 		<plugins>
 			<plugin>
-				<groupId>com.googlecode.maven-download-plugin</groupId>
-				<artifactId>download-maven-plugin</artifactId>
-				<version>1.2.1</version>
-				<executions>
-					<execution>
-						<id>download-felix</id>
-						<phase>package</phase>
-						<goals>
-							<goal>wget</goal>
-						</goals>
-						<configuration>
-<url>https://repo1.maven.org/maven2/org/apache/felix/org.apache.felix.main.distribution/${felix.version}/org.apache.felix.main.distribution-${felix.version}.zip</url>
-							<sha1>${felix.hash}</sha1>
-							<unpack>true</unpack>
-						</configuration>
-					</execution>
-				</executions>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-p2-repository-plugin</artifactId>
+				<version>${tycho-version}</version>
 			</plugin>
-			<!-- copy bundles that are not available from target platform -->
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-dependency-plugin</artifactId>
-				<version>3.1.0</version>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-p2-director-plugin</artifactId>
+				<version>${tycho-version}</version>
 				<executions>
 					<execution>
-						<id>copy-non-tp-dependencies</id>
-						<phase>package</phase>
+						<id>materialize-products</id>
 						<goals>
-							<goal>copy-dependencies</goal>
+							<goal>materialize-products</goal>
+							<goal>archive-products</goal>
 						</goals>
 						<configuration>
-							<!-- configure the plugin here -->
-							<outputDirectory>${project.build.directory}/${felix.folder}/bundle</outputDirectory>
-							<excludeTransitive>true</excludeTransitive>
-							<includeScope>runtime</includeScope>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<!-- build distribution -->
-			<plugin>
-				<artifactId>maven-assembly-plugin</artifactId>
-				<version>3.7.1</version>
-				<executions>
-					<execution>
-						<id>create-distribution-zip</id>
-						<phase>package</phase>
-						<goals>
-							<goal>single</goal>
-						</goals>
-						<configuration>
-							<finalName>${rsp-distribution.filename}</finalName>
-							<appendAssemblyId>false</appendAssemblyId>
-							<descriptors>
-								<descriptor>publish-assembly.xml</descriptor>
-							</descriptors>
+							<products>
+								<product>
+									<id>com.github.cabutchei.rsp.server.product</id>
+									<rootFolder>rsp-wtp-server</rootFolder>
+								</product>
+							</products>
 						</configuration>
 					</execution>
 				</executions>

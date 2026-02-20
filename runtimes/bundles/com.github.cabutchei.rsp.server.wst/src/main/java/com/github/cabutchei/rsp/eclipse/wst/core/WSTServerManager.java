@@ -9,7 +9,10 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.wst.server.core.ServerCore;
+import org.eclipse.wst.server.core.internal.ServerPreferences;
 import org.eclipse.wst.server.core.internal.UpdateServerJob;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
@@ -26,12 +29,15 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
-import org.eclipse.wst.server.core.internal.ServerPreferences;
 
 /**
  * Boundary for WST ServerCore server discovery/proxying and server creation.
  */
 public class WSTServerManager implements IWstServerManager {
+	private static final Logger LOG = LoggerFactory.getLogger(WSTServerManager.class);
+	private static final String PROP_AUTO_PUBLISH_SETTING = "auto-publish-setting";
+	private static final int AUTO_PUBLISH_DISABLE = 1;
+	private static final int AUTO_PUBLISH_RESOURCE = 2;
 
 	@Override
 	public IServer[] loadServers(IServerManagementModel managementModel) {
@@ -49,6 +55,26 @@ public class WSTServerManager implements IWstServerManager {
 	public void setGlobalAutoPublishing(boolean enabled) {
 		if (ServerCore.isAutoPublishing() != enabled) {
 			ServerPreferences.getInstance().setAutoPublishing(enabled);
+		}
+	}
+
+	@Override
+	public void setAutoPublishingForAllServers(boolean enabled) {
+		int setting = enabled ? AUTO_PUBLISH_RESOURCE : AUTO_PUBLISH_DISABLE;
+		IProgressMonitor monitor = new NullProgressMonitor();
+		for (org.eclipse.wst.server.core.IServer server : ServerCore.getServers()) {
+			if (server == null) {
+				continue;
+			}
+			try {
+				org.eclipse.wst.server.core.IServerWorkingCopy wc = server.createWorkingCopy();
+				if (wc.getAttribute(PROP_AUTO_PUBLISH_SETTING, AUTO_PUBLISH_RESOURCE) != setting) {
+					wc.setAttribute(PROP_AUTO_PUBLISH_SETTING, setting);
+					wc.save(false, monitor);
+				}
+			} catch (org.eclipse.core.runtime.CoreException e) {
+				LOG.warn("Failed to set auto-publish setting for server {}", server.getId(), e);
+			}
 		}
 	}
 
@@ -76,6 +102,7 @@ public class WSTServerManager implements IWstServerManager {
 			if (handler != null) {
 				handler.configureServer(server, runtimeWC, attributes, monitor);
 			}
+			setServerAutoPublishing(server, false);
 			return createServerWorkingCopyProxy(server, model);
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			throw new CoreException(WstRspMapper.toRspStatus(e.getStatus()));
@@ -147,5 +174,12 @@ public class WSTServerManager implements IWstServerManager {
 				server.setAttribute(key, (Map) value);
 			}
 		}
+	}
+
+	private void setServerAutoPublishing(org.eclipse.wst.server.core.IServerWorkingCopy server, boolean enabled) {
+		if (server == null) {
+			return;
+		}
+		server.setAttribute(PROP_AUTO_PUBLISH_SETTING, enabled ? AUTO_PUBLISH_RESOURCE : AUTO_PUBLISH_DISABLE);
 	}
 }

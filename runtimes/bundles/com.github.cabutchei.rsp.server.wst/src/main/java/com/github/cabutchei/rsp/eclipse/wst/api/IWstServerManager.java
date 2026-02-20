@@ -15,5 +15,6 @@ public interface IWstServerManager {
 			IServerManagementModel model) throws CoreException;
 
 	void setGlobalAutoPublishing(boolean enabled);
+	void setAutoPublishingForAllServers(boolean enabled);
 	default void updateServerStatus() {}
 }

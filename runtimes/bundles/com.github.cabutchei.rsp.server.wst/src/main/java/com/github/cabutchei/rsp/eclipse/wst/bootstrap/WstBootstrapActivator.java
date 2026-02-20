@@ -98,6 +98,7 @@ public class WstBootstrapActivator implements BundleActivator {
 			return;
 		}
 		manager.setGlobalAutoPublishing(false);
-		LOG.info("Disabled WTP global auto-publish.");
+		manager.setAutoPublishingForAllServers(false);
+		LOG.info("Disabled WTP global and per-server auto-publish settings.");
 	}
 }

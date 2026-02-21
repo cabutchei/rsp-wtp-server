@@ -37,9 +37,7 @@ public class WstBootstrapActivator implements BundleActivator {
 				: null;
 		ServerManagementServerLauncher.setServerManagementModelFactory(new WstServerManagementModelFactory(
 				serverManager, workspaceService, workspaceInitializationService));
-		Thread thread = new Thread(this::bootstrap, "WST Bootstrap");
-		thread.setDaemon(true);
-		thread.start();
+		bootstrap();
 	}
 
 	@Override

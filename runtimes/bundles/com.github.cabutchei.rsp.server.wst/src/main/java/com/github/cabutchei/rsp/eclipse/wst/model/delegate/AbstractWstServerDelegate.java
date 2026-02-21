@@ -143,6 +143,12 @@ public abstract class AbstractWstServerDelegate extends AbstractServerDelegate i
 		return Status.OK_STATUS;
 	}
 
+	@Override
+	public IStatus stopModule(DeployableReference ref) {
+		wstServerControl.stopModule(ref);
+		return Status.OK_STATUS;
+	}
+
 	protected final void prepareLaunchAttacher() {
 		launchStreamAttacher.reset();
 		launchStreamAttacher.attach();

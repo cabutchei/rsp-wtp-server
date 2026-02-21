@@ -55,7 +55,6 @@
 		<module>framework</module>
 		<module>runtimes</module>
 		<module>distribution</module>
-		<module>site</module>
 	</modules>
 
 	<build>

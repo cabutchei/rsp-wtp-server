@@ -808,7 +808,7 @@ public class ServerModel implements IServerModel {
 			return resp;
 		}
 		
-		server.getDelegate().updateServer(ds, resp);
+		server.getDelegate().updateServer((IServer)ds, resp);
 		if( resp.getValidation().getStatus() != null && 
 				resp.getValidation().getStatus().getSeverity() == Status.ERROR) {
 			return resp;

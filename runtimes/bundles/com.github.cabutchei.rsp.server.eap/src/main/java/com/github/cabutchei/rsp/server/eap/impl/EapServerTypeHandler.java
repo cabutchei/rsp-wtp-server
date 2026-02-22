@@ -29,15 +29,25 @@ final class EapServerTypeHandler implements WstServerTypeHandler {
 				IEapServerAttributes.CONFIG_FILE_DEFAULT);
 		server.setAttribute(IEapServerAttributes.CONFIG_FILE, configFile);
 
-		String baseDir = getStringAttribute(attributes, IEapServerAttributes.BASE_DIRECTORY,
-				IEapServerAttributes.BASE_DIRECTORY_DEFAULT);
-		server.setAttribute(IEapServerAttributes.BASE_DIRECTORY, baseDir);
+			String baseDir = getStringAttribute(attributes, IEapServerAttributes.BASE_DIRECTORY,
+					IEapServerAttributes.BASE_DIRECTORY_DEFAULT);
+			server.setAttribute(IEapServerAttributes.BASE_DIRECTORY, baseDir);
 
-		server.setAttribute(IEapServerAttributes.ATTACH_DEBUGGER, false);
-		server.setAttribute(
-				ControllableServerBehavior.PROPERTY_PREFIX + ILaunchServerController.SYSTEM_ID,
-				CUSTOM_LAUNCH_SUBSYSTEM);
+			String restartPattern = getStringAttribute(attributes, IEapServerAttributes.RESTART_FILE_PATTERN,
+					IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT);
+			boolean useDefaultRestartPattern = shouldUseDefaultRestartPattern(restartPattern);
+			server.setAttribute(IEapServerAttributes.USE_DEFAULT_RESTART_FILE_PATTERN, useDefaultRestartPattern);
+			if (useDefaultRestartPattern) {
+				restartPattern = IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT;
+			}
+			server.setAttribute(IEapServerAttributes.RESTART_FILE_PATTERN, restartPattern);
+
+			server.setAttribute(IEapServerAttributes.ATTACH_DEBUGGER, false);
+			server.setAttribute(
+					ControllableServerBehavior.PROPERTY_PREFIX + ILaunchServerController.SYSTEM_ID,
+					CUSTOM_LAUNCH_SUBSYSTEM);
 	}
+
 
 	private String getStringAttribute(Map<String, Object> attributes, String key, String defaultValue) {
 		if (attributes == null || key == null) {
@@ -45,5 +55,16 @@ final class EapServerTypeHandler implements WstServerTypeHandler {
 		}
 		Object value = attributes.get(key);
 		return value instanceof String ? (String) value : defaultValue;
+	}
+
+	private boolean shouldUseDefaultRestartPattern(String pattern) {
+		if (pattern == null) {
+			return true;
+		}
+		String trimmed = pattern.trim();
+		if (trimmed.isEmpty()) {
+			return true;
+		}
+		return IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT.equals(trimmed);
 	}
 }

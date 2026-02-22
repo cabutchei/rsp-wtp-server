@@ -1,5 +1,8 @@
 package com.github.cabutchei.rsp.eclipse.wst.model;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -8,15 +11,23 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 import com.github.cabutchei.rsp.launching.memento.IMemento;
 import com.github.cabutchei.rsp.launching.memento.JSONMemento;
+import com.github.cabutchei.rsp.server.ServerCoreActivator;
+import com.google.gson.JsonSyntaxException;
 
-class WSTBase {
+public class WSTBase {
 	private static final String MAP_PROPERTIES_KEY = "mapProperties";
 	private static final String LIST_PROPERTIES_KEY = "listProperties";
 	private static final String MAP_PROPERTY_KEY_PREFIX = "mapProperty";
 	private static final String LIST_PROPERTY_KEY_PREFIX = "listProperty";
 	private static final String PROPERTY_KEY_VALUE_PREFIX = "value";
+
+	private transient List<PropertyChangeListener> propertyListeners;
 
 	protected Map<String, Object> map = new HashMap<>();
 
@@ -158,6 +169,118 @@ class WSTBase {
 			key2 = memento.getString(PROPERTY_KEY_VALUE_PREFIX + (i++));
 		}
 		return list;
+	}
+
+	public void setAttribute(String attributeName, int value) {
+		int current = getAttribute(attributeName, 0);
+		if (isAttributeSet(attributeName) && current == value)
+			return;
+		map.put(attributeName, Integer.toString(value));
+		firePropertyChangeEvent(attributeName, Integer.valueOf(current), Integer.valueOf(value));
+	}
+
+	public void setAttribute(String attributeName, boolean value) {
+		boolean current = getAttribute(attributeName, false);
+		if (isAttributeSet(attributeName) && current == value)
+			return;
+		map.put(attributeName, Boolean.toString(value));
+		firePropertyChangeEvent(attributeName, Boolean.valueOf(current), Boolean.valueOf(value));
+	}
+
+	public void setAttribute(String attributeName, String value) {
+		String current = getAttribute(attributeName, (String)null);
+		if (isAttributeSet(attributeName) && current != null && current.equals(value))
+			return;
+		
+		if (value == null)
+			map.remove(attributeName);
+		else
+			map.put(attributeName, value);
+		firePropertyChangeEvent(attributeName, current, value);
+	}
+
+	public void setAttribute(String attributeName, List<String> value) {
+		List<?> current = getAttribute(attributeName, (List<String>)null);
+		if (isAttributeSet(attributeName) && current != null && current.equals(value))
+			return;
+		if (value == null)
+			map.remove(attributeName);
+		else
+			map.put(attributeName, value);
+		firePropertyChangeEvent(attributeName, current, value);
+	}
+
+	public void setAttribute(String attributeName, Map<?,?> value) {
+		Map<?,?> current = getAttribute(attributeName, (Map<?, ?>)null);
+		if (isAttributeSet(attributeName) && current != null && current.equals(value))
+			return;
+		if (value == null)
+			map.remove(attributeName);
+		else
+			map.put(attributeName, value);
+		firePropertyChangeEvent(attributeName, current, value);
+	}
+
+	public boolean isAttributeSet(String attributeName) {
+		try {
+			Object obj = map.get(attributeName);
+			if (obj != null)
+				return true;
+		} catch (Exception e) {
+			// ignore
+		}
+		return false;
+	}
+
+	/**
+	 * Fire a property change event.
+	 * 
+	 * @param propertyName a property name
+	 * @param oldValue the old value
+	 * @param newValue the new value
+	 */
+	public void firePropertyChangeEvent(String propertyName, Object oldValue, Object newValue) {
+		if (propertyListeners == null)
+			return;
+	
+		PropertyChangeEvent event = new PropertyChangeEvent(this, propertyName, oldValue, newValue);
+		try {
+			Iterator<PropertyChangeListener> iterator = propertyListeners.iterator();
+			while (iterator.hasNext()) {
+				try {
+					PropertyChangeListener listener = iterator.next();
+					listener.propertyChange(event);
+				} catch (Exception e) {
+//					if (Trace.SEVERE) {
+//						Trace.trace(Trace.STRING_SEVERE, "Error firing property change event", e);
+//					}
+				}
+			}
+		} catch (Exception e) {
+//			if (Trace.SEVERE) {
+//				Trace.trace(Trace.STRING_SEVERE, "Error in property event", e);
+//			}
+		}
+	}
+
+	public void loadFromJson(String json) throws CoreException {
+		try (InputStream in = new ByteArrayInputStream(json.getBytes())) {
+			IMemento memento;
+			try {
+				memento = loadMemento(in);
+			} catch (JsonSyntaxException jse) {
+				throw new CoreException(new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 0,
+						NLS.bind("Parse error while reading server string: {0}", jse.getMessage()), null));
+			}
+			load(memento);
+		} catch (IOException | RuntimeException e) {
+			throw new CoreException(new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, 0,
+					NLS.bind("Error while reading server string: {0}", e.getMessage()), e));
+		}
+	}
+
+	public Map<String, Object> getMap() {
+		return this.map;
 	}
 
 }

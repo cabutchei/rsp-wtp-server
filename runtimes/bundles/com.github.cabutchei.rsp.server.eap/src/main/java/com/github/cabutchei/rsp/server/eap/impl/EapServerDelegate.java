@@ -9,6 +9,7 @@ import com.github.cabutchei.rsp.api.dao.CommandLineDetails;
 import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.api.dao.ServerState;
 import com.github.cabutchei.rsp.api.dao.StartServerResponse;
+import com.github.cabutchei.rsp.api.dao.UpdateServerResponse;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
@@ -17,6 +18,7 @@ import com.github.cabutchei.rsp.eclipse.wst.model.delegate.AbstractWstServerDele
 import com.github.cabutchei.rsp.launching.java.ILaunchModes;
 import com.github.cabutchei.rsp.launching.utils.LaunchingDebugProperties;
 import com.github.cabutchei.rsp.server.eap.servertype.publishing.EapPublishController;
+import com.github.cabutchei.rsp.server.eap.servertype.IEapServerAttributes;
 import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
@@ -41,9 +43,9 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 	public IStatus publish(int publishRequestType) {
 		IStatus status = super.publish(publishRequestType);
 		if (status != null && status.isOK()) {
-			getPublishController().publishFinished(publishRequestType,
-					getServerPublishModel().getDeployableStatesWithOptions(),
-					getServerRunState());
+			// getPublishController().publishFinished(publishRequestType,
+			// 		getServerPublishModel().getDeployableStatesWithOptions(),
+			// 		getServerRunState());
 		}
 		return status;
 	}
@@ -51,6 +53,24 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 	@Override
 	public ServerState getServerState() {
 		return super.getServerState();
+	}
+
+	@Override
+	public void updateServer(IServer dummyServer, UpdateServerResponse resp) {
+		// noop
+	}
+
+	public void updateServer(IServerWorkingCopy workingCopy, UpdateServerResponse resp) {
+		if (workingCopy == null) {
+			return;
+		}
+		String pattern = workingCopy.getAttribute(IEapServerAttributes.RESTART_FILE_PATTERN, (String) null);
+		boolean useDefault = shouldUseDefaultRestartPattern(pattern);
+		workingCopy.setAttribute(IEapServerAttributes.USE_DEFAULT_RESTART_FILE_PATTERN, useDefault);
+		if (useDefault) {
+			workingCopy.setAttribute(IEapServerAttributes.RESTART_FILE_PATTERN,
+					IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT);
+		}
 	}
 
 	@Override
@@ -116,5 +136,13 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 		} catch (IOException e) {
 			return -1;
 		}
+	}
+
+	private boolean shouldUseDefaultRestartPattern(String pattern) {
+		if (pattern == null) {
+			return true;
+		}
+		String trimmed = pattern.trim();
+		return IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT.equals(trimmed);
 	}
 }

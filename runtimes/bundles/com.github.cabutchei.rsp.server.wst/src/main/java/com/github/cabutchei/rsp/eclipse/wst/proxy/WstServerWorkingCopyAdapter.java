@@ -26,7 +26,8 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 
-public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IServer, IWstServerControl {
+
+public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServerControl {
 	private final org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy;
 	private final IServerManagementModel managementModel;
 	private final IServerModel serverModel;
@@ -34,18 +35,10 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IServer,
 
 	public WstServerWorkingCopyAdapter(org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy,
 			IServerManagementModel managementModel) {
-		this.wstServerWorkingCopy = Objects.requireNonNull(wstServerWorkingCopy, "wstServerWorkingCopy");
+		this.wstServerWorkingCopy = Objects.requireNonNull(wstServerWorkingCopy, "wstServerWorkingCopy cannot be null");
 		this.managementModel = managementModel;
 		this.serverModel = managementModel.getServerModel();
 	}
-
-	// public WstServerWorkingCopyProxy(String id, org.eclipse.wst.server.core.IRuntime runtime, org.eclipse.wst.server.core.IServerType serverType) {
-    //     this.wstServerWorkingCopy.loadAdapter(org.eclipse.wst.server.core.internal.ServerWorkingCopy, null).getServerType()
-	// 	wch = new WorkingCopyHelper(this);
-	// 	wch.setDirty(true);
-	// 	if (serverType instanceof ServerType)
-	// 		serverState = ((ServerType)serverType).getInitialState();
-	// }
 
     @Override
 	public String getName() {
@@ -63,23 +56,23 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IServer,
     }
 
     @Override
-	public void setAttribute(String attributeName, boolean value) {
-        wstServerWorkingCopy.setAttribute(attributeName, value);
+	public void setAttribute(String key, boolean value) {
+        wstServerWorkingCopy.setAttribute(key, value);
     }
 
     @Override
-	public void setAttribute(String attributeName, String value) {
-        wstServerWorkingCopy.setAttribute(attributeName, value);
+	public void setAttribute(String key, String value) {
+        wstServerWorkingCopy.setAttribute(key, value);
     }
 
     @Override
-	public void setAttribute(String attributeName, List<String> value) {
-        wstServerWorkingCopy.setAttribute(attributeName, value);
+	public void setAttribute(String key, List<String> value) {
+        wstServerWorkingCopy.setAttribute(key, value);
     }
 
     @Override
-	public void setAttribute(String attributeName, Map value) {
-        wstServerWorkingCopy.setAttribute(attributeName, value);
+	public void setAttribute(String key, Map value) {
+        wstServerWorkingCopy.setAttribute(key, value);
     }
 
     @Override
@@ -301,4 +294,5 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IServer,
 	public String getMode() {
 		return null;
 	}
+
 }

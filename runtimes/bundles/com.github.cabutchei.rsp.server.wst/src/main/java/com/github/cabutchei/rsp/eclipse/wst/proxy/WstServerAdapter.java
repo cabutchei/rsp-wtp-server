@@ -61,7 +61,7 @@ public class WstServerAdapter implements IWstServerControl {
 	private IServerDelegate delegate;
 
 	public WstServerAdapter(org.eclipse.wst.server.core.IServer wstServer, IServerManagementModel managementModel) {
-		this.wstServer = Objects.requireNonNull(wstServer, "wstServer");
+		this.wstServer = Objects.requireNonNull(wstServer, "wstServer cannot be null");
 		this.managementModel = managementModel;
 		this.serverModel = managementModel.getServerModel();
 		if(getServerType() != null ) {

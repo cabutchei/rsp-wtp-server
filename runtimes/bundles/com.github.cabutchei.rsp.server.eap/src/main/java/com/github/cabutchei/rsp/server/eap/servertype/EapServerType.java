@@ -64,14 +64,19 @@ public class EapServerType extends AbstractServerType {
 					ServerManagementAPIConstants.ATTR_TYPE_BOOL,
 					"Enable the autopublisher.",
 					DefaultServerAttributes.AUTOPUBLISH_ENABLEMENT_DEFAULT);
-			attrs.addAttribute(DefaultServerAttributes.AUTOPUBLISH_INACTIVITY_LIMIT,
-					ServerManagementAPIConstants.ATTR_TYPE_INT,
-					"Set the inactivity limit before the autopublisher runs.",
-					DefaultServerAttributes.AUTOPUBLISH_INACTIVITY_LIMIT_DEFAULT);
-			optional = attrs.toPojo();
+				attrs.addAttribute(DefaultServerAttributes.AUTOPUBLISH_INACTIVITY_LIMIT,
+						ServerManagementAPIConstants.ATTR_TYPE_INT,
+						"Set the inactivity limit before the autopublisher runs.",
+						DefaultServerAttributes.AUTOPUBLISH_INACTIVITY_LIMIT_DEFAULT);
+				attrs.addAttribute(IEapServerAttributes.RESTART_FILE_PATTERN,
+						ServerManagementAPIConstants.ATTR_TYPE_STRING,
+						"Optional regex pattern for resources that should force module restart. "
+								+ "If left as the default pattern, the adapter default behavior is used.",
+						IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT);
+				optional = attrs.toPojo();
+			}
+			return optional;
 		}
-		return optional;
-	}
 
 	@Override
 	public Attributes getRequiredLaunchAttributes() {

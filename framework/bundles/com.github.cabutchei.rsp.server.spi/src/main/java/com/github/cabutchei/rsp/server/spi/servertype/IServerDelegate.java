@@ -342,6 +342,8 @@ public interface IServerDelegate {
 	 */
 	public void updateServer(IServer dummyServer, UpdateServerResponse resp);
 
+	public default void updateServer(IServerWorkingCopy workingCopy, UpdateServerResponse resp) {}
+
 
 	/**
 	 * Allow the delegate the opportunity to fill default values for any 

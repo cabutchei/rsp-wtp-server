@@ -21,4 +21,10 @@ public interface IEapServerAttributes extends DefaultServerAttributes {
 
 	String ATTACH_DEBUGGER = "org.jboss.ide.eclipse.as.core.server.launch.DebugLaunchConstants.ATTACH_DEBUGGER";
 	String DEBUG_PORT = "org.jboss.ide.eclipse.as.core.server.launch.DebugLaunchConstants.DEBUG_PORT";
+
+	// Mirrors StandardModuleRestartBehaviorController in JBoss Tools.
+	String RESTART_FILE_PATTERN = "org.jboss.tools.as.restartFilePattern";
+	String RESTART_FILE_PATTERN_DEFAULT = "\\.jar$";
+	String USE_DEFAULT_RESTART_FILE_PATTERN = "org.jboss.tools.as.useDefaultRestartFilePattern";
+	String USE_DEFAULT_RESTART_FILE_PATTERN_DEFAULT = "true";
 }

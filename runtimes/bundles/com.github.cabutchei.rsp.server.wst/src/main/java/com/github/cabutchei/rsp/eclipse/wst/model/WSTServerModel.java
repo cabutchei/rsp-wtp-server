@@ -35,6 +35,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerAdapter;
+import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerWorkingCopyAdapter;
 import com.github.cabutchei.rsp.launching.utils.IStatusRunnableWithProgress;
 import com.github.cabutchei.rsp.secure.model.ISecureStorageProvider;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
@@ -685,24 +686,40 @@ public class WSTServerModel implements IServerModel {
 			return resp;
 		}
 		
-		WSTDummyServer ds = null;
+		IServerWorkingCopy wc = server.createWorkingCopy();
+		String json = req.getServerJson();
 		try {
-			if( req.getServerJson() == null ) {
+			if( json == null ) {
 				throw new Exception("Error while reading server string: null");
 			}
-			ds = WSTDummyServer.createDummyServer(req.getServerJson(), this, managementModel);
 		} catch(Exception ce) {
 			resp.getValidation().setStatus(errorStatus("Update Failed: " + ce.getMessage(), ce));
 			return resp;
 		}
 		
+		IServerType type = serverTypes.get(req.getHandle().getType().getId());
+		if (type == null) {
+			resp.getValidation().setStatus(errorStatus("Update server request contains unknown server type"));
+			return resp;
+		}
+		if (!(wc instanceof WstServerWorkingCopyAdapter)) {
+			resp.getValidation().setStatus(errorStatus("Could not update server"));
+			return resp;
+		}
+		WSTBase base = new WSTBase();
+		try {
+			base.loadFromJson(json);
+		} catch (CoreException e) {
+			resp.getValidation().setStatus(errorStatus("Could not load from json"));
+			return resp;
+		}
 		String[] unchangeable = new String[] {
-				// Base.PROP_ID and Base.PROP_ID_SET are protected
-				WstServerAdapter.TYPE_ID, "id", "id-set"
+			// Base.PROP_ID and Base.PROP_ID_SET are protected
+			WstServerAdapter.TYPE_ID, "id", "id-set"
 		};
 		for (int i = 0; i < unchangeable.length; i++) {
 			String key = unchangeable[i];
-			String dsValue = ds.getAttribute(key, (String) null);
+			String dsValue = base.getAttribute(key, (String) null);
 			String current;
 			if (WstServerAdapter.TYPE_ID.equals(key)) {
 				current = server.getTypeId();
@@ -713,47 +730,35 @@ public class WSTServerModel implements IServerModel {
 			}
 			if (!isEqual(dsValue, current)) {
 				resp.getValidation().setStatus(errorStatus(
-						NLS.bind("Field {0} may not be changed", key)));
-				return resp;
+					NLS.bind("Field {0} may not be changed", key)));
+					return resp;
+				}
 			}
-		}
-		
-		IServerType type = serverTypes.get(req.getHandle().getType().getId());
-		if (type == null) {
-			resp.getValidation().setStatus(errorStatus("Update server request contains unknown server type"));
-			return resp;
-		}
-		IStatus validAttributes = validateAttributes(type, ds.getMap(), false, true);
+		IStatus validAttributes = validateAttributes(type, base.getMap(), false, true);
 		if( !validAttributes.isOK()) {
 			resp.getValidation().setStatus(StatusConverter.convert(validAttributes));
 			return resp;
 		}
 
-		server.getDelegate().updateServer(ds, resp);
+		applyDummyAttributes(wc, base.getMap(), type);
+		wc.getDelegate().updateServer(wc, resp);
+		wc.getDelegate().validate();
 		if( resp.getValidation().getStatus() != null && 
-				resp.getValidation().getStatus().getSeverity() == Status.ERROR) {
+		resp.getValidation().getStatus().getSeverity() == Status.ERROR) {
 			return resp;
 		}
-		
-		// Everything looks good on the framework side...
 		try {
-			IServerWorkingCopy wc = server.createWorkingCopy();
-			applyDummyAttributes(wc, ds.getMap(), type);
 			wc.save(new NullProgressMonitor());
 		} catch(CoreException ce) {
 			resp.getValidation().setStatus(StatusConverter.convert(ce.getStatus()));
-		}
-
-		if( resp.getValidation().getStatus() != null && 
-				resp.getValidation().getStatus().getSeverity() == Status.ERROR) {
 			return resp;
 		}
-		
 		if( resp.getValidation().getStatus() == null ) {
 			resp.getValidation().setStatus(StatusConverter.convert(
-					com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS));
+				com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS));
 		}
 		return resp;
+
 	}
 
 	private void applyDummyAttributes(IServerWorkingCopy wc, Map<String, Object> values, IServerType type) {

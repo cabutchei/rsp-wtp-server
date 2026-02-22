@@ -28,7 +28,6 @@
 		<plugin id="com.github.cabutchei.rsp.server.eap"/>
 		<plugin id="org.eclipse.jface.text"/>
 		<plugin id="org.eclipse.emf.common"/>
-		<plugin id="org.eclipse.osgi.services"/>
 		<plugin id="org.apache.felix.scr"/>
 		<plugin id="org.eclipse.equinox.registry"/>
 		<plugin id="org.eclipse.equinox.preferences"/>
@@ -62,19 +61,16 @@
 		
 	</plugins>
 	<configurations>
-		<plugin id="org.eclipse.equinox.simpleconfigurator" autoStart="true" startLevel="0"/>
-		<plugin id="org.eclipse.equinox.common" autoStart="true" startLevel="1"/>
-		<plugin id="org.eclipse.equinox.registry" autoStart="true" startLevel="2"/>
-		<plugin id="org.eclipse.equinox.preferences" autoStart="true" startLevel="2"/>
-		<plugin id="org.eclipse.core.runtime" autoStart="true" startLevel="3"/>
-		<plugin id="org.eclipse.core.jobs" autoStart="true" startLevel="3"/>
-		<plugin id="org.apache.felix.scr" autoStart="true" startLevel="4"/>
-		<plugin id="org.eclipse.core.filesystem" autoStart="true" startLevel="4"/>
-		<plugin id="org.eclipse.core.resources" autoStart="true" startLevel="5"/>
-		<plugin id="com.github.cabutchei.rsp.server.wst" autoStart="true" startLevel="6"/>
-		<plugin id="com.github.cabutchei.rsp.server.liberty" autoStart="true" startLevel="7"/>
-		<plugin id="com.github.cabutchei.rsp.server.websphere" autoStart="true" startLevel="7"/>
-		<plugin id="com.github.cabutchei.rsp.server.eap" autoStart="true" startLevel="7"/>
-		<plugin id="com.github.cabutchei.rsp.server" autoStart="true" startLevel="8"/>
+      <plugin id="org.eclipse.core.runtime" autoStart="true" startLevel="0" />
+      <plugin id="org.eclipse.equinox.simpleconfigurator" autoStart="true" startLevel="1" />
+      <plugin id="org.apache.felix.scr" autoStart="true" startLevel="2" />
+      <plugin id="org.eclipse.equinox.common" autoStart="true" startLevel="2" />
+      <plugin id="org.eclipse.equinox.event" autoStart="true" startLevel="2" />
+      <plugin id="com.github.cabutchei.rsp.workspace.eclipse" autoStart="false" startLevel="3" />
+      <plugin id="com.github.cabutchei.rsp.server.wst" autoStart="true" startLevel="4" />
+      <plugin id="com.github.cabutchei.rsp.server.eap" autoStart="true" startLevel="4" />
+      <plugin id="com.github.cabutchei.rsp.server.liberty" autoStart="true" startLevel="4" />
+      <plugin id="com.github.cabutchei.rsp.server.websphere" autoStart="true" startLevel="4" />
+      <plugin id="com.github.cabutchei.rsp.server" autoStart="true" startLevel="5" />
 	</configurations>
 </product>

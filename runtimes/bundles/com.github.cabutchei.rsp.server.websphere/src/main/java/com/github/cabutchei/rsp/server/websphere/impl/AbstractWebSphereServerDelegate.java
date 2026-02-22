@@ -89,7 +89,8 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 		CommandLineDetails details = new CommandLineDetails();
 		try {
 			if (ILaunchModes.DEBUG.equals(mode)) {
-				addDebugDetails(WebSphereWstServerAccess.getDebugPort(getServer()), details);
+				int debugPort = WebSphereWstServerAccess.getDebugPort(getServer());
+				addDebugDetails(debugPort, details);
 			}
 			prepareLaunchAttacher();
 			getWstServerControl().startAsync(mode);

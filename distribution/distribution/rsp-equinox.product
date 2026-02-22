@@ -28,6 +28,12 @@
 		<plugin id="com.github.cabutchei.rsp.server.eap"/>
 		<plugin id="org.eclipse.jface.text"/>
 		<plugin id="org.eclipse.emf.common"/>
+		<plugin id="org.eclipse.osgi.services"/>
+		<plugin id="org.apache.felix.scr"/>
+		<plugin id="org.eclipse.equinox.registry"/>
+		<plugin id="org.eclipse.equinox.preferences"/>
+		<plugin id="org.eclipse.core.jobs"/>
+		<plugin id="org.eclipse.core.filesystem"/>
 		<plugin id="com.ibm.ws.st.core"/>
 		<plugin id="com.ibm.ws.ast.st.common.core"/>
 		<plugin id="com.ibm.ws.st.was.core"/>

@@ -33,10 +33,6 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 		return WASServer.class;
 	}
 
-	public static WASServer getWstDelegate(Object rspServerOrWorkingCopy) throws CoreException {
-		return INSTANCE.getDelegate(rspServerOrWorkingCopy);
-	}
-
 	public static WASServer getWstDelegate(IServerAttributes server) throws CoreException {
 		return server.getAdapter(WASServer.class);
 	}
@@ -55,24 +51,24 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 		return Status.OK_STATUS;
 	}
 
-	public static ServerXmlFileHandler createServerXmlFileHandler(Object rspServerOrWorkingCopy) throws IOException, CoreException  {
-		WASServer server;
-		server = getWstDelegate(rspServerOrWorkingCopy);
-		return createServerXmlFileHandler(server.getWebSphereInstallPath(), server.getProfileName(), server.getBaseServerName());
+	public static ServerXmlFileHandler createServerXmlFileHandler(IServerAttributes server) throws IOException, CoreException  {
+		WASServer wasServer;
+		wasServer = getWstDelegate(server);
+		return createServerXmlFileHandler(wasServer.getWebSphereInstallPath(), wasServer.getProfileName(), wasServer.getBaseServerName());
 	}
 
 	public static ServerXmlFileHandler createServerXmlFileHandler(String curWASInstallRoot, String profileName, String serverName) throws IOException {
 		return ServerXmlFileHandler.create(curWASInstallRoot, profileName, serverName);
 	}
 
-	public static int getDebugPortNum(Object rspServerOrWorkingCopy) throws CoreException {
-		WASServer server = getWstDelegate(rspServerOrWorkingCopy);
-		return server.getDebugPortNum();
-	}
+	// public static int getDebugPortNum(IServerAttributes server) throws CoreException {
+	// 	WASServer wasServer = getWstDelegate(server);
+	// 	return wasServer.getDebugPortNum();
+	// }
 
-	public static int getDebugPort(Object rspServerOrWorkingCopy) {
+	public static int getDebugPort(IServerAttributes server) {
 		try {
-			return createServerXmlFileHandler(rspServerOrWorkingCopy).getDebugPortNum();
+			return createServerXmlFileHandler(server).getDebugPortNum();
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (CoreException e) {
@@ -81,25 +77,25 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 		return 0;
 	}
 
-	public static String getWebSphereInstallPath(Object rspServerOrWorkingCopy) throws CoreException {
-		return getWstDelegate(rspServerOrWorkingCopy).getWebSphereInstallPath();
+	public static String getWebSphereInstallPath(IServerAttributes server) throws CoreException {
+		return getWstDelegate(server).getWebSphereInstallPath();
 	}
 
-	public static String getProfileName(Object rspServerOrWorkingCopy) throws CoreException {
-		return getWstDelegate(rspServerOrWorkingCopy).getProfileName();
+	public static String getProfileName(IServerAttributes server) throws CoreException {
+		return getWstDelegate(server).getProfileName();
 	}
 
-	public static String getBaseServerName(Object rspServerOrWorkingCopy) throws CoreException {
-		return getWstDelegate(rspServerOrWorkingCopy).getBaseServerName();
+	public static String getBaseServerName(IServerAttributes server) throws CoreException {
+		return getWstDelegate(server).getBaseServerName();
 	}
 
-	public static String getServerXmlFilePath(Object rspServerOrWorkingCopy) throws IOException, CoreException {
-		return createServerXmlFileHandler(rspServerOrWorkingCopy).getServerXMLFilePath();
+	public static String getServerXmlFilePath(IServerAttributes server) throws IOException, CoreException {
+		return createServerXmlFileHandler(server).getServerXMLFilePath();
 	}
 
-	public static void setSystemProperties(Object rspServerOrWorkingCopy, Map<String, String> systemProperties) throws CoreException {
+	public static void setSystemProperties(IServerAttributes server, Map<String, String> systemProperties) throws CoreException {
 		try {
-			ServerXmlFileHandler handler = createServerXmlFileHandler(rspServerOrWorkingCopy);
+			ServerXmlFileHandler handler = createServerXmlFileHandler(server);
 			IMemento jvmEntry = handler.getJavaVirtualMachine();
 			if (jvmEntry == null) {
 				throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
@@ -147,9 +143,9 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 		}
 	}
 
-	public static Map<String, String> getSystemProperties(Object rspServerOrWorkingCopy) throws CoreException {
+	public static Map<String, String> getSystemProperties(IServerAttributes server) throws CoreException {
 		try {
-			IMemento jvmEntry = createServerXmlFileHandler(rspServerOrWorkingCopy).getJavaVirtualMachine();
+			IMemento jvmEntry = createServerXmlFileHandler(server).getJavaVirtualMachine();
 			Map<String, String> systemProperties = new HashMap<>();
 			if (jvmEntry != null) {
 				IMemento[] children = jvmEntry.getChildren("systemProperties");

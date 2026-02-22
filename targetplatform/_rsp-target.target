@@ -71,6 +71,7 @@
 			<unit id="org.eclipse.pde.feature.group" version="3.13.400.v20190301-0538" />
 			<unit id="org.eclipse.platform.feature.group" version="4.11.0.v20190301-0040" />
 			<unit id="org.eclipse.rcp.feature.group" version="4.11.0.v20190301-0040" />
+			<unit id="org.eclipse.osgi.services" version="0.0.0" />
 
 			<!-- required for swtbot and reddeer -->
 			<!-- org.eclipse.linuxtools.docker.reddeer 2.1.0.201805161441 requires org.hamcrest.library 1.3.0 -->

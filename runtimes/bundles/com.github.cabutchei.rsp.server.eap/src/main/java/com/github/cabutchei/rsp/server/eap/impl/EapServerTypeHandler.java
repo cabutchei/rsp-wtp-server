@@ -68,10 +68,6 @@ final class EapServerTypeHandler implements WstServerTypeHandler {
 		if (pattern == null) {
 			return true;
 		}
-		String trimmed = pattern.trim();
-		if (trimmed.isEmpty()) {
-			return true;
-		}
-		return IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT.equals(trimmed);
+		return IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT.equals(pattern);
 	}
 }

@@ -32,4 +32,6 @@ public interface IServerWorkingCopy extends IServerAttributes {
 	public default IServer save(boolean force, IProgressMonitor monitor) throws CoreException { return null; }
 
 	public default IServer saveAll(boolean force) throws CoreException { return null; }
+
+	public default void setRuntime(IRuntime wc) {};
 }

@@ -7,6 +7,7 @@ import com.github.cabutchei.rsp.api.dao.DeployableState;
 import com.github.cabutchei.rsp.api.dao.ModuleState;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
 
@@ -15,7 +16,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
  */
 public interface IWstServerControl extends IServer {
 
-	IWstRuntimeAdapter getRuntime();
+	IRuntime getRuntime();
 
 	IStatus addDeployable(DeployableReference reference);
 

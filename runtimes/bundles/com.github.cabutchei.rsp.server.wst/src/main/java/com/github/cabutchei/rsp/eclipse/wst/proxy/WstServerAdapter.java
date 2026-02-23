@@ -31,13 +31,13 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstRspMapper;
-import com.github.cabutchei.rsp.eclipse.wst.api.IWstRuntimeAdapter;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
 import com.github.cabutchei.rsp.launching.memento.IMemento;
 import com.github.cabutchei.rsp.launching.memento.JSONMemento;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
@@ -56,7 +56,7 @@ public class WstServerAdapter implements IWstServerControl {
 	private static final String LIST_PROPERTY_KEY_PREFIX = "listProperty";
 	private static final String PROPERTY_KEY_VALUE_PREFIX = "value";
 
-	private final IWstRuntimeAdapter runtime;
+	private final IRuntime runtime;
 	private final org.eclipse.wst.server.core.IServer wstServer;
 	private final IServerManagementModel managementModel;
 	private final IServerModel serverModel;
@@ -64,7 +64,11 @@ public class WstServerAdapter implements IWstServerControl {
 
 	public WstServerAdapter(org.eclipse.wst.server.core.IServer wstServer, IServerManagementModel managementModel) {
 		this.wstServer = Objects.requireNonNull(wstServer, "wstServer cannot be null");
-		this.runtime = this.wstServer.getRuntime() == null? null : new WstRuntimeAdapter(this.wstServer.getRuntime());
+		this.runtime = this.wstServer.getRuntime() == null ? null
+				: (this.wstServer.getRuntime() instanceof org.eclipse.wst.server.core.IRuntimeWorkingCopy
+						? new WstRuntimeWorkingCopyAdapter(
+								(org.eclipse.wst.server.core.IRuntimeWorkingCopy) this.wstServer.getRuntime())
+						: new WstRuntimeAdapter(this.wstServer.getRuntime()));
 		this.managementModel = managementModel;
 		this.serverModel = managementModel.getServerModel();
 		if(getServerType() != null ) {
@@ -130,7 +134,7 @@ public class WstServerAdapter implements IWstServerControl {
 	}
 
 	@Override
-	public IWstRuntimeAdapter getRuntime() {
+	public IRuntime getRuntime() {
 		return this.runtime;
 	}
 

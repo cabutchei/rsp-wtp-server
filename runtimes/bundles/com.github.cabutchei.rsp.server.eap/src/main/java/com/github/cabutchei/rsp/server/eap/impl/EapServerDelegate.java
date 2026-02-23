@@ -15,7 +15,6 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 import com.github.cabutchei.rsp.eclipse.jdt.JDTPlugin;
-import com.github.cabutchei.rsp.eclipse.wst.api.IWstRuntimeAdapter;
 import com.github.cabutchei.rsp.eclipse.wst.model.delegate.AbstractWstServerDelegate;
 import com.github.cabutchei.rsp.launching.java.ILaunchModes;
 import com.github.cabutchei.rsp.launching.utils.LaunchingDebugProperties;
@@ -23,6 +22,7 @@ import com.github.cabutchei.rsp.server.eap.servertype.publishing.EapPublishContr
 import com.github.cabutchei.rsp.server.eap.servertype.IEapServerAttributes;
 import com.github.cabutchei.rsp.server.eap.adapter.IJBossRuntimeAdapter;
 import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntimeWorkingCopy;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
@@ -78,17 +78,18 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 		String vmInstallLocation = workingCopy.getAttribute(IEapServerAttributes.VM_INSTALL_PATH,
 				IEapServerAttributes.VM_INSTALL_PATH_DEFAULT);
 		try {
-			IWstRuntimeAdapter runtime = getWstServerControl().getRuntime();
-			if (runtime == null) {
+			IRuntimeWorkingCopy runtimeWc = getWstServerControl().getRuntime().createWorkingCopy();
+			if (runtimeWc == null) {
 				throw new CoreException(new Status(IStatus.ERROR, "com.github.cabutchei.rsp.server.eap",
 						"Server runtime is null"));
 			}
-			IJBossRuntimeAdapter jbossRuntime = (IJBossRuntimeAdapter) runtime.loadAdapter(IJBossRuntimeAdapter.class);
+			IJBossRuntimeAdapter jbossRuntime = (IJBossRuntimeAdapter) runtimeWc.loadAdapter(IJBossRuntimeAdapter.class);
 			if (jbossRuntime == null) {
 				throw new CoreException(new Status(IStatus.ERROR, "com.github.cabutchei.rsp.server.eap",
 						"Unable to adapt WST runtime to IJBossRuntimeAdapter"));
 			}
 			jbossRuntime.setVM(JDTPlugin.getVMService().findOrCreateVMInstall(vmInstallLocation));
+			workingCopy.setRuntime(runtimeWc);
 		} catch (CoreException e) {
 			if (resp != null && resp.getValidation() != null) {
 				resp.getValidation().setStatus(StatusConverter.convert(e.getStatus()));

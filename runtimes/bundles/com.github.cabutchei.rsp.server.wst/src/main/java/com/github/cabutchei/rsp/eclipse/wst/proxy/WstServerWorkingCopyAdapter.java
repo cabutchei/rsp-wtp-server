@@ -16,11 +16,11 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstRspMapper;
-import com.github.cabutchei.rsp.eclipse.wst.api.IWstRuntimeAdapter;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
@@ -33,12 +33,17 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
 	private final IServerManagementModel managementModel;
 	private final IServerModel serverModel;
     private IServerDelegate delegate;
+	private IWstServerControl server;
+	private IRuntime runtime;
 
-	public WstServerWorkingCopyAdapter(org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy,
-			IServerManagementModel managementModel) {
+	public WstServerWorkingCopyAdapter(org.eclipse.wst.server.core.IServerWorkingCopy wstServerWorkingCopy, IServerManagementModel managementModel) {
 		this.wstServerWorkingCopy = Objects.requireNonNull(wstServerWorkingCopy, "wstServerWorkingCopy cannot be null");
 		this.managementModel = managementModel;
 		this.serverModel = managementModel.getServerModel();
+		org.eclipse.wst.server.core.IServer wstServer = wstServerWorkingCopy.getOriginal();
+		this.server = wstServer == null? null : new WstServerAdapter(wstServer, managementModel);
+		org.eclipse.wst.server.core.IRuntime wstRuntime = wstServerWorkingCopy.getRuntime();
+		this.runtime = wstRuntime == null? null : new WstRuntimeAdapter(wstRuntime);
 	}
 
     @Override
@@ -185,7 +190,8 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
     public IServer save(boolean force, IProgressMonitor monitor) throws CoreException {
         try {
             org.eclipse.wst.server.core.IServer server = wstServerWorkingCopy.save(force, new NullProgressMonitor());
-            return new WstServerAdapter(server, managementModel);
+			if (this.server == null) this.server = new WstServerAdapter(server, managementModel);
+            return this.server;
         } catch (org.eclipse.core.runtime.CoreException e) {
             throw new CoreException(WstRspMapper.toRspStatus(e.getStatus()));
         }
@@ -203,8 +209,8 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
 	@Override
 	public IServer saveAll(boolean force) throws CoreException {
 		try {
-			org.eclipse.wst.server.core.IServer server = wstServerWorkingCopy.saveAll(force, null);
-            return new WstServerAdapter(server, managementModel);
+			wstServerWorkingCopy.saveAll(force, null);
+			return this.server;
 		} catch(org.eclipse.core.runtime.CoreException e) {
 			throw new CoreException(WstRspMapper.toRspStatus(e.getStatus()));
 		}
@@ -242,9 +248,15 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
 	}
 
 	@Override
-	public IWstRuntimeAdapter getRuntime() {
-		org.eclipse.wst.server.core.IRuntime runtime = wstServerWorkingCopy.getRuntime();
-		return runtime == null ? null : new WstRuntimeAdapter(runtime);
+	public IRuntime getRuntime() {
+		return this.runtime;
+	}
+
+	@Override
+	public void setRuntime(IRuntime runtime) {
+		org.eclipse.wst.server.core.IRuntime wstRuntime = runtime.getAdapter(org.eclipse.wst.server.core.IRuntime.class);
+		this.wstServerWorkingCopy.setRuntime(wstRuntime);
+		this.runtime = runtime;
 	}
 
 	@Override

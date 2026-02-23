@@ -2,9 +2,10 @@ package com.github.cabutchei.rsp.eclipse.wst.proxy;
 
 import java.util.Objects;
 
-import com.github.cabutchei.rsp.eclipse.wst.api.IWstRuntimeAdapter;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntimeWorkingCopy;
 
-public class WstRuntimeAdapter implements IWstRuntimeAdapter {
+public class WstRuntimeAdapter implements IRuntime {
 	private final org.eclipse.wst.server.core.IRuntime wstRuntime;
 
 	public WstRuntimeAdapter(org.eclipse.wst.server.core.IRuntime wstRuntime) {
@@ -19,6 +20,12 @@ public class WstRuntimeAdapter implements IWstRuntimeAdapter {
 	@Override
 	public String getName() {
 		return wstRuntime.getName();
+	}
+
+	@Override
+	public IRuntimeWorkingCopy createWorkingCopy() {
+		 org.eclipse.wst.server.core.IRuntimeWorkingCopy wstRuntimeWc = wstRuntime.createWorkingCopy();
+			return new WstRuntimeWorkingCopyAdapter(wstRuntimeWc);
 	}
 
 	@Override

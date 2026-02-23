@@ -2,7 +2,8 @@ package com.github.cabutchei.rsp.server.eap.adapter;
 
 import org.eclipse.core.runtime.IAdapterFactory;
 
-import com.github.cabutchei.rsp.eclipse.wst.api.IWstRuntimeAdapter;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
+
 
 public class JBossRuntimeAdapterFactory implements IAdapterFactory {
 	private static final Class<?>[] ADAPTERS = new Class<?>[] { IJBossRuntimeAdapter.class };
@@ -16,10 +17,10 @@ public class JBossRuntimeAdapterFactory implements IAdapterFactory {
 		if (adapterType != IJBossRuntimeAdapter.class) {
 			return null;
 		}
-		if (!(adaptableObject instanceof IWstRuntimeAdapter)) {
+		if (!(adaptableObject instanceof IRuntime)) {
 			return null;
 		}
-		IWstRuntimeAdapter runtime = (IWstRuntimeAdapter) adaptableObject;
+		IRuntime runtime = (IRuntime) adaptableObject;
 		Object adapted = runtime.loadAdapter(org.jboss.ide.eclipse.as.core.server.IJBossServerRuntime.class);
 		if (!(adapted instanceof org.jboss.ide.eclipse.as.core.server.IJBossServerRuntime)) {
 			adapted = runtime.getAdapter(org.jboss.ide.eclipse.as.core.server.IJBossServerRuntime.class);

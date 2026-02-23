@@ -12,6 +12,8 @@ public interface IRuntime extends IRspAdaptable {
 
 	IRuntimeWorkingCopy createWorkingCopy();
 
+	boolean isWorkingCopy();
+
 	default <T> Object loadAdapter(Class<T> adapterType) {
 		return null;
 	}

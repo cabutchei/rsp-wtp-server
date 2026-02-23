@@ -16,6 +16,7 @@
   <packaging>pom</packaging>
 
   <modules>
+    <module>com.github.cabutchei.rsp.jdt.eclipse</module>
     <module>com.github.cabutchei.rsp.workspace.eclipse</module>
     <module>com.github.cabutchei.rsp.server.eap</module>
     <module>com.github.cabutchei.rsp.server.liberty</module>

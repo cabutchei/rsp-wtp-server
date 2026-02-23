@@ -14,6 +14,9 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerListener;
  * Rich WST-backed server control surface used by WST delegates.
  */
 public interface IWstServerControl extends IServer {
+
+	IWstRuntimeAdapter getRuntime();
+
 	IStatus addDeployable(DeployableReference reference);
 
 	IStatus canAddDeployable(DeployableReference reference);

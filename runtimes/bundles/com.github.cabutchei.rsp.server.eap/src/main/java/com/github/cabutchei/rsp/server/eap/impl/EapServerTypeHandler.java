@@ -9,7 +9,9 @@ import org.jboss.ide.eclipse.as.wtp.core.server.behavior.ControllableServerBehav
 import org.jboss.ide.eclipse.as.wtp.core.server.behavior.ILaunchServerController;
 
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.jdt.JDTPlugin;
 import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandler;
+import com.github.cabutchei.rsp.server.eap.adapter.IJBossRuntimeAdapter;
 import com.github.cabutchei.rsp.server.eap.servertype.IEapServerAttributes;
 
 final class EapServerTypeHandler implements WstServerTypeHandler {
@@ -42,11 +44,16 @@ final class EapServerTypeHandler implements WstServerTypeHandler {
 			}
 			server.setAttribute(IEapServerAttributes.RESTART_FILE_PATTERN, restartPattern);
 
-			server.setAttribute(IEapServerAttributes.ATTACH_DEBUGGER, false);
-			server.setAttribute(
-					ControllableServerBehavior.PROPERTY_PREFIX + ILaunchServerController.SYSTEM_ID,
-					CUSTOM_LAUNCH_SUBSYSTEM);
-	}
+				server.setAttribute(IEapServerAttributes.ATTACH_DEBUGGER, false);
+				server.setAttribute(
+						ControllableServerBehavior.PROPERTY_PREFIX + ILaunchServerController.SYSTEM_ID,
+						CUSTOM_LAUNCH_SUBSYSTEM);
+
+				String vmInstallLocation = getStringAttribute(attributes, IEapServerAttributes.VM_INSTALL_PATH,
+						IEapServerAttributes.VM_INSTALL_PATH_DEFAULT);
+				IJBossRuntimeAdapter runtimeAdapter = (IJBossRuntimeAdapter) server.getRuntime().loadAdapter(IJBossRuntimeAdapter.class, null);
+				runtimeAdapter.setVM(JDTPlugin.getVMService().findOrCreateVMInstall(vmInstallLocation));
+		}
 
 
 	private String getStringAttribute(Map<String, Object> attributes, String key, String defaultValue) {

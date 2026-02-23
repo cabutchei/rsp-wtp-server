@@ -748,7 +748,7 @@ public class WSTServerModel implements IServerModel {
 			return resp;
 		}
 		try {
-			wc.save(new NullProgressMonitor());
+			wc.saveAll(false);
 		} catch(CoreException ce) {
 			resp.getValidation().setStatus(StatusConverter.convert(ce.getStatus()));
 			return resp;

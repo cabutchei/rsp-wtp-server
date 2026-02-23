@@ -56,13 +56,17 @@ public class EapServerType extends AbstractServerType {
 					ServerManagementAPIConstants.ATTR_TYPE_STRING,
 					"Hostname to use for server",
 					IEapServerAttributes.HOSTNAME_DEFAULT);
-			attrs.addAttribute(IEapServerAttributes.WEB_PORT,
-					ServerManagementAPIConstants.ATTR_TYPE_INT,
-					"Web port to use for server",
-					IEapServerAttributes.WEB_PORT_DEFAULT);
-			attrs.addAttribute(DefaultServerAttributes.AUTOPUBLISH_ENABLEMENT,
-					ServerManagementAPIConstants.ATTR_TYPE_BOOL,
-					"Enable the autopublisher.",
+				attrs.addAttribute(IEapServerAttributes.WEB_PORT,
+						ServerManagementAPIConstants.ATTR_TYPE_INT,
+						"Web port to use for server",
+						IEapServerAttributes.WEB_PORT_DEFAULT);
+				attrs.addAttribute(IEapServerAttributes.VM_INSTALL_PATH,
+						ServerManagementAPIConstants.ATTR_TYPE_LOCAL_FOLDER,
+						"Optional JDK/JRE home to run the server with. Leave empty to use the adapter default VM selection.",
+						IEapServerAttributes.VM_INSTALL_PATH_DEFAULT);
+				attrs.addAttribute(DefaultServerAttributes.AUTOPUBLISH_ENABLEMENT,
+						ServerManagementAPIConstants.ATTR_TYPE_BOOL,
+						"Enable the autopublisher.",
 					DefaultServerAttributes.AUTOPUBLISH_ENABLEMENT_DEFAULT);
 				attrs.addAttribute(DefaultServerAttributes.AUTOPUBLISH_INACTIVITY_LIMIT,
 						ServerManagementAPIConstants.ATTR_TYPE_INT,

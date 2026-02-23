@@ -16,6 +16,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstRspMapper;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstRuntimeAdapter;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
@@ -108,16 +109,77 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
 		if (adapterType.isInstance(this)) {
 			return adapterType.cast(this);
 		}
-			if (adapterType.isInstance(wstServerWorkingCopy)) {
-				return adapterType.cast(wstServerWorkingCopy);
-			}
-			try {
-				Object adapted = wstServerWorkingCopy.loadAdapter(adapterType, null);
+		if (adapterType.isInstance(wstServerWorkingCopy)) {
+			return adapterType.cast(wstServerWorkingCopy);
+		}
+		try {
+			Object adapted = wstServerWorkingCopy.getAdapter(adapterType);
+			if (adapterType.isInstance(adapted)) {
 				return adapterType.cast(adapted);
+			}
+		} catch (Exception e) {
+			// Fall through to platform adapter manager.
+		}
+		try {
+			Object adapted = org.eclipse.core.runtime.Platform.getAdapterManager().getAdapter(this, adapterType);
+			if (adapterType.isInstance(adapted)) {
+				return adapterType.cast(adapted);
+			}
+		} catch (Exception e) {
+			// Fall through.
+		}
+		try {
+			Object adapted = org.eclipse.core.runtime.Platform.getAdapterManager().getAdapter(wstServerWorkingCopy, adapterType);
+			if (adapterType.isInstance(adapted)) {
+				return adapterType.cast(adapted);
+			}
+		} catch (Exception e) {
+			// Fall through.
+		}
+		return null;
+	}
+
+	@Override
+	public <T> Object loadAdapter(Class<T> adapterType) {
+		if (adapterType == null) {
+			return null;
+		}
+		if (adapterType.isInstance(this)) {
+			return adapterType.cast(this);
+		}
+		if (adapterType.isInstance(wstServerWorkingCopy)) {
+			return adapterType.cast(wstServerWorkingCopy);
+		}
+		if (wstServerWorkingCopy instanceof org.eclipse.wst.server.core.IServerAttributes) {
+			try {
+				Object adapted = ((org.eclipse.wst.server.core.IServerAttributes) wstServerWorkingCopy)
+						.loadAdapter(adapterType, null);
+				if (adapted != null) {
+					return adapterType.cast(adapted);
+				}
 			} catch (Exception e) {
-				return null;
+				// Fall back to getAdapter below.
 			}
 		}
+		try {
+			Object adapted = org.eclipse.core.runtime.Platform.getAdapterManager().loadAdapter(this, adapterType.getName());
+			if (adapterType.isInstance(adapted)) {
+				return adapterType.cast(adapted);
+			}
+		} catch (Exception e) {
+			// Fall through.
+		}
+		try {
+			Object adapted = org.eclipse.core.runtime.Platform.getAdapterManager()
+					.loadAdapter(wstServerWorkingCopy, adapterType.getName());
+			if (adapterType.isInstance(adapted)) {
+				return adapterType.cast(adapted);
+			}
+		} catch (Exception e) {
+			// Fall through.
+		}
+		return getAdapter(adapterType);
+	}
 
     @Override
     public IServer save(boolean force, IProgressMonitor monitor) throws CoreException {
@@ -138,6 +200,15 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
         }
     }
 
+	@Override
+	public IServer saveAll(boolean force) throws CoreException {
+		try {
+			org.eclipse.wst.server.core.IServer server = wstServerWorkingCopy.saveAll(force, null);
+            return new WstServerAdapter(server, managementModel);
+		} catch(org.eclipse.core.runtime.CoreException e) {
+			throw new CoreException(WstRspMapper.toRspStatus(e.getStatus()));
+		}
+	}
 	@Override
 	public String getTypeId() {
 		IServerType serverType = getServerType();
@@ -168,6 +239,12 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
 	@Override
 	public IServerWorkingCopy createWorkingCopy() {
 		return this;
+	}
+
+	@Override
+	public IWstRuntimeAdapter getRuntime() {
+		org.eclipse.wst.server.core.IRuntime runtime = wstServerWorkingCopy.getRuntime();
+		return runtime == null ? null : new WstRuntimeAdapter(runtime);
 	}
 
 	@Override

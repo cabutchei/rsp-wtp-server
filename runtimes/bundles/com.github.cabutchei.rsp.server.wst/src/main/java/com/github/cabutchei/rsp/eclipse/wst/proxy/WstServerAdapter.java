@@ -31,6 +31,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstRspMapper;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstRuntimeAdapter;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
 import com.github.cabutchei.rsp.launching.memento.IMemento;
 import com.github.cabutchei.rsp.launching.memento.JSONMemento;
@@ -55,6 +56,7 @@ public class WstServerAdapter implements IWstServerControl {
 	private static final String LIST_PROPERTY_KEY_PREFIX = "listProperty";
 	private static final String PROPERTY_KEY_VALUE_PREFIX = "value";
 
+	private final IWstRuntimeAdapter runtime;
 	private final org.eclipse.wst.server.core.IServer wstServer;
 	private final IServerManagementModel managementModel;
 	private final IServerModel serverModel;
@@ -62,6 +64,7 @@ public class WstServerAdapter implements IWstServerControl {
 
 	public WstServerAdapter(org.eclipse.wst.server.core.IServer wstServer, IServerManagementModel managementModel) {
 		this.wstServer = Objects.requireNonNull(wstServer, "wstServer cannot be null");
+		this.runtime = this.wstServer.getRuntime() == null? null : new WstRuntimeAdapter(this.wstServer.getRuntime());
 		this.managementModel = managementModel;
 		this.serverModel = managementModel.getServerModel();
 		if(getServerType() != null ) {
@@ -127,6 +130,11 @@ public class WstServerAdapter implements IWstServerControl {
 	}
 
 	@Override
+	public IWstRuntimeAdapter getRuntime() {
+		return this.runtime;
+	}
+
+	@Override
 	public <T> T getAdapter(Class<T> adapterType) {
 		if (adapterType == null) {
 			return null;
@@ -134,16 +142,75 @@ public class WstServerAdapter implements IWstServerControl {
 		if (adapterType.isInstance(this)) {
 			return adapterType.cast(this);
 		}
-			if (adapterType.isInstance(wstServer)) {
-				return adapterType.cast(wstServer);
-			}
-			try {
-				Object adapted = wstServer.loadAdapter(adapterType, null);
+		if (adapterType.isInstance(wstServer)) {
+			return adapterType.cast(wstServer);
+		}
+		try {
+			Object adapted = wstServer.getAdapter(adapterType);
+			if (adapterType.isInstance(adapted)) {
 				return adapterType.cast(adapted);
+			}
+		} catch (Exception e) {
+			// Fall through to platform adapter manager.
+		}
+		try {
+			Object adapted = org.eclipse.core.runtime.Platform.getAdapterManager().getAdapter(this, adapterType);
+			if (adapterType.isInstance(adapted)) {
+				return adapterType.cast(adapted);
+			}
+		} catch (Exception e) {
+			// Fall through.
+		}
+		try {
+			Object adapted = org.eclipse.core.runtime.Platform.getAdapterManager().getAdapter(wstServer, adapterType);
+			if (adapterType.isInstance(adapted)) {
+				return adapterType.cast(adapted);
+			}
+		} catch (Exception e) {
+			// Fall through.
+		}
+		return null;
+	}
+
+	@Override
+	public <T> Object loadAdapter(Class<T> adapterType) {
+		if (adapterType == null) {
+			return null;
+		}
+		if (adapterType.isInstance(this)) {
+			return adapterType.cast(this);
+		}
+		if (adapterType.isInstance(wstServer)) {
+			return adapterType.cast(wstServer);
+		}
+		if (wstServer instanceof org.eclipse.wst.server.core.IServerAttributes) {
+			try {
+				Object adapted = ((org.eclipse.wst.server.core.IServerAttributes) wstServer).loadAdapter(adapterType, null);
+				if (adapted != null) {
+					return adapterType.cast(adapted);
+				}
 			} catch (Exception e) {
-				return null;
+				// Fall back to getAdapter below.
 			}
 		}
+		try {
+			Object adapted = org.eclipse.core.runtime.Platform.getAdapterManager().loadAdapter(this, adapterType.getName());
+			if (adapterType.isInstance(adapted)) {
+				return adapterType.cast(adapted);
+			}
+		} catch (Exception e) {
+			// Fall through.
+		}
+		try {
+			Object adapted = org.eclipse.core.runtime.Platform.getAdapterManager().loadAdapter(wstServer, adapterType.getName());
+			if (adapterType.isInstance(adapted)) {
+				return adapterType.cast(adapted);
+			}
+		} catch (Exception e) {
+			// Fall through.
+		}
+		return getAdapter(adapterType);
+	}
 
 	@Override
 	public String asJson(IProgressMonitor monitor) throws CoreException {

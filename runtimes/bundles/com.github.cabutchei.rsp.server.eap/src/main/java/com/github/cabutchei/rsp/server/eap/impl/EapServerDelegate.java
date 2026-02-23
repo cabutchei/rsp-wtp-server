@@ -14,11 +14,14 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
+import com.github.cabutchei.rsp.eclipse.jdt.JDTPlugin;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstRuntimeAdapter;
 import com.github.cabutchei.rsp.eclipse.wst.model.delegate.AbstractWstServerDelegate;
 import com.github.cabutchei.rsp.launching.java.ILaunchModes;
 import com.github.cabutchei.rsp.launching.utils.LaunchingDebugProperties;
 import com.github.cabutchei.rsp.server.eap.servertype.publishing.EapPublishController;
 import com.github.cabutchei.rsp.server.eap.servertype.IEapServerAttributes;
+import com.github.cabutchei.rsp.server.eap.adapter.IJBossRuntimeAdapter;
 import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
@@ -60,6 +63,7 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 		// noop
 	}
 
+	@Override
 	public void updateServer(IServerWorkingCopy workingCopy, UpdateServerResponse resp) {
 		if (workingCopy == null) {
 			return;
@@ -70,6 +74,25 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 		if (useDefault) {
 			workingCopy.setAttribute(IEapServerAttributes.RESTART_FILE_PATTERN,
 					IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT);
+		}
+		String vmInstallLocation = workingCopy.getAttribute(IEapServerAttributes.VM_INSTALL_PATH,
+				IEapServerAttributes.VM_INSTALL_PATH_DEFAULT);
+		try {
+			IWstRuntimeAdapter runtime = getWstServerControl().getRuntime();
+			if (runtime == null) {
+				throw new CoreException(new Status(IStatus.ERROR, "com.github.cabutchei.rsp.server.eap",
+						"Server runtime is null"));
+			}
+			IJBossRuntimeAdapter jbossRuntime = (IJBossRuntimeAdapter) runtime.loadAdapter(IJBossRuntimeAdapter.class);
+			if (jbossRuntime == null) {
+				throw new CoreException(new Status(IStatus.ERROR, "com.github.cabutchei.rsp.server.eap",
+						"Unable to adapt WST runtime to IJBossRuntimeAdapter"));
+			}
+			jbossRuntime.setVM(JDTPlugin.getVMService().findOrCreateVMInstall(vmInstallLocation));
+		} catch (CoreException e) {
+			if (resp != null && resp.getValidation() != null) {
+				resp.getValidation().setStatus(StatusConverter.convert(e.getStatus()));
+			}
 		}
 	}
 
@@ -143,6 +166,9 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 			return true;
 		}
 		String trimmed = pattern.trim();
+		if (trimmed.isEmpty()) {
+			return true;
+		}
 		return IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT.equals(trimmed);
 	}
 }

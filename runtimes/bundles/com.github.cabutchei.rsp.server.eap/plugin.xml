@@ -12,4 +12,11 @@
         mappedId="launch.my.local"
         serverTypes="org.jboss.ide.eclipse.as.32,org.jboss.ide.eclipse.as.40,org.jboss.ide.eclipse.as.42,org.jboss.ide.eclipse.as.50,org.jboss.ide.eclipse.as.51,org.jboss.ide.eclipse.as.60,org.jboss.ide.eclipse.as.70,org.jboss.ide.eclipse.as.71,org.jboss.ide.eclipse.as.eap.43,org.jboss.ide.eclipse.as.eap.50,org.jboss.ide.eclipse.as.eap.60,org.jboss.ide.eclipse.as.eap.61,org.jboss.ide.eclipse.as.eap.70,org.jboss.ide.eclipse.as.eap.71,org.jboss.ide.eclipse.as.eap.72,org.jboss.ide.eclipse.as.wildfly.80,org.jboss.ide.eclipse.as.wildfly.90,org.jboss.ide.eclipse.as.wildfly.100,org.jboss.ide.eclipse.as.wildfly.110,org.jboss.ide.eclipse.as.wildfly.120,org.jboss.ide.eclipse.as.wildfly.130,org.jboss.ide.eclipse.as.wildfly.140,org.jboss.ide.eclipse.as.wildfly.150,org.jboss.ide.eclipse.as.wildfly.160"/>
     </extension>
+    <extension point="org.eclipse.core.runtime.adapters">
+        <factory
+            adaptableType="com.github.cabutchei.rsp.eclipse.wst.api.IWstRuntimeAdapter"
+            class="com.github.cabutchei.rsp.server.eap.adapter.JBossRuntimeAdapterFactory">
+            <adapter type="com.github.cabutchei.rsp.server.eap.adapter.IJBossRuntimeAdapter"/>
+        </factory>
+    </extension>
 </plugin>

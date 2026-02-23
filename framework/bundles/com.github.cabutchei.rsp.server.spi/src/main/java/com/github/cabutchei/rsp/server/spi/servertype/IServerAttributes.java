@@ -135,4 +135,6 @@ public interface IServerAttributes extends IRspAdaptable {
 	 */
 	public Map getAttribute(String attributeName, Map defaultValue);
 
+	default <T> Object loadAdapter(Class<T> adapter) { return null; };
+
 }

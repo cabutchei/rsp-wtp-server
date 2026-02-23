@@ -30,4 +30,6 @@ public interface IServerWorkingCopy extends IServerAttributes {
 	void save(IProgressMonitor monitor) throws CoreException;
 
 	public default IServer save(boolean force, IProgressMonitor monitor) throws CoreException { return null; }
+
+	public default IServer saveAll(boolean force) throws CoreException { return null; }
 }

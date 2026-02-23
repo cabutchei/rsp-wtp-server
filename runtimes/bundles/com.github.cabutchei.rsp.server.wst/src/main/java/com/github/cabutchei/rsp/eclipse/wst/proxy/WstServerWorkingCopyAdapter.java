@@ -42,7 +42,7 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
 		this.serverModel = managementModel.getServerModel();
 		org.eclipse.wst.server.core.IServer wstServer = wstServerWorkingCopy.getOriginal();
 		this.server = wstServer == null? null : new WstServerAdapter(wstServer, managementModel);
-		org.eclipse.wst.server.core.IRuntime wstRuntime = wstServerWorkingCopy.getRuntime();
+		org.eclipse.wst.server.core.IRuntime wstRuntime = wstServerWorkingCopy.getRuntime();// TODO:
 		this.runtime = wstRuntime == null? null : new WstRuntimeAdapter(wstRuntime);
 	}
 

@@ -235,7 +235,7 @@ public class WSTServerModel implements IServerModel {
 			if( valid != null && valid.getStatus() != null && !valid.getStatus().isOK()) {
 				return valid.toDao();
 			}
-			IServer server = serverWc.save(false, new NullProgressMonitor());
+			IServer server = serverWc.saveAll(false);
 
 			addServer(server);
 			return new CreateServerResponse(

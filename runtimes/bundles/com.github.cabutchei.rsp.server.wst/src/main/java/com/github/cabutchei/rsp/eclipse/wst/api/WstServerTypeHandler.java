@@ -14,4 +14,7 @@ public interface WstServerTypeHandler {
 			IRuntimeWorkingCopy runtime,
 			Map<String, Object> attributes,
 			IProgressMonitor monitor) throws CoreException;
+	
+	default void configureServer(com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy server,
+			Map<String, Object> attributes) throws CoreException {}
 }

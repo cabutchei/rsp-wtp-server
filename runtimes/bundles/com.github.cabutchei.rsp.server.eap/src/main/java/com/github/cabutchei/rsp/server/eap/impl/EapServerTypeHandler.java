@@ -9,8 +9,11 @@ import org.jboss.ide.eclipse.as.wtp.core.server.behavior.ControllableServerBehav
 import org.jboss.ide.eclipse.as.wtp.core.server.behavior.ILaunchServerController;
 
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.jdt.JDTPlugin;
 import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandler;
+import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerWorkingCopyAdapter;
 import com.github.cabutchei.rsp.server.eap.adapter.IJBossRuntimeAdapter;
 import com.github.cabutchei.rsp.server.eap.servertype.IEapServerAttributes;
 
@@ -23,37 +26,42 @@ final class EapServerTypeHandler implements WstServerTypeHandler {
 	}
 
 	@Override
-	public void configureServer(IServerWorkingCopy server,
-			IRuntimeWorkingCopy runtime,
-			Map<String, Object> attributes,
-			IProgressMonitor monitor) throws CoreException {
-		String configFile = getStringAttribute(attributes, IEapServerAttributes.CONFIG_FILE,
-				IEapServerAttributes.CONFIG_FILE_DEFAULT);
-		server.setAttribute(IEapServerAttributes.CONFIG_FILE, configFile);
-
-			String baseDir = getStringAttribute(attributes, IEapServerAttributes.BASE_DIRECTORY,
-					IEapServerAttributes.BASE_DIRECTORY_DEFAULT);
-			server.setAttribute(IEapServerAttributes.BASE_DIRECTORY, baseDir);
-
-			String restartPattern = getStringAttribute(attributes, IEapServerAttributes.RESTART_FILE_PATTERN,
-					IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT);
-			boolean useDefaultRestartPattern = shouldUseDefaultRestartPattern(restartPattern);
-			server.setAttribute(IEapServerAttributes.USE_DEFAULT_RESTART_FILE_PATTERN, useDefaultRestartPattern);
-			if (useDefaultRestartPattern) {
-				restartPattern = IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT;
-			}
-			server.setAttribute(IEapServerAttributes.RESTART_FILE_PATTERN, restartPattern);
-
-				server.setAttribute(IEapServerAttributes.ATTACH_DEBUGGER, false);
-				server.setAttribute(
-						ControllableServerBehavior.PROPERTY_PREFIX + ILaunchServerController.SYSTEM_ID,
-						CUSTOM_LAUNCH_SUBSYSTEM);
-
-				String vmInstallLocation = getStringAttribute(attributes, IEapServerAttributes.VM_INSTALL_PATH,
-						IEapServerAttributes.VM_INSTALL_PATH_DEFAULT);
-				IJBossRuntimeAdapter runtimeAdapter = (IJBossRuntimeAdapter) server.getRuntime().loadAdapter(IJBossRuntimeAdapter.class, null);
-				runtimeAdapter.setVM(JDTPlugin.getVMService().findOrCreateVMInstall(vmInstallLocation));
+	public void configureServer(IServerWorkingCopy server, IRuntimeWorkingCopy runtime, Map<String, Object> attributes, IProgressMonitor monitor) throws CoreException {
+			// noop
 		}
+
+	@Override
+	public void configureServer(com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy serverWc, Map<String, Object> attributes) throws CoreException {
+		String configFile = getStringAttribute(attributes, IEapServerAttributes.CONFIG_FILE, IEapServerAttributes.CONFIG_FILE_DEFAULT);
+		serverWc.setAttribute(IEapServerAttributes.CONFIG_FILE, configFile);
+
+		String baseDir = getStringAttribute(attributes, IEapServerAttributes.BASE_DIRECTORY,
+				IEapServerAttributes.BASE_DIRECTORY_DEFAULT);
+		serverWc.setAttribute(IEapServerAttributes.BASE_DIRECTORY, baseDir);
+
+		String restartPattern = getStringAttribute(attributes, IEapServerAttributes.RESTART_FILE_PATTERN,
+				IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT);
+		boolean useDefaultRestartPattern = shouldUseDefaultRestartPattern(restartPattern);
+		serverWc.setAttribute(IEapServerAttributes.USE_DEFAULT_RESTART_FILE_PATTERN, useDefaultRestartPattern);
+		if (useDefaultRestartPattern) {
+			restartPattern = IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT;
+		}
+		serverWc.setAttribute(IEapServerAttributes.RESTART_FILE_PATTERN, restartPattern);
+
+		serverWc.setAttribute(IEapServerAttributes.ATTACH_DEBUGGER, false);
+		serverWc.setAttribute(
+				ControllableServerBehavior.PROPERTY_PREFIX + ILaunchServerController.SYSTEM_ID,
+				CUSTOM_LAUNCH_SUBSYSTEM);
+
+		String vmInstallLocation = getStringAttribute(attributes, IEapServerAttributes.VM_INSTALL_PATH,
+				IEapServerAttributes.VM_INSTALL_PATH_DEFAULT);
+		WstServerWorkingCopyAdapter serverAdapter = serverWc.getAdapter(WstServerWorkingCopyAdapter.class);
+		if (serverAdapter == null) throw new CoreException(new Status(IStatus.ERROR, null, "Could not cast to WstServerAdapter"));
+		com.github.cabutchei.rsp.server.spi.servertype.IRuntime runtime = serverAdapter.getRuntime();
+		if (!runtime.isWorkingCopy()) throw new CoreException(new Status(IStatus.ERROR, null, "Runtime must be a working copy in order to make changes"));
+		IJBossRuntimeAdapter jbossRuntimeAdapter = (IJBossRuntimeAdapter) runtime.loadAdapter(IJBossRuntimeAdapter.class);
+		jbossRuntimeAdapter.setVM(JDTPlugin.getVMService().findOrCreateVMInstall(vmInstallLocation));
+	}
 
 
 	private String getStringAttribute(Map<String, Object> attributes, String key, String defaultValue) {

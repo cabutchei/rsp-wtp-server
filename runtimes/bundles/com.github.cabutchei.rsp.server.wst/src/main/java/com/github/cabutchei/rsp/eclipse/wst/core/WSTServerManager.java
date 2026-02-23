@@ -92,18 +92,17 @@ public class WSTServerManager implements IWstServerManager {
 		}
 		org.eclipse.wst.server.core.IRuntimeType wstRuntimeType = wstServerType.getRuntimeType();
 		try {
-			org.eclipse.wst.server.core.IRuntimeWorkingCopy runtimeWC = createRuntimeWorkingCopy(wstRuntimeType,
-					attributes, monitor);
-			org.eclipse.wst.server.core.IRuntime run = runtimeWC.save(true, monitor);
-			org.eclipse.wst.server.core.IServerWorkingCopy server = wstServerType.createServer(id, null, run, monitor);
+			org.eclipse.wst.server.core.IRuntime runtimeWC = createRuntimeWorkingCopy(wstRuntimeType, attributes, monitor);
+			org.eclipse.wst.server.core.IServerWorkingCopy server = wstServerType.createServer(id, null, runtimeWC, monitor);
 			server.setName(id);
 			applyAttributes(server, attributes);
+			IServerWorkingCopy serverAdapter = createServerWorkingCopyProxy(server, model);
 			WstServerTypeHandler handler = WstServerTypeHandlerRegistry.find(serverType.getId());
 			if (handler != null) {
-				handler.configureServer(server, runtimeWC, attributes, monitor);
+				handler.configureServer(serverAdapter, attributes);
 			}
 			setServerAutoPublishing(server, false);
-			return createServerWorkingCopyProxy(server, model);
+			return serverAdapter;
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			throw new CoreException(WstRspMapper.toRspStatus(e.getStatus()));
 		}

@@ -6,7 +6,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
 import com.github.cabutchei.rsp.server.spi.servertype.IRuntimeWorkingCopy;
 
 public class WstRuntimeAdapter implements IRuntime {
-	private final org.eclipse.wst.server.core.IRuntime wstRuntime;
+	protected final org.eclipse.wst.server.core.IRuntime wstRuntime;
 
 	public WstRuntimeAdapter(org.eclipse.wst.server.core.IRuntime wstRuntime) {
 		this.wstRuntime = Objects.requireNonNull(wstRuntime, "wstRuntime cannot be null");

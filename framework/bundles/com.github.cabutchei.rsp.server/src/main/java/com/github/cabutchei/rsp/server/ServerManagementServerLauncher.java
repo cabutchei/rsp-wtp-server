@@ -78,12 +78,8 @@ public class ServerManagementServerLauncher {
 	protected ServerManagementServerImpl createImpl() {
 		DataLocationCore dlc = new DataLocationCore(this.portString);
 		if( !dlc.isInUse()) {
-			try {
-				dlc.lock();
-				return new ServerManagementServerImpl(this, createServerManagementModel(dlc));
-			} catch(IOException ioe) {
-				LOG.error("Error locking workspace", ioe.getMessage(), ioe);
-			}
+			// dlc.lock();
+			return new ServerManagementServerImpl(this, createServerManagementModel(dlc));
 		}
 		throw new RuntimeException("Workspace is locked. Please verify workspace is not in use, or, remove the .lock file at " + dlc.getDataLocation().getAbsolutePath() + "/.lock");
 	}

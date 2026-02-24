@@ -200,7 +200,8 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
     @Override
     public void save(IProgressMonitor monitor) throws CoreException {
         try {
-            wstServerWorkingCopy.save(false, new NullProgressMonitor());
+            org.eclipse.wst.server.core.IServer wstServer = wstServerWorkingCopy.save(false, new NullProgressMonitor());
+			if (this.server == null) this.server = new WstServerAdapter(wstServer, managementModel);
         } catch (org.eclipse.core.runtime.CoreException e) {
             throw new CoreException(WstRspMapper.toRspStatus(e.getStatus()));
         }
@@ -209,7 +210,8 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
 	@Override
 	public IServer saveAll(boolean force) throws CoreException {
 		try {
-			wstServerWorkingCopy.saveAll(force, null);
+			org.eclipse.wst.server.core.IServer wstServer = wstServerWorkingCopy.saveAll(force, null);
+			if (this.server == null) this.server = new WstServerAdapter(wstServer, managementModel);
 			return this.server;
 		} catch(org.eclipse.core.runtime.CoreException e) {
 			throw new CoreException(WstRspMapper.toRspStatus(e.getStatus()));

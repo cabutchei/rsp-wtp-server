@@ -270,7 +270,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		DeployableState deployableState = new DeployableState();
 		deployableState.setPublishState(publishState);
 		deployableState.setState(state);
-		deployableState.setReference(new DeployableReference(reference.getLabel(), reference.getPath()));
+		deployableState.setReference(new DeployableReference(reference));
 		deployableState.setServer(delegate.getServerHandle());
 		return deployableState;
 	}
@@ -700,7 +700,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	
 	private void registerSingleDelta(FileWatcherEvent event, DeployableReference reference) {
 		String key = getKey(reference);
-		DeployableDelta dd = getDeltas().computeIfAbsent(key, k ->  new DeployableDelta(new DeployableReference(reference.getLabel(), reference.getPath())));
+		DeployableDelta dd = getDeltas().computeIfAbsent(key, k ->  new DeployableDelta(new DeployableReference(reference)));
 		DeploymentAssemblyFile assemblyMap = assembly.get(getKey(reference));
 		if( assemblyMap == null ) {
 			dd.registerChange(event);
@@ -775,7 +775,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		return new DeployableDelta(ref, delta.getResourceDeltaMap());
 	}
 	private DeployableReference cloneReference(DeployableReference ref) {
-		return ref == null ? null : new DeployableReference(ref.getLabel(), ref.getPath());
+		return ref == null ? null : new DeployableReference(ref);
 	}
 
 	protected boolean isAutoPublisherEnabled() {

@@ -410,6 +410,24 @@ public class WstServerAdapter implements IWstServerControl {
 		return ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
 	}
 
+	private IProject getProjectByLocation(String location) {
+		if (location == null || location.isEmpty()) {
+			return null;
+		}
+		for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+			if (project == null || !project.exists()) {
+				continue;
+			}
+			if (project.getLocation() != null && location.equals(project.getLocation().toOSString())) {
+				return project;
+			}
+			if (location.equals(project.getName())) {
+				return project;
+			}
+		}
+		return null;
+	}
+
 	private IModule[] getRootModules(IProject project) throws org.eclipse.core.runtime.CoreException {
 		IModule[] candidates = ServerUtil.getModules(project);
 		if (candidates == null || candidates.length == 0) {
@@ -425,6 +443,52 @@ public class WstServerAdapter implements IWstServerControl {
 			}
 		}
 		return roots.toArray(new IModule[0]);
+	}
+
+	private IModule getRootModuleById(String moduleId) throws org.eclipse.core.runtime.CoreException {
+		if (moduleId == null || moduleId.isEmpty()) {
+			return null;
+		}
+		for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+			if (project == null || !project.exists() || !project.isAccessible()) {
+				continue;
+			}
+			IModule[] roots = getRootModules(project);
+			for (IModule root : roots) {
+				if (moduleId.equals(root.getId())) {
+					return root;
+				}
+			}
+		}
+		return null;
+	}
+
+	private IModule[] resolveModulesForDeployable(DeployableReference reference)
+			throws org.eclipse.core.runtime.CoreException {
+		String moduleId = reference == null ? null : reference.getId();
+		if (moduleId != null && !moduleId.isEmpty()) {
+			IModule module = getRootModuleById(moduleId);
+			return module == null ? null : new IModule[] { module };
+		}
+		IProject project = getProject(reference == null ? null : reference.getLabel());
+		if (project == null || !project.exists()) {
+			project = getProjectByLocation(reference == null ? null : reference.getPath());
+		}
+		if (project == null || !project.exists()) {
+			return null;
+		}
+		return getRootModules(project);
+	}
+
+	private IStatus unresolvedDeployableStatus(DeployableReference reference) {
+		String id = reference == null ? null : reference.getId();
+		if (id != null && !id.isEmpty()) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
+					NLS.bind("No module with id {0} found in workspace", id));
+		}
+		String label = reference == null ? null : reference.getLabel();
+		return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
+				NLS.bind("{0} isn't bound to any workspace project", label));
 	}
 
 	private IModule[] getModules() {
@@ -473,10 +537,12 @@ public class WstServerAdapter implements IWstServerControl {
 	}
 
 	private DeployableReference toDeployableReference(IModule module) {
+		String id = module.getId();
 		String label = module.getName();
 		String path = module.getProject() != null ? module.getProject().getLocation().toOSString() : module.getName();
 		String typeId = module.getModuleType() == null ? null : module.getModuleType().getId();
-		return new DeployableReference(label, path, typeId);
+		DeployableReference ref = new DeployableReference(id, label, path, typeId);
+		return ref;
 	}
 
 	private ModuleReference toModuleReference(IModule module) {
@@ -517,16 +583,14 @@ public class WstServerAdapter implements IWstServerControl {
 		if (reference == null) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Deployable reference is required");
 		}
-		IProject project = getProject(reference.getLabel());
-		if (project == null || !project.exists()) {
-			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
-					NLS.bind("{0} isn't bound to any workspace project", reference.getLabel()));
-		}
-		IModule[] modules = ServerUtil.getModules(project);
+		IModule[] modules;
 		try {
-			modules = getRootModules(project);
+			modules = resolveModulesForDeployable(reference);
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			return WstRspMapper.toRspStatus(e.getStatus());
+		}
+		if (modules == null || modules.length == 0) {
+			return unresolvedDeployableStatus(reference);
 		}
 		org.eclipse.wst.server.core.IServerWorkingCopy serverWc = wstServer.createWorkingCopy();
 		try {
@@ -543,19 +607,14 @@ public class WstServerAdapter implements IWstServerControl {
 		if (reference == null) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Deployable reference is required");
 		}
-		IProject project = getProject(reference.getLabel());
-		if (project == null || !project.exists()) {
-			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
-					NLS.bind("{0} isn't bound to any workspace project", reference.getLabel()));
-		}
-		IModule[] modules = ServerUtil.getModules(project);
-		if (modules == null || modules.length == 0) {
-			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
-		}
+		IModule[] modules;
 		try {
-			modules = getRootModules(project);
+			modules = resolveModulesForDeployable(reference);
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			return WstRspMapper.toRspStatus(e.getStatus());
+		}
+		if (modules == null || modules.length == 0) {
+			return unresolvedDeployableStatus(reference);
 		}
 		org.eclipse.core.runtime.IStatus status = wstServer.canModifyModules(modules, null, new NullProgressMonitor());
 		return WstRspMapper.toRspStatus(status);
@@ -566,19 +625,14 @@ public class WstServerAdapter implements IWstServerControl {
 		if (reference == null) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Deployable reference is required");
 		}
-		IProject project = getProject(reference.getLabel());
-		if (project == null || !project.exists()) {
-			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
-					NLS.bind("{0} isn't bound to any workspace project", reference.getLabel()));
-		}
-		IModule[] modules = ServerUtil.getModules(project);
+		IModule[] modules;
 		try {
-			modules = getRootModules(project);
+			modules = resolveModulesForDeployable(reference);
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			return WstRspMapper.toRspStatus(e.getStatus());
 		}
 		if (modules == null || modules.length == 0) {
-			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
+			return unresolvedDeployableStatus(reference);
 		}
 		org.eclipse.wst.server.core.IServerWorkingCopy copy = wstServer.createWorkingCopy();
 		try {
@@ -595,19 +649,14 @@ public class WstServerAdapter implements IWstServerControl {
 		if (reference == null) {
 			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Deployable reference is required");
 		}
-		IProject project = getProject(reference.getLabel());
-		if (project == null || !project.exists()) {
-			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
-					NLS.bind("{0} isn't bound to any workspace project", reference.getLabel()));
-		}
-		IModule[] modules = ServerUtil.getModules(project);
+		IModule[] modules;
 		try {
-			modules = getRootModules(project);
+			modules = resolveModulesForDeployable(reference);
 		} catch (org.eclipse.core.runtime.CoreException e) {
 			return WstRspMapper.toRspStatus(e.getStatus());
 		}
 		if (modules == null || modules.length == 0) {
-			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "No modules found in project: " + project.getName());
+			return unresolvedDeployableStatus(reference);
 		}
 		org.eclipse.core.runtime.IStatus status = wstServer.canModifyModules(null, modules, new NullProgressMonitor());
 		return WstRspMapper.toRspStatus(status);

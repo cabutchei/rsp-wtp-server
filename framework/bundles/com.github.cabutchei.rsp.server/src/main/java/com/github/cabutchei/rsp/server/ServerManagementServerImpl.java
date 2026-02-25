@@ -711,8 +711,12 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		if (resources != null) {
 			refs = resources.stream()
 					.filter(r -> r != null && r.getProjectName() != null)
-					.map(r -> new DeployableReference(r.getProjectName(),
-							r.getDeployPath() == null ? null : r.getDeployPath().toString()))
+					.map(r -> {
+						DeployableReference ref = new DeployableReference(r.getId(), r.getLabel(),
+								r.getDeployPath() == null ? null : r.getDeployPath().toString(),
+								r.getModuleTypeId());
+						return ref;
+					})
 					.distinct()
 					.collect(Collectors.toList());
 		}

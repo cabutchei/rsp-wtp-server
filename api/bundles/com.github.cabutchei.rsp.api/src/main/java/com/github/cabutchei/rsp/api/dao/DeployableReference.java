@@ -15,7 +15,9 @@ import com.github.cabutchei.rsp.api.dao.util.Optional;
 
 public class DeployableReference {
 
-	// TODO: we're using label as the project's identifier. This seems brittle, or at least not ideal. We should consider adding an optional "id" field to this object that can be used as a unique identifier for the deployable reference
+	// TODO: this is not supposed to be optional
+	@Optional
+	private String id;
 	private String label;
 	private String path;
 	private String typeId;
@@ -27,14 +29,43 @@ public class DeployableReference {
 	public DeployableReference() {
 	}
 
-	public DeployableReference(String label, String path, String typeId) {
+	/**
+	 * temporary hack, remove later
+	 * @param other
+	 */
+	public DeployableReference(String label, String path) {
+		this.label = label;
+		this.path = path;
+	}	
+
+	public DeployableReference(DeployableReference other) {
+		if (other == null) {
+			return;
+		}
+		this.id = other.id;
+		this.label = other.label;
+		this.path = other.path;
+		this.typeId = other.typeId;
+		this.options = other.options;
+	}
+
+	public DeployableReference(String id, String label, String path, String typeId) {
+		this.id = id;
 		this.label = label;
 		this.path = path;
 		this.typeId = typeId;
 	}
 
-	public DeployableReference(String label, String path) {
-		this(label, path, null);
+	public DeployableReference(String id, String label, String path) {
+		this(id, label, path, null);
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
 	}
 
 	public String getTypeId() {

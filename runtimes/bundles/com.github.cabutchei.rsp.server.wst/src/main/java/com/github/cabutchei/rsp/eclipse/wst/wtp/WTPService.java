@@ -188,7 +188,7 @@ public class WTPService implements IWTPService {
 		IModuleType[] moduleTypes = wstServer.getServerType().getRuntimeType().getModuleTypes();
 		IModule[] modules = moduleTypes == null ? new IModule[0] : ServerUtil.getModules(moduleTypes);
 		List<DeployableArtifact> results = new ArrayList<>();
-		Set<String> seenProjects = new HashSet<>();
+			Set<String> seenModules = new HashSet<>();
 		if (modules == null) {
 			return results;
 		}
@@ -219,14 +219,19 @@ public class WTPService implements IWTPService {
 			if (status != null && !status.isOK()) {
 				continue;
 			}
+			String moduleId = module.getId();
+			if (moduleId != null && !seenModules.add(moduleId)) {
+				continue;
+			}
 			IProject project = module.getProject();
-			if (project == null || !seenProjects.add(project.getName())) {
+			if (project == null) {
 				continue;
 			}
 			IPath location = project.getLocation();
+			// TODO: should no longer point to the project' path, but to the module's
 			Path deployPath = location == null ? null : location.toFile().toPath();
 			String typeId = module.getModuleType() == null ? null : module.getModuleType().getId();
-			results.add(new DeployableArtifact(project.getName(), ServerUtil.getModuleDisplayName(module), deployPath, typeId));
+				results.add(new DeployableArtifact(moduleId, project.getName(), ServerUtil.getModuleDisplayName(module), deployPath, typeId));
 		}
 		return results;
 	}
@@ -592,7 +597,7 @@ public class WTPService implements IWTPService {
 			for (IModule module : modules) {
 				String label = ServerUtil.getModuleDisplayName(module);
 				String typeId = module.getModuleType() == null ? null : module.getModuleType().getId();
-				result.add(new DeployableArtifact(project.getName(), label, projectPath, typeId));
+				result.add(new DeployableArtifact(null, project.getName(), label, projectPath, typeId));
 			}
 		}
 		return Collections.unmodifiableList(result);

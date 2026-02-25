@@ -226,7 +226,9 @@ public final class WstRspMapper {
 			if (module.getProject() != null && module.getProject().getName() != null) {
 				path = module.getProject().getName();
 			}
-			refs.add(new DeployableReference(label, path));
+			DeployableReference ref = new DeployableReference(label, path);
+			ref.setId(module.getId());
+			refs.add(ref);
 		}
 		if (refs.isEmpty()) {
 			return null;
@@ -260,6 +262,10 @@ public final class WstRspMapper {
 	private static boolean matchesModule(DeployableReference deployable, IModule module) {
 		if (deployable == null || module == null) {
 			return false;
+		}
+		String id = deployable.getId();
+		if (id != null && !id.isEmpty()) {
+			return id.equals(module.getId());
 		}
 		String label = deployable.getLabel();
 		String path = deployable.getPath();

@@ -11,16 +11,22 @@ package com.github.cabutchei.rsp.server.spi.workspace;
 import java.nio.file.Path;
 
 public class DeployableArtifact {
+	private final String id;
 	private final String projectName;
 	private final String label;
 	private final Path deployPath;
 	private final String moduleTypeId;
 
-	public DeployableArtifact(String projectName, String label, Path deployPath, String moduleTypeId) {
+	public DeployableArtifact(String id, String projectName, String label, Path deployPath, String moduleTypeId) {
+		this.id = id;
 		this.projectName = projectName;
 		this.label = label;
 		this.deployPath = deployPath;
 		this.moduleTypeId = moduleTypeId;
+	}
+
+	public String getId() {
+		return id;
 	}
 
 	public String getProjectName() {

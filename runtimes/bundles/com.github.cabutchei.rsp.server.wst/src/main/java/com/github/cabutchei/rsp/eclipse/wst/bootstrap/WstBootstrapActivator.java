@@ -8,6 +8,7 @@ import com.github.cabutchei.rsp.eclipse.workspace.EclipseWorkspaceService;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
 import com.github.cabutchei.rsp.eclipse.wst.api.WstServerManagementModelFactory;
 import com.github.cabutchei.rsp.eclipse.wst.core.WSTServerManager;
+import com.github.cabutchei.rsp.eclipse.wst.model.launch.ServerLaunchMonitor;
 import com.github.cabutchei.rsp.server.ServerManagementServerLauncher;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceInitializationService;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
@@ -42,6 +43,7 @@ public class WstBootstrapActivator implements BundleActivator {
 
 	@Override
 	public void stop(BundleContext context) {
+		ServerLaunchMonitor.getInstance().stop();
 		ServerManagementServerLauncher.clearServerManagementModelFactory();
 		serverManager = null;
 		workspaceInitializationService = null;

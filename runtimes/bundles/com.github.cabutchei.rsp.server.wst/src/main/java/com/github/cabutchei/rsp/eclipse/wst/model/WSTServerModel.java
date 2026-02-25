@@ -34,6 +34,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
+import com.github.cabutchei.rsp.eclipse.wst.model.launch.ServerLaunchMonitor;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerAdapter;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerWorkingCopyAdapter;
 import com.github.cabutchei.rsp.launching.utils.IStatusRunnableWithProgress;
@@ -83,6 +84,7 @@ public class WSTServerModel implements IServerModel {
 		this.servers = servers;
 		this.serverDelegates = delegates;
 		this.managementModel = managementModel;
+		ServerLaunchMonitor.getInstance().start(this);
 
 		// Server attributes must be one of the following types
 		approvedAttributeTypes.add(ServerManagementAPIConstants.ATTR_TYPE_INT);

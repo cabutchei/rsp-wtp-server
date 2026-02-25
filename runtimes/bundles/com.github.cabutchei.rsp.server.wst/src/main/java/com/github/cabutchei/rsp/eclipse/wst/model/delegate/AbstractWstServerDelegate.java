@@ -166,6 +166,10 @@ public abstract class AbstractWstServerDelegate extends AbstractServerDelegate i
 		addLaunchStreamListeners(launch, false, null);
 	}
 
+	public final void attachLaunchStreamListenersFromMonitor(ILaunch launch) {
+		addLaunchStreamListeners(launch, true, null);
+	}
+
 	protected final void addLaunchStreamListeners(ILaunch launch, boolean skipAlreadyTagged, IntConsumer debugPortListener) {
 		if (launch == null) {
 			return;

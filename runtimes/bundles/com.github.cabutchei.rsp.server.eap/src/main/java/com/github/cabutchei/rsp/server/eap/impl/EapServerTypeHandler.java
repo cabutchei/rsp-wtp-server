@@ -33,7 +33,6 @@ final class EapServerTypeHandler implements WstServerTypeHandler {
 	@Override
 	public void configureServer(com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy serverWc, Map<String, Object> attributes) throws CoreException {
 		String configFile = getStringAttribute(attributes, IEapServerAttributes.CONFIG_FILE, IEapServerAttributes.CONFIG_FILE_DEFAULT);
-		serverWc.setAttribute(IEapServerAttributes.CONFIG_FILE, configFile);
 
 		String baseDir = getStringAttribute(attributes, IEapServerAttributes.BASE_DIRECTORY,
 				IEapServerAttributes.BASE_DIRECTORY_DEFAULT);
@@ -60,6 +59,7 @@ final class EapServerTypeHandler implements WstServerTypeHandler {
 		com.github.cabutchei.rsp.server.spi.servertype.IRuntime runtime = serverAdapter.getRuntime();
 		if (!runtime.isWorkingCopy()) throw new CoreException(new Status(IStatus.ERROR, null, "Runtime must be a working copy in order to make changes"));
 		IJBossRuntimeAdapter jbossRuntimeAdapter = (IJBossRuntimeAdapter) runtime.loadAdapter(IJBossRuntimeAdapter.class);
+		jbossRuntimeAdapter.setConfigurationFile(configFile);
 		jbossRuntimeAdapter.setVM(JDTPlugin.getVMService().findOrCreateVMInstall(vmInstallLocation));
 	}
 

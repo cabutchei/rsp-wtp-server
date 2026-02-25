@@ -10,6 +10,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 public interface WstServerTypeHandler {
 	boolean handles(String serverTypeId);
 
+	// TODO: eliminate this from the contract
 	void configureServer(IServerWorkingCopy server,
 			IRuntimeWorkingCopy runtime,
 			Map<String, Object> attributes,

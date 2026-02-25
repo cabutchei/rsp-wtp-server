@@ -88,6 +88,8 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 				throw new CoreException(new Status(IStatus.ERROR, "com.github.cabutchei.rsp.server.eap",
 						"Unable to adapt WST runtime to IJBossRuntimeAdapter"));
 			}
+			String configFile = workingCopy.getAttribute(IEapServerAttributes.CONFIG_FILE, IEapServerAttributes.CONFIG_FILE_DEFAULT);
+			jbossRuntime.setConfigurationFile(configFile);
 			jbossRuntime.setVM(JDTPlugin.getVMService().findOrCreateVMInstall(vmInstallLocation));
 			workingCopy.setRuntime(runtimeWc);
 		} catch (CoreException e) {

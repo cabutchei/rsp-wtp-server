@@ -5,11 +5,15 @@ package com.github.cabutchei.rsp.eclipse.wst.publishing;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
 
 import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
@@ -61,6 +65,10 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	private final Map<String, Map<String,Object>> deploymentOptions;
 	private final Map<String, DeployableDelta> deltas = new HashMap<>();
 	private final Map<String, DeploymentAssemblyFile> assembly = new HashMap<>();
+	private static final long WORKSPACE_REFRESH_DEBOUNCE_MS = 300;
+	private final Object refreshLock = new Object();
+	private final Map<String, PendingWorkspaceRefresh> pendingWorkspaceRefreshes = new HashMap<>();
+	private long refreshSequence = 0;
 	
 	private final AbstractServerDelegate delegate;
     private IWstServerControl wstServerControl;
@@ -435,22 +443,110 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		}
 	}
 
-	private void refreshWorkspaceForPath(Path affected) {
-		if (affected == null) {
+	private void scheduleWorkspaceRefresh(FileWatcherEvent event, Path affected) {
+		WorkspaceRefreshTarget target = createWorkspaceRefreshTarget(event, affected);
+		if (target == null || target.getProject() == null || !target.getProject().exists()) {
 			return;
 		}
-		IProject project = resolveProjectForPath(affected);
+		String projectKey = target.getProject().getName();
+		final long scheduledSequence;
+		synchronized (refreshLock) {
+			PendingWorkspaceRefresh previous = pendingWorkspaceRefreshes.get(projectKey);
+			WorkspaceRefreshTarget merged = mergeRefreshTargets(previous == null ? null : previous.getTarget(), target);
+			scheduledSequence = ++refreshSequence;
+			pendingWorkspaceRefreshes.put(projectKey, new PendingWorkspaceRefresh(scheduledSequence, merged));
+		}
+
+		CompletableFuture.runAsync(() -> runWorkspaceRefresh(projectKey, scheduledSequence),
+				CompletableFuture.delayedExecutor(WORKSPACE_REFRESH_DEBOUNCE_MS, TimeUnit.MILLISECONDS));
+	}
+
+	private void runWorkspaceRefresh(String projectKey, long scheduledSequence) {
+		WorkspaceRefreshTarget target = null;
+		synchronized (refreshLock) {
+			PendingWorkspaceRefresh pending = pendingWorkspaceRefreshes.get(projectKey);
+			if (pending == null || pending.getSequence() != scheduledSequence) {
+				return;
+			}
+			pendingWorkspaceRefreshes.remove(projectKey);
+			target = pending.getTarget();
+		}
+		if (target == null) {
+			return;
+		}
+		IProject project = target.getProject();
 		if (project == null || !project.exists()) {
 			return;
 		}
+		IResource resource = target.getResource();
+		int depth = target.getDepth();
 		try {
-			project.refreshLocal(IResource.DEPTH_INFINITE, null);
+			if (resource != null && resource.exists()) {
+				resource.refreshLocal(depth, null);
+			} else {
+				project.refreshLocal(IResource.DEPTH_ONE, null);
+			}
 		} catch (org.eclipse.core.runtime.CoreException e) {
-			LOG.warn("Failed to refresh workspace for {}", affected, e);
+			LOG.warn("Failed to refresh workspace for {}", target.getPath(), e);
 		}
 	}
 
-	private IProject resolveProjectForPath(Path path) {
+	private WorkspaceRefreshTarget mergeRefreshTargets(WorkspaceRefreshTarget previous, WorkspaceRefreshTarget next) {
+		if (previous == null) {
+			return next;
+		}
+		if (next == null) {
+			return previous;
+		}
+		if (previous.getResource() != null && previous.getResource().equals(next.getResource())) {
+			int depth = Math.max(previous.getDepth(), next.getDepth());
+			return new WorkspaceRefreshTarget(next.getPath(), next.getProject(), next.getResource(), depth);
+		}
+		return new WorkspaceRefreshTarget(next.getPath(), next.getProject(), null, IResource.DEPTH_ONE);
+	}
+
+	private WorkspaceRefreshTarget createWorkspaceRefreshTarget(FileWatcherEvent event, Path affected) {
+		if (affected == null) {
+			return null;
+		}
+		WorkspaceResolution resolution = resolveWorkspaceResolution(affected);
+		IProject project = resolution == null ? null : resolution.getProject();
+		if (project == null) {
+			return null;
+		}
+
+		IResource resource = resolution.getResource();
+		WatchEvent.Kind<?> kind = event == null ? null : event.getKind();
+		if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
+			if (resource != null && resource.exists() && resource.getType() == IResource.FILE) {
+				return new WorkspaceRefreshTarget(affected, project, resource, IResource.DEPTH_ZERO);
+			}
+			if (resource != null && resource.exists()) {
+				return new WorkspaceRefreshTarget(affected, project, resource, IResource.DEPTH_ONE);
+			}
+			return new WorkspaceRefreshTarget(affected, project, null, IResource.DEPTH_ONE);
+		}
+
+		if (resource != null) {
+			if (resource.exists() && resource.getType() == IResource.FILE) {
+				IContainer parent = resource.getParent();
+				if (parent != null) {
+					return new WorkspaceRefreshTarget(affected, project, parent, IResource.DEPTH_ONE);
+				}
+			}
+			if (resource.exists()) {
+				return new WorkspaceRefreshTarget(affected, project, resource, IResource.DEPTH_ONE);
+			}
+			IContainer parent = resource.getParent();
+			if (parent != null && parent.exists()) {
+				return new WorkspaceRefreshTarget(affected, project, parent, IResource.DEPTH_ONE);
+			}
+		}
+
+		return new WorkspaceRefreshTarget(affected, project, null, IResource.DEPTH_ONE);
+	}
+
+	private WorkspaceResolution resolveWorkspaceResolution(Path path) {
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
 		org.eclipse.core.runtime.Path eclipsePath = new org.eclipse.core.runtime.Path(path.toString());
 		IResource resource = root.getFileForLocation(eclipsePath);
@@ -470,7 +566,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 			}
 		}
 		if (resource != null) {
-			return resource.getProject();
+			return new WorkspaceResolution(resource.getProject(), resource);
 		}
 		java.nio.file.Path normalized = path.toAbsolutePath().normalize();
 		IProject bestMatch = null;
@@ -490,7 +586,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 				bestSegments = segments;
 			}
 		}
-		return bestMatch;
+		return new WorkspaceResolution(bestMatch, null);
 	}
 	
 	@Override
@@ -628,26 +724,31 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	 * 
 	 */
 	@Override
-	public synchronized void fileChanged(FileWatcherEvent event) {
+	public void fileChanged(FileWatcherEvent event) {
 		// DEPLOY_ASSEMBLY
-		Path affected = event.getPath();
-		//System.out.println("File changed: " + affected.toString());
-		List<DeployableState> ds = new ArrayList<>(states.values());
-		boolean changed = false;
-		for( DeployableState d : ds ) {
-			DeploymentAssemblyFile assemblyObj = assembly.get(getKey(d.getReference()));
-			if( assemblyObj == null ) {
-				changed |= fileChangedNoAssembly(event, affected, d);
-			} else {
-				changed |= fileChangedWithAssembly(event, affected, d);
+		Path affected = event == null ? null : event.getPath();
+		if (event == null || affected == null) {
+			return;
+		}
+		synchronized (this) {
+			//System.out.println("File changed: " + affected.toString());
+			List<DeployableState> ds = new ArrayList<>(states.values());
+			boolean changed = false;
+			for( DeployableState d : ds ) {
+				DeploymentAssemblyFile assemblyObj = assembly.get(getKey(d.getReference()));
+				if( assemblyObj == null ) {
+					changed |= fileChangedNoAssembly(event, affected, d);
+				} else {
+					changed |= fileChangedWithAssembly(event, affected, d);
+				}
 			}
+			updateServerPublishStateFromDeployments(true);
+			if (changed) {
+				fireState();
+			}
+			launchOrUpdateAutopublishThread();
 		}
-		refreshWorkspaceForPath(affected);
-		updateServerPublishStateFromDeployments(true);
-		if (changed) {
-			fireState();
-		}
-		launchOrUpdateAutopublishThread();
+		scheduleWorkspaceRefresh(event, affected);
 	}
 
 	private boolean fileChangedNoAssembly(FileWatcherEvent event, Path affected, DeployableState d) {
@@ -890,6 +991,72 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 			deploymentOptions.put(key, reference.getOptions());
 		}
 		return registerFileWatcher(reference);
+	}
+
+	private static class WorkspaceResolution {
+		private final IProject project;
+		private final IResource resource;
+
+		private WorkspaceResolution(IProject project, IResource resource) {
+			this.project = project;
+			this.resource = resource;
+		}
+
+		private IProject getProject() {
+			return project;
+		}
+
+		private IResource getResource() {
+			return resource;
+		}
+	}
+
+	private static class WorkspaceRefreshTarget {
+		private final Path path;
+		private final IProject project;
+		private final IResource resource;
+		private final int depth;
+
+		private WorkspaceRefreshTarget(Path path, IProject project, IResource resource, int depth) {
+			this.path = path;
+			this.project = project;
+			this.resource = resource;
+			this.depth = depth;
+		}
+
+		private Path getPath() {
+			return path;
+		}
+
+		private IProject getProject() {
+			return project;
+		}
+
+		private IResource getResource() {
+			return resource;
+		}
+
+		private int getDepth() {
+			return depth;
+		}
+	}
+
+	private static class PendingWorkspaceRefresh {
+		private final long sequence;
+		private final WorkspaceRefreshTarget target;
+
+		private PendingWorkspaceRefresh(long sequence, WorkspaceRefreshTarget target) {
+			this.sequence = sequence;
+			this.target = target;
+		}
+
+		private long getSequence() {
+			return sequence;
+		}
+
+		private WorkspaceRefreshTarget getTarget() {
+			return target;
+		}
 	}
 
 }

@@ -19,7 +19,13 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -117,6 +123,10 @@ import com.github.cabutchei.rsp.server.workspace.WorkspaceEventsHandler;
 public class ServerManagementServerImpl implements RSPServer, WTPServer {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ServerManagementServerImpl.class);
+	private static final int ASYNC_THREAD_COUNT = Math.max(2, Runtime.getRuntime().availableProcessors());
+	private static final int ASYNC_QUEUE_CAPACITY = 256;
+	private static final Object ASYNC_EXECUTOR_LOCK = new Object();
+	private static volatile ExecutorService osgiExecutor;
 
 	private final List<RSPWTPClient> clients = new CopyOnWriteArrayList<>();
 	private final List<SocketLauncher<RSPWTPClient>> launchers = new CopyOnWriteArrayList<>();
@@ -1427,31 +1437,86 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		return StatusConverter.convert(is);
 	}
 
-	private static final Executor OSGI_EXECUTOR = command -> {
-		ForkJoinPool.commonPool().execute(() -> {
-			Thread thread = Thread.currentThread();
-			ClassLoader previous = thread.getContextClassLoader();
-			ClassLoader osgi = OsgiClassLoaderHolder.get();
-			if( osgi != null ) {
-				thread.setContextClassLoader(osgi);
+	private static final Executor OSGI_EXECUTOR = command -> getOsgiExecutor().execute(() -> {
+		Thread thread = Thread.currentThread();
+		ClassLoader previous = thread.getContextClassLoader();
+		ClassLoader osgi = OsgiClassLoaderHolder.get();
+		if (osgi != null) {
+			thread.setContextClassLoader(osgi);
+		}
+		try {
+			command.run();
+		} finally {
+			thread.setContextClassLoader(previous);
+		}
+	});
+
+	private static ExecutorService getOsgiExecutor() {
+		ExecutorService existing = osgiExecutor;
+		if (existing != null && !existing.isShutdown()) {
+			return existing;
+		}
+		synchronized (ASYNC_EXECUTOR_LOCK) {
+			existing = osgiExecutor;
+			if (existing == null || existing.isShutdown()) {
+				ThreadFactory threadFactory = new ThreadFactory() {
+					private final AtomicInteger nextId = new AtomicInteger(1);
+
+					@Override
+					public Thread newThread(Runnable runnable) {
+						Thread thread = new Thread(runnable, "rsp-server-async-" + nextId.getAndIncrement());
+						thread.setDaemon(true);
+						return thread;
+					}
+				};
+				osgiExecutor = new ThreadPoolExecutor(
+						ASYNC_THREAD_COUNT,
+						ASYNC_THREAD_COUNT,
+						30L,
+						TimeUnit.SECONDS,
+						new LinkedBlockingQueue<>(ASYNC_QUEUE_CAPACITY),
+						threadFactory,
+						new ThreadPoolExecutor.CallerRunsPolicy());
 			}
+			return osgiExecutor;
+		}
+	}
+
+	static void shutdownAsyncExecutor() {
+		ExecutorService toShutdown;
+		synchronized (ASYNC_EXECUTOR_LOCK) {
+			toShutdown = osgiExecutor;
+			osgiExecutor = null;
+		}
+		if (toShutdown != null) {
+			toShutdown.shutdown();
 			try {
-				command.run();
-			} finally {
-				thread.setContextClassLoader(previous);
+				if (!toShutdown.awaitTermination(5, TimeUnit.SECONDS)) {
+					toShutdown.shutdownNow();
+				}
+			} catch (InterruptedException ie) {
+				Thread.currentThread().interrupt();
+				toShutdown.shutdownNow();
 			}
-		});
-	};
+		}
+	}
 
 	private static <T> CompletableFuture<T> createCompletableFuture(Supplier<T> supplier) {
 		final RSPWTPClient rspc = ClientThreadLocal.getActiveClient();
-		CompletableFuture<T> completableFuture = new CompletableFuture<>();
-		CompletableFuture.runAsync(() -> {
-			ClientThreadLocal.setActiveClient(rspc);
-			completableFuture.complete(supplier.get());
-			ClientThreadLocal.setActiveClient(null);
-		}, OSGI_EXECUTOR);
-		return completableFuture;
+		try {
+			return CompletableFuture.supplyAsync(() -> {
+				ClientThreadLocal.setActiveClient(rspc);
+				try {
+					return supplier.get();
+				} finally {
+					ClientThreadLocal.setActiveClient(null);
+				}
+			}, OSGI_EXECUTOR);
+		} catch (RejectedExecutionException ree) {
+			CompletableFuture<T> failed = new CompletableFuture<>();
+			failed.completeExceptionally(ree);
+			return failed;
+		}
 	}
 
 }

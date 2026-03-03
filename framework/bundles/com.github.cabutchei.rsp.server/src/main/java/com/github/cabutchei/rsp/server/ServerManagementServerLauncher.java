@@ -20,7 +20,7 @@ import java.util.concurrent.Executors;
 import com.github.cabutchei.rsp.api.RSPWTPClient;
 import com.github.cabutchei.rsp.api.SocketLauncher;
 import com.github.cabutchei.rsp.server.model.ServerManagementModel;
-import com.github.cabutchei.rsp.server.model.ServerPersistenceManager;
+// import com.github.cabutchei.rsp.server.model.ServerPersistenceManager;
 import com.github.cabutchei.rsp.server.persistence.DataLocationCore;
 import com.github.cabutchei.rsp.server.spi.client.ClientThreadLocal;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
@@ -244,6 +244,7 @@ public class ServerManagementServerLauncher {
 		} catch(IOException ioe) {
 			
 		}
+		ServerManagementServerImpl.shutdownAsyncExecutor();
 		ShutdownExecutor.getExecutor().shutdown();
 	}
 	

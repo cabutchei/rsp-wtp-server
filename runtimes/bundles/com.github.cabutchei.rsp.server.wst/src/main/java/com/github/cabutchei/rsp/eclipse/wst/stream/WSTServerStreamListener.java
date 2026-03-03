@@ -11,9 +11,7 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 
 public class WSTServerStreamListener implements IStreamListener {
 
-	// private static final Pattern DEBUG_PORT_PATTERN = Pattern.compile(
-	// 		"Listening for transport .*address:\\s*(\\d+)");
-	// private static final int BUFFER_MAX = 4096;
+	private static final int BUFFER_MAX = 4096;
 
 	private IServer server;
 	private int streamType;
@@ -48,21 +46,9 @@ public class WSTServerStreamListener implements IStreamListener {
 			return;
 		}
 		buffer.append(text);
-		// Matcher matcher = DEBUG_PORT_PATTERN.matcher(buffer);
-		// if( matcher.find()) {
-		// 	try {
-		// 		int port = Integer.parseInt(matcher.group(1));
-		// 		debugPortListener.accept(port);
-		// 	} catch (NumberFormatException e) {
-		// 		// ignore
-		// 	} finally {
-		// 		buffer.setLength(0);
-		// 	}
-		// 	return;
-		// }
-		// if( buffer.length() > BUFFER_MAX ) {
-		// 	buffer.delete(0, buffer.length() - BUFFER_MAX);
-		// }
+		if( buffer.length() > BUFFER_MAX ) {
+			buffer.delete(0, buffer.length() - BUFFER_MAX);
+		}
 	}
 	
 }

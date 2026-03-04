@@ -55,6 +55,17 @@ public class WstServerManagementModel extends ServerManagementModel implements I
 		return workspaceInitializationService;
 	}
 
+	@Override
+	public void dispose() {
+		try {
+			if (projectsManager != null) {
+				projectsManager.dispose();
+			}
+		} finally {
+			super.dispose();
+		}
+	}
+
 	private static IDataStoreModel captureDependencies(IDataStoreModel dataLocation, IWstServerManager serverManager) {
 		PENDING_SERVER_MANAGER.set(Objects.requireNonNull(serverManager, "serverManager"));
 		return dataLocation;

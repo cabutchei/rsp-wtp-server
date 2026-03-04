@@ -8,8 +8,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -54,15 +56,18 @@ public class WTPService implements IWTPService {
 	private static final String KIND_FOLDER = "folder";
 	private static final String KIND_PROJECT = "project";
 	private static final String KIND_ARCHIVE = "archive";
-	private static final long WORKSPACE_DEPLOYABLES_TTL_NANOS = TimeUnit.SECONDS.toNanos(15);
 	private static final long REBUILD_DEBOUNCE_NANOS = TimeUnit.MILLISECONDS.toNanos(300);
+	private static final long FALLBACK_RESCAN_NANOS = TimeUnit.MINUTES.toNanos(5);
 
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
-	private final Object workspaceDeployablesCacheLock = new Object();
-	private volatile long workspaceDeployablesGeneration = 1L;
-	private volatile long workspaceDeployablesRebuildNotBeforeNanos;
-	private volatile CacheValue<DeployableArtifact> workspaceDeployablesCache;
+	private final Object workspaceDeployablesLock = new Object();
+	private final Map<String, List<DeployableArtifact>> workspaceDeployablesByProject = new LinkedHashMap<>();
+	private final Set<String> dirtyWorkspaceDeployableProjects = new LinkedHashSet<>();
+	private boolean workspaceDeployablesFullRescanRequired = true;
+	private long workspaceDeployablesDirtyAtNanos = System.nanoTime();
+	private long workspaceDeployablesLastRebuildNanos = System.nanoTime();
 	private final IResourceChangeListener workspaceChangeListener = this::onWorkspaceChanged;
+	private volatile boolean disposed;
 
 	public WTPService() {
 		ResourcesPlugin.getWorkspace().addResourceChangeListener(workspaceChangeListener, IResourceChangeEvent.POST_CHANGE);
@@ -75,14 +80,14 @@ public class WTPService implements IWTPService {
 			this.workspaceRoots.clear();
 			this.workspaceRoots.addAll(normalized);
 		}
-		invalidateWorkspaceDeployablesCache();
 	}
 
 	@Override
 	public List<DeployableArtifact> listDeployableResources(ServerHandle server) {
 		List<DeployableArtifact> deployables;
 		if (server == null) {
-			deployables = getWorkspaceDeployablesCached();
+			ensureWorkspaceDeployablesUpToDate();
+			deployables = getWorkspaceDeployablesSnapshot();
 		} else {
 			deployables = listServerDeployables(server);
 		}
@@ -160,7 +165,7 @@ public class WTPService implements IWTPService {
 		}
 		IStatus status = addDeploymentAssemblyEntryInternal(project, entry);
 		if (status != null && status.isOK()) {
-			invalidateWorkspaceDeployablesCache();
+			markWorkspaceDeployablesDirty(project.getName());
 		}
 		return status;
 	}
@@ -180,7 +185,7 @@ public class WTPService implements IWTPService {
 		}
 		IStatus status = removeDeploymentAssemblyEntryInternal(project, entry);
 		if (status != null && status.isOK()) {
-			invalidateWorkspaceDeployablesCache();
+			markWorkspaceDeployablesDirty(project.getName());
 		}
 		return status;
 	}
@@ -193,6 +198,20 @@ public class WTPService implements IWTPService {
 	@Override
 	public IStatus updateFacets(String projectName, List<String> add, List<String> remove) {
 		return errorStatus("Facet operations are not implemented", null);
+	}
+
+	@Override
+	public void dispose() {
+		if (disposed) {
+			return;
+		}
+		disposed = true;
+		ResourcesPlugin.getWorkspace().removeResourceChangeListener(workspaceChangeListener);
+		synchronized (workspaceDeployablesLock) {
+			workspaceDeployablesByProject.clear();
+			dirtyWorkspaceDeployableProjects.clear();
+			workspaceDeployablesFullRescanRequired = true;
+		}
 	}
 
 	private List<DeployableArtifact> listServerDeployables(ServerHandle server) {
@@ -602,50 +621,135 @@ public class WTPService implements IWTPService {
 		return handler == null ? new JavaEEModuleHandler() : handler;
 	}
 
-	private List<DeployableArtifact> getWorkspaceDeployablesCached() {
-		CacheValue<DeployableArtifact> cache = workspaceDeployablesCache;
-		long now = System.nanoTime();
-		long generation = workspaceDeployablesGeneration;
-		if (isCacheFresh(cache, generation, now)) {
-			return cache.value;
+	private void ensureWorkspaceDeployablesUpToDate() {
+		if (disposed) {
+			return;
 		}
-		synchronized (workspaceDeployablesCacheLock) {
-			cache = workspaceDeployablesCache;
-			now = System.nanoTime();
-			generation = workspaceDeployablesGeneration;
-			if (isCacheFresh(cache, generation, now)) {
-				return cache.value;
+		long now = System.nanoTime();
+		synchronized (workspaceDeployablesLock) {
+			boolean hasDirty = workspaceDeployablesFullRescanRequired || !dirtyWorkspaceDeployableProjects.isEmpty();
+			boolean fallbackExpired = (now - workspaceDeployablesLastRebuildNanos) >= FALLBACK_RESCAN_NANOS;
+			if (!hasDirty && !fallbackExpired) {
+				return;
 			}
-			if (cache != null && now < workspaceDeployablesRebuildNotBeforeNanos) {
-				return cache.value;
+			if (hasDirty && !fallbackExpired && !workspaceDeployablesByProject.isEmpty()
+					&& (now - workspaceDeployablesDirtyAtNanos) < REBUILD_DEBOUNCE_NANOS) {
+				return;
 			}
-			List<DeployableArtifact> rebuilt = Collections.unmodifiableList(computeWorkspaceDeployables());
-			workspaceDeployablesCache = new CacheValue<>(generation, now, rebuilt);
-			return rebuilt;
+			if (workspaceDeployablesFullRescanRequired || workspaceDeployablesByProject.isEmpty() || fallbackExpired) {
+				rebuildAllWorkspaceDeployables();
+				workspaceDeployablesFullRescanRequired = false;
+				dirtyWorkspaceDeployableProjects.clear();
+			} else {
+				refreshDirtyWorkspaceDeployables();
+			}
+			workspaceDeployablesLastRebuildNanos = now;
 		}
 	}
 
-	private List<DeployableArtifact> computeWorkspaceDeployables() {
-		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-		IProject[] projects = root.getProjects();
-		if (projects == null || projects.length == 0) {
-			return Collections.emptyList();
-		}
+	private List<DeployableArtifact> getWorkspaceDeployablesSnapshot() {
 		List<DeployableArtifact> result = new ArrayList<>();
-		for (IProject project : projects) {
-			if (project == null || !project.exists() || !project.isOpen()) {
-				continue;
-			}
-			IPath location = project.getLocation();
-			Path projectPath = location == null ? null : location.toFile().toPath();
-			IModule[] modules = ServerUtil.getModules(project);
-			for (IModule module : modules) {
-				String label = ServerUtil.getModuleDisplayName(module);
-				String typeId = module.getModuleType() == null ? null : module.getModuleType().getId();
-				result.add(new DeployableArtifact(null, project.getName(), label, projectPath, typeId));
+		synchronized (workspaceDeployablesLock) {
+			for (List<DeployableArtifact> perProject : workspaceDeployablesByProject.values()) {
+				if (perProject == null || perProject.isEmpty()) {
+					continue;
+				}
+				result.addAll(perProject);
 			}
 		}
 		return result;
+	}
+
+	private void rebuildAllWorkspaceDeployables() {
+		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		if (root == null) {
+			workspaceDeployablesByProject.clear();
+			return;
+		}
+		Map<String, List<DeployableArtifact>> rebuilt = new LinkedHashMap<>();
+		IProject[] projects = root.getProjects();
+		for (IProject project : projects) {
+			if (project == null || !project.exists()) {
+				continue;
+			}
+			rebuilt.put(project.getName(), computeProjectWorkspaceDeployables(project));
+		}
+		workspaceDeployablesByProject.clear();
+		workspaceDeployablesByProject.putAll(rebuilt);
+	}
+
+	private void refreshDirtyWorkspaceDeployables() {
+		List<String> dirty = new ArrayList<>(dirtyWorkspaceDeployableProjects);
+		dirtyWorkspaceDeployableProjects.clear();
+		for (String projectName : dirty) {
+			refreshProjectWorkspaceDeployables(projectName);
+		}
+	}
+
+	private void refreshProjectWorkspaceDeployables(String projectName) {
+		if (projectName == null || projectName.isEmpty()) {
+			return;
+		}
+		IProject project = getProjectByName(projectName);
+		if (project == null || !project.exists()) {
+			workspaceDeployablesByProject.remove(projectName);
+			return;
+		}
+		workspaceDeployablesByProject.put(projectName, computeProjectWorkspaceDeployables(project));
+	}
+
+	private List<DeployableArtifact> computeProjectWorkspaceDeployables(IProject project) {
+		if (project == null || !project.exists() || !project.isOpen()) {
+			return Collections.emptyList();
+		}
+		IPath location = project.getLocation();
+		Path projectPath = location == null ? null : location.toFile().toPath();
+		IModule[] modules = ServerUtil.getModules(project);
+		if (modules == null || modules.length == 0) {
+			return Collections.emptyList();
+		}
+		List<DeployableArtifact> result = new ArrayList<>();
+		for (IModule module : modules) {
+			if (module == null) {
+				continue;
+			}
+			String label = ServerUtil.getModuleDisplayName(module);
+			String typeId = module.getModuleType() == null ? null : module.getModuleType().getId();
+			result.add(new DeployableArtifact(null, project.getName(), label, projectPath, typeId));
+		}
+		return result;
+	}
+
+	private void markAllWorkspaceDeployablesDirty() {
+		synchronized (workspaceDeployablesLock) {
+			workspaceDeployablesFullRescanRequired = true;
+			dirtyWorkspaceDeployableProjects.clear();
+			workspaceDeployablesDirtyAtNanos = System.nanoTime();
+		}
+	}
+
+	private void markWorkspaceDeployablesDirty(String projectName) {
+		if (projectName == null || projectName.isEmpty()) {
+			return;
+		}
+		synchronized (workspaceDeployablesLock) {
+			dirtyWorkspaceDeployableProjects.add(projectName);
+			workspaceDeployablesDirtyAtNanos = System.nanoTime();
+		}
+	}
+
+	private void markWorkspaceDeployablesDirty(Collection<String> projectNames) {
+		if (projectNames == null || projectNames.isEmpty()) {
+			return;
+		}
+		synchronized (workspaceDeployablesLock) {
+			for (String projectName : projectNames) {
+				if (projectName != null && !projectName.isEmpty()) {
+					dirtyWorkspaceDeployableProjects.add(projectName);
+				}
+			}
+			workspaceDeployablesDirtyAtNanos = System.nanoTime();
+		}
 	}
 
 	private IStatus errorStatus(String message, Throwable t) {
@@ -698,73 +802,62 @@ public class WTPService implements IWTPService {
 	}
 
 	private void onWorkspaceChanged(IResourceChangeEvent event) {
-		if (shouldInvalidateWorkspaceDeployables(event)) {
-			invalidateWorkspaceDeployablesCache();
+		if (disposed) {
+			return;
 		}
-	}
-
-	private boolean shouldInvalidateWorkspaceDeployables(IResourceChangeEvent event) {
-		if (event == null) {
-			return false;
+		if (event == null || event.getDelta() == null) {
+			markAllWorkspaceDeployablesDirty();
+			return;
 		}
-		IResourceDelta delta = event.getDelta();
-		if (delta == null) {
-			return true;
-		}
-		final boolean[] changed = new boolean[1];
+		Set<String> changedProjects = new LinkedHashSet<>();
 		try {
-			delta.accept(current -> {
-				if (changed[0]) {
-					return false;
-				}
-				if (isInvalidatingDelta(current)) {
-					changed[0] = true;
-					return false;
-				}
-				return true;
-			});
+			event.getDelta().accept(delta -> visitResourceDelta(delta, changedProjects));
 		} catch (CoreException ce) {
-			return true;
+			markAllWorkspaceDeployablesDirty();
+			return;
 		}
-		return changed[0];
+		if (!changedProjects.isEmpty()) {
+			markWorkspaceDeployablesDirty(changedProjects);
+		}
 	}
 
-	private boolean isInvalidatingDelta(IResourceDelta delta) {
+	private boolean visitResourceDelta(IResourceDelta delta, Set<String> changedProjects) {
 		if (delta == null) {
-			return false;
+			return true;
 		}
 		IResource resource = delta.getResource();
 		if (resource == null) {
-			return false;
+			return true;
 		}
 		if (resource.getType() == IResource.PROJECT) {
+			IProject project = (IProject) resource;
+			if (project != null && project.getName() != null) {
+				changedProjects.add(project.getName());
+			}
 			if (delta.getKind() == IResourceDelta.ADDED || delta.getKind() == IResourceDelta.REMOVED) {
 				return true;
 			}
 			int flags = delta.getFlags();
-			return (flags & (IResourceDelta.OPEN | IResourceDelta.TYPE | IResourceDelta.REPLACED)) != 0;
+			if ((flags & (IResourceDelta.OPEN | IResourceDelta.TYPE | IResourceDelta.REPLACED)) != 0) {
+				return true;
+			}
+			return true;
 		}
 		if (resource.getType() == IResource.FILE) {
 			String name = resource.getName();
-			return ".project".equals(name)
+			boolean relevant = ".project".equals(name)
 					|| ".classpath".equals(name)
 					|| "org.eclipse.wst.common.component".equals(name)
 					|| "org.eclipse.wst.common.project.facet.core.xml".equals(name);
+			if (relevant) {
+				IProject project = resource.getProject();
+				if (project != null && project.getName() != null) {
+					changedProjects.add(project.getName());
+				}
+			}
+			return true;
 		}
-		return false;
-	}
-
-	private void invalidateWorkspaceDeployablesCache() {
-		synchronized (workspaceDeployablesCacheLock) {
-			workspaceDeployablesGeneration++;
-			workspaceDeployablesRebuildNotBeforeNanos = System.nanoTime() + REBUILD_DEBOUNCE_NANOS;
-		}
-	}
-
-	private <T> boolean isCacheFresh(CacheValue<T> cache, long generation, long now) {
-		return cache != null
-				&& cache.generation == generation
-				&& (now - cache.createdAtNanos) <= WORKSPACE_DEPLOYABLES_TTL_NANOS;
+		return true;
 	}
 
 	private Collection<Path> normalizeRoots(Collection<Path> roots) {
@@ -788,17 +881,5 @@ public class WTPService implements IWTPService {
 			}
 		}
 		return false;
-	}
-
-	private static final class CacheValue<T> {
-		private final long generation;
-		private final long createdAtNanos;
-		private final List<T> value;
-
-		private CacheValue(long generation, long createdAtNanos, List<T> value) {
-			this.generation = generation;
-			this.createdAtNanos = createdAtNanos;
-			this.value = value;
-		}
 	}
 }

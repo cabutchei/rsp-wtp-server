@@ -10,8 +10,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -27,9 +29,13 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jdt.core.ElementChangedEvent;
 import org.eclipse.jdt.core.IClasspathAttribute;
 import org.eclipse.jdt.core.IClasspathContainer;
 import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.IElementChangedListener;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaElementDelta;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
@@ -55,21 +61,25 @@ public class ProjectsManager implements IProjectsManager {
 	private static final String BUNDLE_ID = "com.github.cabutchei.rsp.workspace.eclipse";
 	private static final String PROJECT_FILE = ".project";
 	private static final String CLASSPATH_FILE = ".classpath";
-	private static final long CACHE_TTL_NANOS = TimeUnit.SECONDS.toNanos(15);
 	private static final long REBUILD_DEBOUNCE_NANOS = TimeUnit.MILLISECONDS.toNanos(300);
+	private static final long FALLBACK_RESCAN_NANOS = TimeUnit.MINUTES.toNanos(5);
 
 	private final IWorkspaceService workspaceService;
 	private final IWTPService wtpService;
 	private final List<IProjectImporter> projectImporters;
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
-	private final Object cacheLock = new Object();
-	private volatile long cacheGeneration = 1L;
-	private volatile long rebuildNotBeforeNanos;
-	private volatile CacheValue<WorkspaceProject> workspaceProjectsCache;
-	private volatile CacheValue<JreContainerMapping> nonStandardJreContainersCache;
-	private volatile CacheValue<ClasspathContainerMapping> classpathContainersCache;
+
+	private final Object snapshotLock = new Object();
+	private final Map<String, ProjectSnapshot> projectSnapshots = new LinkedHashMap<>();
+	private final Set<String> dirtyProjects = new LinkedHashSet<>();
+	private boolean fullRescanRequired = true;
+	private long dirtyAtNanos = System.nanoTime();
+	private long lastRebuildNanos = System.nanoTime();
 	private final IResourceChangeListener workspaceChangeListener = this::onWorkspaceChanged;
+	private final IElementChangedListener javaModelChangeListener = this::onJavaModelChanged;
+
 	private boolean initialized;
+	private volatile boolean disposed;
 
 	public ProjectsManager(IWorkspaceService workspaceService, List<IProjectImporter> projectImporters) {
 		this(workspaceService, null, projectImporters);
@@ -83,6 +93,7 @@ public class ProjectsManager implements IProjectsManager {
 		if (workspace != null) {
 			workspace.addResourceChangeListener(workspaceChangeListener, IResourceChangeEvent.POST_CHANGE);
 		}
+		JavaCore.addElementChangedListener(javaModelChangeListener, ElementChangedEvent.POST_CHANGE);
 	}
 
 	private IProject getProject(String projectName) {
@@ -113,7 +124,7 @@ public class ProjectsManager implements IProjectsManager {
 			if (!project.isOpen()) {
 				project.open(monitor);
 			}
-			markCachesDirty();
+			markProjectDirty(description.getName());
 			return Status.OK_STATUS;
 		} catch (CoreException ce) {
 			return errorStatus("Failed to import project at " + projectRoot, ce);
@@ -144,7 +155,6 @@ public class ProjectsManager implements IProjectsManager {
 				failures.add(status);
 			}
 		}
-		markCachesDirty();
 		return aggregateImportResults(failures);
 	}
 
@@ -171,7 +181,7 @@ public class ProjectsManager implements IProjectsManager {
 				project.open(monitor);
 			}
 			project.refreshLocal(IResource.DEPTH_INFINITE, monitor);
-			markCachesDirty();
+			markProjectDirty(projectName);
 			return Status.OK_STATUS;
 		} catch (CoreException ce) {
 			return errorStatus("Failed to refresh project " + projectName, ce);
@@ -180,7 +190,7 @@ public class ProjectsManager implements IProjectsManager {
 
 	@Override
 	public void initializeProjects(Collection<Path> workspaceRoots) {
-		markCachesDirty();
+		markAllProjectsDirty();
 		Collection<Path> normalizedRoots = normalizeRoots(workspaceRoots);
 		synchronized (this.workspaceRoots) {
 			this.workspaceRoots.clear();
@@ -199,7 +209,7 @@ public class ProjectsManager implements IProjectsManager {
 
 	@Override
 	public void updateWorkspaceFolders(Collection<Path> added, Collection<Path> removed) {
-		markCachesDirty();
+		markAllProjectsDirty();
 		Collection<Path> addedRoots = normalizeRoots(added);
 		Collection<Path> removedRoots = normalizeRoots(removed);
 		synchronized (workspaceRoots) {
@@ -219,74 +229,68 @@ public class ProjectsManager implements IProjectsManager {
 
 	@Override
 	public List<WorkspaceProject> listWorkspaceProjects() {
-		CacheValue<WorkspaceProject> cache = workspaceProjectsCache;
-		long now = System.nanoTime();
-		long generation = cacheGeneration;
-		if (isCacheFresh(cache, generation, now)) {
-			return cache.value;
-		}
-		synchronized (cacheLock) {
-			cache = workspaceProjectsCache;
-			now = System.nanoTime();
-			generation = cacheGeneration;
-			if (isCacheFresh(cache, generation, now)) {
-				return cache.value;
+		ensureSnapshotsUpToDate();
+		List<WorkspaceProject> result = new ArrayList<>();
+		synchronized (snapshotLock) {
+			for (ProjectSnapshot snapshot : projectSnapshots.values()) {
+				result.add(snapshot.workspaceProject);
 			}
-			if (cache != null && now < rebuildNotBeforeNanos) {
-				return cache.value;
-			}
-			List<WorkspaceProject> rebuilt = Collections.unmodifiableList(computeWorkspaceProjects());
-			workspaceProjectsCache = new CacheValue<>(generation, now, rebuilt);
-			return rebuilt;
 		}
+		return Collections.unmodifiableList(result);
 	}
 
 	@Override
 	public List<JreContainerMapping> listNonStandardJreContainers() {
-		CacheValue<JreContainerMapping> cache = nonStandardJreContainersCache;
-		long now = System.nanoTime();
-		long generation = cacheGeneration;
-		if (isCacheFresh(cache, generation, now)) {
-			return new ArrayList<>(cache.value);
-		}
-		synchronized (cacheLock) {
-			cache = nonStandardJreContainersCache;
-			now = System.nanoTime();
-			generation = cacheGeneration;
-			if (isCacheFresh(cache, generation, now)) {
-				return new ArrayList<>(cache.value);
+		ensureSnapshotsUpToDate();
+		Collection<Path> roots = getWorkspaceRootsSnapshot();
+		List<JreContainerMapping> result = new ArrayList<>();
+		Set<String> seen = new HashSet<>();
+		synchronized (snapshotLock) {
+			for (ProjectSnapshot snapshot : projectSnapshots.values()) {
+				if (!snapshot.workspaceProject.isOpen()) {
+					continue;
+				}
+				if (!roots.isEmpty() && (snapshot.normalizedLocation == null
+						|| !isContainedInAny(snapshot.normalizedLocation, roots))) {
+					continue;
+				}
+				for (JreContainerMapping mapping : snapshot.nonStandardJreContainers) {
+					String key = (mapping.getProjectUri() == null ? mapping.getProjectName() : mapping.getProjectUri())
+							+ "|" + mapping.getContainerPath();
+					if (seen.add(key)) {
+						result.add(mapping);
+					}
+				}
 			}
-			if (cache != null && now < rebuildNotBeforeNanos) {
-				return new ArrayList<>(cache.value);
-			}
-			List<JreContainerMapping> rebuilt = Collections.unmodifiableList(computeNonStandardJreContainers());
-			nonStandardJreContainersCache = new CacheValue<>(generation, now, rebuilt);
-			return new ArrayList<>(rebuilt);
 		}
+		return result;
 	}
 
 	@Override
 	public List<ClasspathContainerMapping> listClasspathContainers() {
-		CacheValue<ClasspathContainerMapping> cache = classpathContainersCache;
-		long now = System.nanoTime();
-		long generation = cacheGeneration;
-		if (isCacheFresh(cache, generation, now)) {
-			return new ArrayList<>(cache.value);
-		}
-		synchronized (cacheLock) {
-			cache = classpathContainersCache;
-			now = System.nanoTime();
-			generation = cacheGeneration;
-			if (isCacheFresh(cache, generation, now)) {
-				return new ArrayList<>(cache.value);
+		ensureSnapshotsUpToDate();
+		Collection<Path> roots = getWorkspaceRootsSnapshot();
+		List<ClasspathContainerMapping> result = new ArrayList<>();
+		Set<String> seen = new HashSet<>();
+		synchronized (snapshotLock) {
+			for (ProjectSnapshot snapshot : projectSnapshots.values()) {
+				if (!snapshot.workspaceProject.isOpen()) {
+					continue;
+				}
+				if (!roots.isEmpty() && (snapshot.normalizedLocation == null
+						|| !isContainedInAny(snapshot.normalizedLocation, roots))) {
+					continue;
+				}
+				for (ClasspathContainerMapping mapping : snapshot.classpathContainers) {
+					String key = (mapping.getProjectUri() == null ? mapping.getProjectName() : mapping.getProjectUri())
+							+ "|" + mapping.getContainerPath();
+					if (seen.add(key)) {
+						result.add(mapping);
+					}
+				}
 			}
-			if (cache != null && now < rebuildNotBeforeNanos) {
-				return new ArrayList<>(cache.value);
-			}
-			List<ClasspathContainerMapping> rebuilt = Collections.unmodifiableList(computeClasspathContainers());
-			classpathContainersCache = new CacheValue<>(generation, now, rebuilt);
-			return new ArrayList<>(rebuilt);
 		}
+		return result;
 	}
 
 	@Override
@@ -297,6 +301,27 @@ public class ProjectsManager implements IProjectsManager {
 	@Override
 	public IWTPService getWTPService() {
 		return wtpService;
+	}
+
+	@Override
+	public void dispose() {
+		if (disposed) {
+			return;
+		}
+		disposed = true;
+		IWorkspace workspace = getWorkspace();
+		if (workspace != null) {
+			workspace.removeResourceChangeListener(workspaceChangeListener);
+		}
+		JavaCore.removeElementChangedListener(javaModelChangeListener);
+		synchronized (snapshotLock) {
+			projectSnapshots.clear();
+			dirtyProjects.clear();
+			fullRescanRequired = true;
+		}
+		if (wtpService != null) {
+			wtpService.dispose();
+		}
 	}
 
 	private IWorkspace getWorkspace() {
@@ -310,242 +335,303 @@ public class ProjectsManager implements IProjectsManager {
 	}
 
 	private void onWorkspaceChanged(IResourceChangeEvent event) {
-		if (shouldInvalidateCaches(event)) {
-			markCachesDirty();
+		if (disposed) {
+			return;
 		}
-	}
-
-	private boolean shouldInvalidateCaches(IResourceChangeEvent event) {
-		if (event == null) {
-			return false;
+		if (event == null || event.getDelta() == null) {
+			markAllProjectsDirty();
+			return;
 		}
-		IResourceDelta delta = event.getDelta();
-		if (delta == null) {
-			return true;
-		}
-		final boolean[] changed = new boolean[1];
+		Set<String> changedProjects = new LinkedHashSet<>();
 		try {
-			delta.accept(current -> {
-				if (changed[0]) {
-					return false;
-				}
-				if (isInvalidatingDelta(current)) {
-					changed[0] = true;
-					return false;
-				}
-				return true;
-			});
+			event.getDelta().accept(delta -> visitResourceDelta(delta, changedProjects));
 		} catch (CoreException ce) {
-			return true;
+			markAllProjectsDirty();
+			return;
 		}
-		return changed[0];
+		if (!changedProjects.isEmpty()) {
+			markProjectsDirty(changedProjects);
+		}
 	}
 
-	private boolean isInvalidatingDelta(IResourceDelta delta) {
+	private boolean visitResourceDelta(IResourceDelta delta, Set<String> changedProjects) {
 		if (delta == null) {
-			return false;
+			return true;
 		}
 		IResource resource = delta.getResource();
 		if (resource == null) {
-			return false;
+			return true;
 		}
 		if (resource.getType() == IResource.PROJECT) {
-			if (delta.getKind() == IResourceDelta.ADDED || delta.getKind() == IResourceDelta.REMOVED) {
-				return true;
-			}
-			int flags = delta.getFlags();
-			return (flags & (IResourceDelta.OPEN | IResourceDelta.TYPE | IResourceDelta.REPLACED)) != 0;
-		}
-		if (resource.getType() == IResource.FILE) {
-			String name = resource.getName();
-			return PROJECT_FILE.equals(name) || CLASSPATH_FILE.equals(name);
-		}
-		return false;
-	}
-
-	private void markCachesDirty() {
-		synchronized (cacheLock) {
-			cacheGeneration++;
-			rebuildNotBeforeNanos = System.nanoTime() + REBUILD_DEBOUNCE_NANOS;
-		}
-	}
-
-	private <T> boolean isCacheFresh(CacheValue<T> cache, long generation, long now) {
-		return cache != null
-				&& cache.generation == generation
-				&& (now - cache.createdAtNanos) <= CACHE_TTL_NANOS;
-	}
-
-	private List<WorkspaceProject> computeWorkspaceProjects() {
-		IWorkspaceRoot root = getWorkspaceRoot();
-		if (root == null) {
-			return Collections.emptyList();
-		}
-		IProject[] projects = root.getProjects();
-		List<WorkspaceProject> result = new ArrayList<>(projects.length);
-		for (IProject project : projects) {
-			IPath location = project.getLocation();
-			Path path = location == null ? null : location.toFile().toPath();
-			result.add(new WorkspaceProject(project.getName(), path, project.isOpen()));
-		}
-		return result;
-	}
-
-	private List<JreContainerMapping> computeNonStandardJreContainers() {
-		List<WorkspaceProject> projects = listWorkspaceProjects();
-		if (projects.isEmpty()) {
-			return Collections.emptyList();
-		}
-		Collection<Path> roots = getWorkspaceRootsSnapshot();
-		List<JreContainerMapping> mappings = new ArrayList<>();
-		Set<String> seen = new HashSet<>();
-		for (WorkspaceProject projectInfo : projects) {
-			if (projectInfo == null || !projectInfo.isOpen()) {
-				continue;
-			}
-			IProject project = getProject(projectInfo.getName());
-			if (project == null || !project.exists() || !project.isOpen()) {
-				continue;
-			}
-			IPath location = project.getLocation();
-			Path projectPath = location == null ? null : location.toFile().toPath().toAbsolutePath().normalize();
-			if (!roots.isEmpty() && (projectPath == null || !isContainedInAny(projectPath, roots))) {
-				continue;
-			}
-			IJavaProject javaProject = JavaCore.create(project);
-			if (javaProject == null) {
-				continue;
-			}
-			IClasspathEntry[] entries;
-			try {
-				entries = javaProject.getRawClasspath();
-			} catch (JavaModelException e) {
-				continue;
-			}
-			if (entries == null) {
-				continue;
-			}
-			for (IClasspathEntry entry : entries) {
-				if (entry == null || entry.getEntryKind() != IClasspathEntry.CPE_CONTAINER) {
-					continue;
-				}
-				IPath containerPath = entry.getPath();
-				if (!isNonStandardJreContainer(containerPath)) {
-					continue;
-				}
-				IVMInstall vm = JavaRuntime.getVMInstall(containerPath);
-				if (vm == null || vm.getInstallLocation() == null) {
-					continue;
-				}
-				String projectUri = null;
-				URI locationUri = project.getLocationURI();
-				if (locationUri != null) {
-					projectUri = locationUri.toString();
-				}
-				Path javaHome = vm.getInstallLocation().toPath();
-				String key = (projectUri == null ? project.getName() : projectUri) + "|" + containerPath.toString();
-				if (!seen.add(key)) {
-					continue;
-				}
-				mappings.add(new JreContainerMapping(
-						project.getName(),
-						projectUri,
-						containerPath.toString(),
-						vm.getName(),
-						javaHome));
-			}
-		}
-		return mappings;
-	}
-
-	private List<ClasspathContainerMapping> computeClasspathContainers() {
-		List<WorkspaceProject> projects = listWorkspaceProjects();
-		if (projects.isEmpty()) {
-			return Collections.emptyList();
-		}
-		Collection<Path> roots = getWorkspaceRootsSnapshot();
-		List<ClasspathContainerMapping> mappings = new ArrayList<>();
-		Set<String> seen = new HashSet<>();
-		for (WorkspaceProject projectInfo : projects) {
-			if (projectInfo == null || !projectInfo.isOpen()) {
-				continue;
-			}
-			IProject project = getProject(projectInfo.getName());
-			if (project == null || !project.exists() || !project.isOpen()) {
-				continue;
-			}
-			IPath location = project.getLocation();
-			Path projectPath = location == null ? null : location.toFile().toPath().toAbsolutePath().normalize();
-			if (!roots.isEmpty() && (projectPath == null || !isContainedInAny(projectPath, roots))) {
-				continue;
-			}
-			IJavaProject javaProject = JavaCore.create(project);
-			if (javaProject == null) {
-				continue;
-			}
-			IClasspathEntry[] rawEntries;
-			try {
-				rawEntries = javaProject.getRawClasspath();
-			} catch (JavaModelException e) {
-				continue;
-			}
-			if (rawEntries == null) {
-				continue;
-			}
-			for (IClasspathEntry rawEntry : rawEntries) {
-				if (rawEntry == null || rawEntry.getEntryKind() != IClasspathEntry.CPE_CONTAINER) {
-					continue;
-				}
-				IPath containerPath = rawEntry.getPath();
-				if (isJreContainer(containerPath)) {
-					continue;
-				}
-				IClasspathContainer container;
-				try {
-					container = JavaCore.getClasspathContainer(containerPath, javaProject);
-				} catch (JavaModelException e) {
-					continue;
-				}
-				if (container == null) {
-					continue;
-				}
-				String projectUri = null;
-				URI locationUri = project.getLocationURI();
-				if (locationUri != null) {
-					projectUri = locationUri.toString();
-				}
-				String key = (projectUri == null ? project.getName() : projectUri) + "|" + containerPath.toString();
-				if (!seen.add(key)) {
-					continue;
-				}
-				List<ClasspathContainerEntry> entryMappings = new ArrayList<>();
-				IClasspathEntry[] containerEntries = container.getClasspathEntries();
-				if (containerEntries != null) {
-					for (IClasspathEntry containerEntry : containerEntries) {
-						if (containerEntry == null) {
-							continue;
-						}
-						String entryPath = resolveEntryPath(containerEntry);
-						String sourcePath = resolveEntrySourcePath(containerEntry);
-						String javadoc = extractJavadoc(containerEntry);
-						entryMappings.add(new ClasspathContainerEntry(
-								containerEntry.getEntryKind(),
-								entryPath,
-								sourcePath,
-								stringValue(containerEntry.getSourceAttachmentRootPath()),
-								javadoc,
-								containerEntry.isExported()));
+			IProject project = (IProject) resource;
+			if (project != null && project.getName() != null) {
+				if (delta.getKind() == IResourceDelta.ADDED || delta.getKind() == IResourceDelta.REMOVED) {
+					changedProjects.add(project.getName());
+				} else {
+					int flags = delta.getFlags();
+					if ((flags & (IResourceDelta.OPEN | IResourceDelta.TYPE | IResourceDelta.REPLACED)) != 0) {
+						changedProjects.add(project.getName());
 					}
 				}
-				mappings.add(new ClasspathContainerMapping(
-						project.getName(),
-						projectUri,
-						containerPath.toString(),
-						container.getDescription(),
-						entryMappings));
+			}
+		} else if (resource.getType() == IResource.FILE) {
+			String name = resource.getName();
+			if (PROJECT_FILE.equals(name) || CLASSPATH_FILE.equals(name)) {
+				IProject project = resource.getProject();
+				if (project != null && project.getName() != null) {
+					changedProjects.add(project.getName());
+				}
 			}
 		}
+		return true;
+	}
+
+	private void onJavaModelChanged(ElementChangedEvent event) {
+		if (disposed || event == null) {
+			return;
+		}
+		Set<String> changedProjects = new LinkedHashSet<>();
+		collectChangedJavaProjects(event.getDelta(), changedProjects);
+		if (!changedProjects.isEmpty()) {
+			markProjectsDirty(changedProjects);
+		}
+	}
+
+	private void collectChangedJavaProjects(IJavaElementDelta delta, Set<String> changedProjects) {
+		if (delta == null) {
+			return;
+		}
+		IJavaElement element = delta.getElement();
+		if (element != null) {
+			IJavaProject javaProject = element.getJavaProject();
+			if (javaProject != null && javaProject.getProject() != null) {
+				changedProjects.add(javaProject.getProject().getName());
+			}
+		}
+		IJavaElementDelta[] children = delta.getAffectedChildren();
+		if (children == null) {
+			return;
+		}
+		for (IJavaElementDelta child : children) {
+			collectChangedJavaProjects(child, changedProjects);
+		}
+	}
+
+	private void ensureSnapshotsUpToDate() {
+		if (disposed) {
+			return;
+		}
+		long now = System.nanoTime();
+		synchronized (snapshotLock) {
+			boolean hasDirty = fullRescanRequired || !dirtyProjects.isEmpty();
+			boolean fallbackExpired = (now - lastRebuildNanos) >= FALLBACK_RESCAN_NANOS;
+			if (!hasDirty && !fallbackExpired) {
+				return;
+			}
+			if (hasDirty && !fallbackExpired && !projectSnapshots.isEmpty()
+					&& (now - dirtyAtNanos) < REBUILD_DEBOUNCE_NANOS) {
+				return;
+			}
+			if (fullRescanRequired || projectSnapshots.isEmpty() || fallbackExpired) {
+				rebuildAllProjectSnapshots();
+				fullRescanRequired = false;
+				dirtyProjects.clear();
+			} else {
+				refreshDirtyProjectSnapshots();
+			}
+			lastRebuildNanos = now;
+		}
+	}
+
+	private void rebuildAllProjectSnapshots() {
+		IWorkspaceRoot root = getWorkspaceRoot();
+		if (root == null) {
+			projectSnapshots.clear();
+			return;
+		}
+		Map<String, ProjectSnapshot> rebuilt = new LinkedHashMap<>();
+		IProject[] projects = root.getProjects();
+		for (IProject project : projects) {
+			ProjectSnapshot snapshot = buildProjectSnapshot(project);
+			if (snapshot != null) {
+				rebuilt.put(snapshot.workspaceProject.getName(), snapshot);
+			}
+		}
+		projectSnapshots.clear();
+		projectSnapshots.putAll(rebuilt);
+	}
+
+	private void refreshDirtyProjectSnapshots() {
+		List<String> dirty = new ArrayList<>(dirtyProjects);
+		dirtyProjects.clear();
+		for (String projectName : dirty) {
+			refreshProjectSnapshot(projectName);
+		}
+	}
+
+	private void refreshProjectSnapshot(String projectName) {
+		if (projectName == null || projectName.isEmpty()) {
+			return;
+		}
+		IProject project = getProject(projectName);
+		if (project == null || !project.exists()) {
+			projectSnapshots.remove(projectName);
+			return;
+		}
+		ProjectSnapshot snapshot = buildProjectSnapshot(project);
+		if (snapshot == null) {
+			projectSnapshots.remove(projectName);
+		} else {
+			projectSnapshots.put(projectName, snapshot);
+		}
+	}
+
+	private ProjectSnapshot buildProjectSnapshot(IProject project) {
+		if (project == null || !project.exists()) {
+			return null;
+		}
+		String projectName = project.getName();
+		IPath location = project.getLocation();
+		Path locationPath = location == null ? null : location.toFile().toPath();
+		Path normalizedLocation = locationPath == null ? null : locationPath.toAbsolutePath().normalize();
+		boolean open = project.isOpen();
+		WorkspaceProject workspaceProject = new WorkspaceProject(projectName, locationPath, open);
+		if (!open) {
+			return new ProjectSnapshot(workspaceProject, normalizedLocation, Collections.emptyList(), Collections.emptyList());
+		}
+		ProjectContainerMappings mappings = scanProjectContainers(project);
+		return new ProjectSnapshot(workspaceProject, normalizedLocation,
+				Collections.unmodifiableList(mappings.nonStandardJreContainers),
+				Collections.unmodifiableList(mappings.classpathContainers));
+	}
+
+	private ProjectContainerMappings scanProjectContainers(IProject project) {
+		ProjectContainerMappings mappings = new ProjectContainerMappings();
+		IJavaProject javaProject = JavaCore.create(project);
+		if (javaProject == null) {
+			return mappings;
+		}
+		IClasspathEntry[] rawEntries;
+		try {
+			rawEntries = javaProject.getRawClasspath();
+		} catch (JavaModelException e) {
+			return mappings;
+		}
+		if (rawEntries == null || rawEntries.length == 0) {
+			return mappings;
+		}
+
+		String projectUri = null;
+		URI locationUri = project.getLocationURI();
+		if (locationUri != null) {
+			projectUri = locationUri.toString();
+		}
+		String projectKey = projectUri == null ? project.getName() : projectUri;
+		Set<String> seenJre = new HashSet<>();
+		Set<String> seenClasspath = new HashSet<>();
+
+		for (IClasspathEntry rawEntry : rawEntries) {
+			if (rawEntry == null || rawEntry.getEntryKind() != IClasspathEntry.CPE_CONTAINER) {
+				continue;
+			}
+			IPath containerPath = rawEntry.getPath();
+			if (containerPath == null) {
+				continue;
+			}
+
+			if (isNonStandardJreContainer(containerPath)) {
+				IVMInstall vm = JavaRuntime.getVMInstall(containerPath);
+				if (vm != null && vm.getInstallLocation() != null) {
+					String key = projectKey + "|" + containerPath.toString();
+					if (seenJre.add(key)) {
+						mappings.nonStandardJreContainers.add(new JreContainerMapping(
+								project.getName(),
+								projectUri,
+								containerPath.toString(),
+								vm.getName(),
+								vm.getInstallLocation().toPath()));
+					}
+				}
+			}
+
+			if (isJreContainer(containerPath)) {
+				continue;
+			}
+
+			IClasspathContainer container;
+			try {
+				container = JavaCore.getClasspathContainer(containerPath, javaProject);
+			} catch (JavaModelException e) {
+				continue;
+			}
+			if (container == null) {
+				continue;
+			}
+
+			String key = projectKey + "|" + containerPath.toString();
+			if (!seenClasspath.add(key)) {
+				continue;
+			}
+
+			List<ClasspathContainerEntry> containerEntries = new ArrayList<>();
+			IClasspathEntry[] children = container.getClasspathEntries();
+			if (children != null) {
+				for (IClasspathEntry containerEntry : children) {
+					if (containerEntry == null) {
+						continue;
+					}
+					String entryPath = resolveEntryPath(containerEntry);
+					String sourcePath = resolveEntrySourcePath(containerEntry);
+					String javadoc = extractJavadoc(containerEntry);
+					containerEntries.add(new ClasspathContainerEntry(
+							containerEntry.getEntryKind(),
+							entryPath,
+							sourcePath,
+							stringValue(containerEntry.getSourceAttachmentRootPath()),
+							javadoc,
+							containerEntry.isExported()));
+				}
+			}
+			mappings.classpathContainers.add(new ClasspathContainerMapping(
+					project.getName(),
+					projectUri,
+					containerPath.toString(),
+					container.getDescription(),
+					containerEntries));
+		}
 		return mappings;
+	}
+
+	private void markAllProjectsDirty() {
+		synchronized (snapshotLock) {
+			fullRescanRequired = true;
+			dirtyProjects.clear();
+			dirtyAtNanos = System.nanoTime();
+		}
+	}
+
+	private void markProjectDirty(String projectName) {
+		if (projectName == null || projectName.isEmpty()) {
+			return;
+		}
+		synchronized (snapshotLock) {
+			dirtyProjects.add(projectName);
+			dirtyAtNanos = System.nanoTime();
+		}
+	}
+
+	private void markProjectsDirty(Collection<String> projectNames) {
+		if (projectNames == null || projectNames.isEmpty()) {
+			return;
+		}
+		synchronized (snapshotLock) {
+			for (String projectName : projectNames) {
+				if (projectName != null && !projectName.isEmpty()) {
+					dirtyProjects.add(projectName);
+				}
+			}
+			dirtyAtNanos = System.nanoTime();
+		}
 	}
 
 	private Collection<Path> getWorkspaceRootsSnapshot() {
@@ -651,6 +737,7 @@ public class ProjectsManager implements IProjectsManager {
 			}
 			try {
 				project.delete(false, true, monitor);
+				markProjectDirty(project.getName());
 			} catch (CoreException ce) {
 				LOG.warn("Failed to remove project {} from workspace", project.getName(), ce);
 			}
@@ -741,15 +828,24 @@ public class ProjectsManager implements IProjectsManager {
 				failures.toArray(new IStatus[0]), "One or more projects failed to import", null);
 	}
 
-	private static final class CacheValue<T> {
-		private final long generation;
-		private final long createdAtNanos;
-		private final List<T> value;
+	private static final class ProjectContainerMappings {
+		private final List<JreContainerMapping> nonStandardJreContainers = new ArrayList<>();
+		private final List<ClasspathContainerMapping> classpathContainers = new ArrayList<>();
+	}
 
-		private CacheValue(long generation, long createdAtNanos, List<T> value) {
-			this.generation = generation;
-			this.createdAtNanos = createdAtNanos;
-			this.value = value;
+	private static final class ProjectSnapshot {
+		private final WorkspaceProject workspaceProject;
+		private final Path normalizedLocation;
+		private final List<JreContainerMapping> nonStandardJreContainers;
+		private final List<ClasspathContainerMapping> classpathContainers;
+
+		private ProjectSnapshot(WorkspaceProject workspaceProject, Path normalizedLocation,
+				List<JreContainerMapping> nonStandardJreContainers,
+				List<ClasspathContainerMapping> classpathContainers) {
+			this.workspaceProject = workspaceProject;
+			this.normalizedLocation = normalizedLocation;
+			this.nonStandardJreContainers = nonStandardJreContainers;
+			this.classpathContainers = classpathContainers;
 		}
 	}
 }

@@ -76,4 +76,11 @@ public interface IProjectsManager extends IWTPServiceProvider {
 	 * @return true if the workspace has been initialized
 	 */
 	boolean isInitialized();
+
+	/**
+	 * Dispose listeners/resources associated with this manager.
+	 */
+	default void dispose() {
+		// no-op
+	}
 }

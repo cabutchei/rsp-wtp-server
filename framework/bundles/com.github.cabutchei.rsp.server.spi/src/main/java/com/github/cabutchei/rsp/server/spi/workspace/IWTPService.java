@@ -37,4 +37,11 @@ public interface IWTPService {
 	IStatus ensureFacets(String projectName, List<String> facetIds);
 
 	IStatus updateFacets(String projectName, List<String> add, List<String> remove);
+
+	/**
+	 * Dispose listeners/resources associated with this service.
+	 */
+	default void dispose() {
+		// no-op
+	}
 }

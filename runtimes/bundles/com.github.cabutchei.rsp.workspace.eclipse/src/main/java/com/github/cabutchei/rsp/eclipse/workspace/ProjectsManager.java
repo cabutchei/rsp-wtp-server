@@ -13,10 +13,14 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IResourceChangeEvent;
+import org.eclipse.core.resources.IResourceChangeListener;
+import org.eclipse.core.resources.IResourceDelta;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -50,11 +54,21 @@ public class ProjectsManager implements IProjectsManager {
 	private static final Logger LOG = LoggerFactory.getLogger(ProjectsManager.class);
 	private static final String BUNDLE_ID = "com.github.cabutchei.rsp.workspace.eclipse";
 	private static final String PROJECT_FILE = ".project";
+	private static final String CLASSPATH_FILE = ".classpath";
+	private static final long CACHE_TTL_NANOS = TimeUnit.SECONDS.toNanos(15);
+	private static final long REBUILD_DEBOUNCE_NANOS = TimeUnit.MILLISECONDS.toNanos(300);
 
 	private final IWorkspaceService workspaceService;
 	private final IWTPService wtpService;
 	private final List<IProjectImporter> projectImporters;
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
+	private final Object cacheLock = new Object();
+	private volatile long cacheGeneration = 1L;
+	private volatile long rebuildNotBeforeNanos;
+	private volatile CacheValue<WorkspaceProject> workspaceProjectsCache;
+	private volatile CacheValue<JreContainerMapping> nonStandardJreContainersCache;
+	private volatile CacheValue<ClasspathContainerMapping> classpathContainersCache;
+	private final IResourceChangeListener workspaceChangeListener = this::onWorkspaceChanged;
 	private boolean initialized;
 
 	public ProjectsManager(IWorkspaceService workspaceService, List<IProjectImporter> projectImporters) {
@@ -65,6 +79,10 @@ public class ProjectsManager implements IProjectsManager {
 		this.workspaceService = workspaceService;
 		this.wtpService = wtpService;
 		this.projectImporters = projectImporters == null ? Collections.emptyList() : new ArrayList<>(projectImporters);
+		IWorkspace workspace = getWorkspace();
+		if (workspace != null) {
+			workspace.addResourceChangeListener(workspaceChangeListener, IResourceChangeEvent.POST_CHANGE);
+		}
 	}
 
 	private IProject getProject(String projectName) {
@@ -95,6 +113,7 @@ public class ProjectsManager implements IProjectsManager {
 			if (!project.isOpen()) {
 				project.open(monitor);
 			}
+			markCachesDirty();
 			return Status.OK_STATUS;
 		} catch (CoreException ce) {
 			return errorStatus("Failed to import project at " + projectRoot, ce);
@@ -125,6 +144,7 @@ public class ProjectsManager implements IProjectsManager {
 				failures.add(status);
 			}
 		}
+		markCachesDirty();
 		return aggregateImportResults(failures);
 	}
 
@@ -151,6 +171,7 @@ public class ProjectsManager implements IProjectsManager {
 				project.open(monitor);
 			}
 			project.refreshLocal(IResource.DEPTH_INFINITE, monitor);
+			markCachesDirty();
 			return Status.OK_STATUS;
 		} catch (CoreException ce) {
 			return errorStatus("Failed to refresh project " + projectName, ce);
@@ -159,6 +180,7 @@ public class ProjectsManager implements IProjectsManager {
 
 	@Override
 	public void initializeProjects(Collection<Path> workspaceRoots) {
+		markCachesDirty();
 		Collection<Path> normalizedRoots = normalizeRoots(workspaceRoots);
 		synchronized (this.workspaceRoots) {
 			this.workspaceRoots.clear();
@@ -177,6 +199,7 @@ public class ProjectsManager implements IProjectsManager {
 
 	@Override
 	public void updateWorkspaceFolders(Collection<Path> added, Collection<Path> removed) {
+		markCachesDirty();
 		Collection<Path> addedRoots = normalizeRoots(added);
 		Collection<Path> removedRoots = normalizeRoots(removed);
 		synchronized (workspaceRoots) {
@@ -196,6 +219,164 @@ public class ProjectsManager implements IProjectsManager {
 
 	@Override
 	public List<WorkspaceProject> listWorkspaceProjects() {
+		CacheValue<WorkspaceProject> cache = workspaceProjectsCache;
+		long now = System.nanoTime();
+		long generation = cacheGeneration;
+		if (isCacheFresh(cache, generation, now)) {
+			return cache.value;
+		}
+		synchronized (cacheLock) {
+			cache = workspaceProjectsCache;
+			now = System.nanoTime();
+			generation = cacheGeneration;
+			if (isCacheFresh(cache, generation, now)) {
+				return cache.value;
+			}
+			if (cache != null && now < rebuildNotBeforeNanos) {
+				return cache.value;
+			}
+			List<WorkspaceProject> rebuilt = Collections.unmodifiableList(computeWorkspaceProjects());
+			workspaceProjectsCache = new CacheValue<>(generation, now, rebuilt);
+			return rebuilt;
+		}
+	}
+
+	@Override
+	public List<JreContainerMapping> listNonStandardJreContainers() {
+		CacheValue<JreContainerMapping> cache = nonStandardJreContainersCache;
+		long now = System.nanoTime();
+		long generation = cacheGeneration;
+		if (isCacheFresh(cache, generation, now)) {
+			return new ArrayList<>(cache.value);
+		}
+		synchronized (cacheLock) {
+			cache = nonStandardJreContainersCache;
+			now = System.nanoTime();
+			generation = cacheGeneration;
+			if (isCacheFresh(cache, generation, now)) {
+				return new ArrayList<>(cache.value);
+			}
+			if (cache != null && now < rebuildNotBeforeNanos) {
+				return new ArrayList<>(cache.value);
+			}
+			List<JreContainerMapping> rebuilt = Collections.unmodifiableList(computeNonStandardJreContainers());
+			nonStandardJreContainersCache = new CacheValue<>(generation, now, rebuilt);
+			return new ArrayList<>(rebuilt);
+		}
+	}
+
+	@Override
+	public List<ClasspathContainerMapping> listClasspathContainers() {
+		CacheValue<ClasspathContainerMapping> cache = classpathContainersCache;
+		long now = System.nanoTime();
+		long generation = cacheGeneration;
+		if (isCacheFresh(cache, generation, now)) {
+			return new ArrayList<>(cache.value);
+		}
+		synchronized (cacheLock) {
+			cache = classpathContainersCache;
+			now = System.nanoTime();
+			generation = cacheGeneration;
+			if (isCacheFresh(cache, generation, now)) {
+				return new ArrayList<>(cache.value);
+			}
+			if (cache != null && now < rebuildNotBeforeNanos) {
+				return new ArrayList<>(cache.value);
+			}
+			List<ClasspathContainerMapping> rebuilt = Collections.unmodifiableList(computeClasspathContainers());
+			classpathContainersCache = new CacheValue<>(generation, now, rebuilt);
+			return new ArrayList<>(rebuilt);
+		}
+	}
+
+	@Override
+	public boolean isInitialized() {
+		return initialized;
+	}
+
+	@Override
+	public IWTPService getWTPService() {
+		return wtpService;
+	}
+
+	private IWorkspace getWorkspace() {
+		IWorkspace workspace = workspaceService == null ? null : workspaceService.getWorkspace();
+		return workspace == null ? ResourcesPlugin.getWorkspace() : workspace;
+	}
+
+	private IWorkspaceRoot getWorkspaceRoot() {
+		IWorkspace workspace = getWorkspace();
+		return workspace == null ? null : workspace.getRoot();
+	}
+
+	private void onWorkspaceChanged(IResourceChangeEvent event) {
+		if (shouldInvalidateCaches(event)) {
+			markCachesDirty();
+		}
+	}
+
+	private boolean shouldInvalidateCaches(IResourceChangeEvent event) {
+		if (event == null) {
+			return false;
+		}
+		IResourceDelta delta = event.getDelta();
+		if (delta == null) {
+			return true;
+		}
+		final boolean[] changed = new boolean[1];
+		try {
+			delta.accept(current -> {
+				if (changed[0]) {
+					return false;
+				}
+				if (isInvalidatingDelta(current)) {
+					changed[0] = true;
+					return false;
+				}
+				return true;
+			});
+		} catch (CoreException ce) {
+			return true;
+		}
+		return changed[0];
+	}
+
+	private boolean isInvalidatingDelta(IResourceDelta delta) {
+		if (delta == null) {
+			return false;
+		}
+		IResource resource = delta.getResource();
+		if (resource == null) {
+			return false;
+		}
+		if (resource.getType() == IResource.PROJECT) {
+			if (delta.getKind() == IResourceDelta.ADDED || delta.getKind() == IResourceDelta.REMOVED) {
+				return true;
+			}
+			int flags = delta.getFlags();
+			return (flags & (IResourceDelta.OPEN | IResourceDelta.TYPE | IResourceDelta.REPLACED)) != 0;
+		}
+		if (resource.getType() == IResource.FILE) {
+			String name = resource.getName();
+			return PROJECT_FILE.equals(name) || CLASSPATH_FILE.equals(name);
+		}
+		return false;
+	}
+
+	private void markCachesDirty() {
+		synchronized (cacheLock) {
+			cacheGeneration++;
+			rebuildNotBeforeNanos = System.nanoTime() + REBUILD_DEBOUNCE_NANOS;
+		}
+	}
+
+	private <T> boolean isCacheFresh(CacheValue<T> cache, long generation, long now) {
+		return cache != null
+				&& cache.generation == generation
+				&& (now - cache.createdAtNanos) <= CACHE_TTL_NANOS;
+	}
+
+	private List<WorkspaceProject> computeWorkspaceProjects() {
 		IWorkspaceRoot root = getWorkspaceRoot();
 		if (root == null) {
 			return Collections.emptyList();
@@ -207,11 +388,10 @@ public class ProjectsManager implements IProjectsManager {
 			Path path = location == null ? null : location.toFile().toPath();
 			result.add(new WorkspaceProject(project.getName(), path, project.isOpen()));
 		}
-		return Collections.unmodifiableList(result);
+		return result;
 	}
 
-	@Override
-	public List<JreContainerMapping> listNonStandardJreContainers() {
+	private List<JreContainerMapping> computeNonStandardJreContainers() {
 		List<WorkspaceProject> projects = listWorkspaceProjects();
 		if (projects.isEmpty()) {
 			return Collections.emptyList();
@@ -278,8 +458,7 @@ public class ProjectsManager implements IProjectsManager {
 		return mappings;
 	}
 
-	@Override
-	public List<ClasspathContainerMapping> listClasspathContainers() {
+	private List<ClasspathContainerMapping> computeClasspathContainers() {
 		List<WorkspaceProject> projects = listWorkspaceProjects();
 		if (projects.isEmpty()) {
 			return Collections.emptyList();
@@ -367,26 +546,6 @@ public class ProjectsManager implements IProjectsManager {
 			}
 		}
 		return mappings;
-	}
-
-	@Override
-	public boolean isInitialized() {
-		return initialized;
-	}
-
-	@Override
-	public IWTPService getWTPService() {
-		return wtpService;
-	}
-
-	private IWorkspace getWorkspace() {
-		IWorkspace workspace = workspaceService == null ? null : workspaceService.getWorkspace();
-		return workspace == null ? ResourcesPlugin.getWorkspace() : workspace;
-	}
-
-	private IWorkspaceRoot getWorkspaceRoot() {
-		IWorkspace workspace = getWorkspace();
-		return workspace == null ? null : workspace.getRoot();
 	}
 
 	private Collection<Path> getWorkspaceRootsSnapshot() {
@@ -580,5 +739,17 @@ public class ProjectsManager implements IProjectsManager {
 		}
 		return new MultiStatus(BUNDLE_ID, IStatus.ERROR,
 				failures.toArray(new IStatus[0]), "One or more projects failed to import", null);
+	}
+
+	private static final class CacheValue<T> {
+		private final long generation;
+		private final long createdAtNanos;
+		private final List<T> value;
+
+		private CacheValue(long generation, long createdAtNanos, List<T> value) {
+			this.generation = generation;
+			this.createdAtNanos = createdAtNanos;
+			this.value = value;
+		}
 	}
 }

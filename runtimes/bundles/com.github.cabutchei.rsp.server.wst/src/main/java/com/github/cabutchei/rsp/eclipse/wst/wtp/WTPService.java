@@ -11,8 +11,13 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IResourceChangeEvent;
+import org.eclipse.core.resources.IResourceChangeListener;
+import org.eclipse.core.resources.IResourceDelta;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
@@ -49,10 +54,18 @@ public class WTPService implements IWTPService {
 	private static final String KIND_FOLDER = "folder";
 	private static final String KIND_PROJECT = "project";
 	private static final String KIND_ARCHIVE = "archive";
+	private static final long WORKSPACE_DEPLOYABLES_TTL_NANOS = TimeUnit.SECONDS.toNanos(15);
+	private static final long REBUILD_DEBOUNCE_NANOS = TimeUnit.MILLISECONDS.toNanos(300);
 
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
+	private final Object workspaceDeployablesCacheLock = new Object();
+	private volatile long workspaceDeployablesGeneration = 1L;
+	private volatile long workspaceDeployablesRebuildNotBeforeNanos;
+	private volatile CacheValue<DeployableArtifact> workspaceDeployablesCache;
+	private final IResourceChangeListener workspaceChangeListener = this::onWorkspaceChanged;
 
 	public WTPService() {
+		ResourcesPlugin.getWorkspace().addResourceChangeListener(workspaceChangeListener, IResourceChangeEvent.POST_CHANGE);
 	}
 
 	@Override
@@ -62,13 +75,14 @@ public class WTPService implements IWTPService {
 			this.workspaceRoots.clear();
 			this.workspaceRoots.addAll(normalized);
 		}
+		invalidateWorkspaceDeployablesCache();
 	}
 
 	@Override
 	public List<DeployableArtifact> listDeployableResources(ServerHandle server) {
 		List<DeployableArtifact> deployables;
 		if (server == null) {
-			deployables = listWorkspaceDeployables();
+			deployables = getWorkspaceDeployablesCached();
 		} else {
 			deployables = listServerDeployables(server);
 		}
@@ -144,7 +158,11 @@ public class WTPService implements IWTPService {
 		} catch (CoreException ce) {
 			return errorStatus("Failed to open project " + project.getName(), ce);
 		}
-		return addDeploymentAssemblyEntryInternal(project, entry);
+		IStatus status = addDeploymentAssemblyEntryInternal(project, entry);
+		if (status != null && status.isOK()) {
+			invalidateWorkspaceDeployablesCache();
+		}
+		return status;
 	}
 
 	@Override
@@ -160,7 +178,11 @@ public class WTPService implements IWTPService {
 		} catch (CoreException ce) {
 			return errorStatus("Failed to open project " + project.getName(), ce);
 		}
-		return removeDeploymentAssemblyEntryInternal(project, entry);
+		IStatus status = removeDeploymentAssemblyEntryInternal(project, entry);
+		if (status != null && status.isOK()) {
+			invalidateWorkspaceDeployablesCache();
+		}
+		return status;
 	}
 
 	@Override
@@ -580,7 +602,30 @@ public class WTPService implements IWTPService {
 		return handler == null ? new JavaEEModuleHandler() : handler;
 	}
 
-	private List<DeployableArtifact> listWorkspaceDeployables() {
+	private List<DeployableArtifact> getWorkspaceDeployablesCached() {
+		CacheValue<DeployableArtifact> cache = workspaceDeployablesCache;
+		long now = System.nanoTime();
+		long generation = workspaceDeployablesGeneration;
+		if (isCacheFresh(cache, generation, now)) {
+			return cache.value;
+		}
+		synchronized (workspaceDeployablesCacheLock) {
+			cache = workspaceDeployablesCache;
+			now = System.nanoTime();
+			generation = workspaceDeployablesGeneration;
+			if (isCacheFresh(cache, generation, now)) {
+				return cache.value;
+			}
+			if (cache != null && now < workspaceDeployablesRebuildNotBeforeNanos) {
+				return cache.value;
+			}
+			List<DeployableArtifact> rebuilt = Collections.unmodifiableList(computeWorkspaceDeployables());
+			workspaceDeployablesCache = new CacheValue<>(generation, now, rebuilt);
+			return rebuilt;
+		}
+	}
+
+	private List<DeployableArtifact> computeWorkspaceDeployables() {
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
 		IProject[] projects = root.getProjects();
 		if (projects == null || projects.length == 0) {
@@ -600,7 +645,7 @@ public class WTPService implements IWTPService {
 				result.add(new DeployableArtifact(null, project.getName(), label, projectPath, typeId));
 			}
 		}
-		return Collections.unmodifiableList(result);
+		return result;
 	}
 
 	private IStatus errorStatus(String message, Throwable t) {
@@ -652,6 +697,76 @@ public class WTPService implements IWTPService {
 		}
 	}
 
+	private void onWorkspaceChanged(IResourceChangeEvent event) {
+		if (shouldInvalidateWorkspaceDeployables(event)) {
+			invalidateWorkspaceDeployablesCache();
+		}
+	}
+
+	private boolean shouldInvalidateWorkspaceDeployables(IResourceChangeEvent event) {
+		if (event == null) {
+			return false;
+		}
+		IResourceDelta delta = event.getDelta();
+		if (delta == null) {
+			return true;
+		}
+		final boolean[] changed = new boolean[1];
+		try {
+			delta.accept(current -> {
+				if (changed[0]) {
+					return false;
+				}
+				if (isInvalidatingDelta(current)) {
+					changed[0] = true;
+					return false;
+				}
+				return true;
+			});
+		} catch (CoreException ce) {
+			return true;
+		}
+		return changed[0];
+	}
+
+	private boolean isInvalidatingDelta(IResourceDelta delta) {
+		if (delta == null) {
+			return false;
+		}
+		IResource resource = delta.getResource();
+		if (resource == null) {
+			return false;
+		}
+		if (resource.getType() == IResource.PROJECT) {
+			if (delta.getKind() == IResourceDelta.ADDED || delta.getKind() == IResourceDelta.REMOVED) {
+				return true;
+			}
+			int flags = delta.getFlags();
+			return (flags & (IResourceDelta.OPEN | IResourceDelta.TYPE | IResourceDelta.REPLACED)) != 0;
+		}
+		if (resource.getType() == IResource.FILE) {
+			String name = resource.getName();
+			return ".project".equals(name)
+					|| ".classpath".equals(name)
+					|| "org.eclipse.wst.common.component".equals(name)
+					|| "org.eclipse.wst.common.project.facet.core.xml".equals(name);
+		}
+		return false;
+	}
+
+	private void invalidateWorkspaceDeployablesCache() {
+		synchronized (workspaceDeployablesCacheLock) {
+			workspaceDeployablesGeneration++;
+			workspaceDeployablesRebuildNotBeforeNanos = System.nanoTime() + REBUILD_DEBOUNCE_NANOS;
+		}
+	}
+
+	private <T> boolean isCacheFresh(CacheValue<T> cache, long generation, long now) {
+		return cache != null
+				&& cache.generation == generation
+				&& (now - cache.createdAtNanos) <= WORKSPACE_DEPLOYABLES_TTL_NANOS;
+	}
+
 	private Collection<Path> normalizeRoots(Collection<Path> roots) {
 		if (roots == null || roots.isEmpty()) {
 			return Collections.emptyList();
@@ -673,5 +788,17 @@ public class WTPService implements IWTPService {
 			}
 		}
 		return false;
+	}
+
+	private static final class CacheValue<T> {
+		private final long generation;
+		private final long createdAtNanos;
+		private final List<T> value;
+
+		private CacheValue(long generation, long createdAtNanos, List<T> value) {
+			this.generation = generation;
+			this.createdAtNanos = createdAtNanos;
+			this.value = value;
+		}
 	}
 }

@@ -9,6 +9,7 @@ import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
 import com.github.cabutchei.rsp.eclipse.wst.api.WstServerManagementModelFactory;
 import com.github.cabutchei.rsp.eclipse.wst.core.WSTServerManager;
 import com.github.cabutchei.rsp.eclipse.wst.model.launch.ServerLaunchMonitor;
+import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.ServerManagementServerLauncher;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceInitializationService;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
@@ -18,8 +19,6 @@ import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-
 
 public class WstBootstrapActivator implements BundleActivator {
 	private static final Logger LOG = LoggerFactory.getLogger(WstBootstrapActivator.class);
@@ -38,12 +37,14 @@ public class WstBootstrapActivator implements BundleActivator {
 				: null;
 		ServerManagementServerLauncher.setServerManagementModelFactory(new WstServerManagementModelFactory(
 				serverManager, workspaceService, workspaceInitializationService));
+		ServerCoreActivator.setLauncherFactory(WstServerManagementServerLauncher::new);
 		bootstrap();
 	}
 
 	@Override
 	public void stop(BundleContext context) {
 		ServerLaunchMonitor.getInstance().stop();
+		ServerCoreActivator.clearLauncherFactory();
 		ServerManagementServerLauncher.clearServerManagementModelFactory();
 		serverManager = null;
 		workspaceInitializationService = null;

@@ -21,7 +21,21 @@ public class ServerCoreActivator implements BundleActivator {
 
 	public static final String BUNDLE_ID = "com.github.cabutchei.rsp.server";
 	private static final Logger LOG = LoggerFactory.getLogger(ServerCoreActivator.class);
+	private static volatile ILauncherFactory launcherFactory;
 	private BundleContext context;
+
+	@FunctionalInterface
+	public interface ILauncherFactory {
+		ServerManagementServerLauncher createLauncher(String portString);
+	}
+
+	public static void setLauncherFactory(ILauncherFactory factory) {
+		launcherFactory = factory;
+	}
+
+	public static void clearLauncherFactory() {
+		launcherFactory = null;
+	}
 
 	@Override
 	public void start(final BundleContext context) throws Exception {
@@ -39,13 +53,25 @@ public class ServerCoreActivator implements BundleActivator {
 		return RSPFlags.getServerPort();
 	}
 
+	private ServerManagementServerLauncher resolveLauncher(int port) {
+		ServerManagementServerLauncher launcher = LauncherSingleton.getDefault().getLauncher();
+		if (launcher != null) {
+			return launcher;
+		}
+		ILauncherFactory factory = launcherFactory;
+		ServerManagementServerLauncher created = factory != null
+				? factory.createLauncher(String.valueOf(port))
+				: new ServerManagementServerLauncher(String.valueOf(port));
+		LauncherSingleton.getDefault().setLauncher(created);
+		return created;
+	}
+
 	private void startServer() {
 		int port = getPort();
 		ServerManagementServerLauncher launcher = null;
 		
 		try {
-			launcher = new ServerManagementServerLauncher(""+port);
-			LauncherSingleton.getDefault().setLauncher(launcher);
+			launcher = resolveLauncher(port);
 		} catch(RuntimeException re) {
 			LOG.error("Unable to launch RSP server", re);
 			performStop();

@@ -41,6 +41,11 @@ public interface IProjectsManager extends IWTPServiceProvider {
 	IStatus refreshProject(String projectName);
 
 	/**
+	 * Enable or disable workspace auto-building.
+	 */
+	IStatus setAutoBuilding(boolean enabled);
+
+	/**
 	 * Initialize the workspace projects from the provided workspace roots.
 	 * 
 	 * @param workspaceRoots workspace roots to initialize
@@ -65,6 +70,16 @@ public interface IProjectsManager extends IWTPServiceProvider {
 	 * install.
 	 */
 	List<JreContainerMapping> listNonStandardJreContainers();
+
+	/**
+	 * List glob-like watch patterns the client should monitor.
+	 */
+	List<String> getWatchPatterns();
+
+	/**
+	 * React to a watched-file change.
+	 */
+	IStatus fileChanged(Path path, int changeType);
 
 	/**
 	 * List classpath containers from workspace Java projects, including their

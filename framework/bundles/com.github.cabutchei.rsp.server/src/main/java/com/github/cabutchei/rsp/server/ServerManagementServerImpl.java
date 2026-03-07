@@ -40,8 +40,11 @@ import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.api.dao.DiscoveryPath;
 import com.github.cabutchei.rsp.api.dao.DownloadRuntimeDescription;
 import com.github.cabutchei.rsp.api.dao.DownloadSingleRuntimeRequest;
+import com.github.cabutchei.rsp.api.dao.DidChangeWatchedFilesParams;
 import com.github.cabutchei.rsp.api.dao.DidChangeWorkspaceFoldersParams;
 import com.github.cabutchei.rsp.api.dao.GetServerJsonResponse;
+import com.github.cabutchei.rsp.api.dao.InitializeParams;
+import com.github.cabutchei.rsp.api.dao.InitializeResult;
 import com.github.cabutchei.rsp.api.dao.JobHandle;
 import com.github.cabutchei.rsp.api.dao.JobProgress;
 import com.github.cabutchei.rsp.api.dao.ClasspathContainerEntry;
@@ -104,7 +107,10 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeploymentAssemblyEntry;
 import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import com.github.cabutchei.rsp.server.spi.workspace.IWTPService;
+import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceInitializationService;
+import com.github.cabutchei.rsp.server.workspace.InitHandler;
 import com.github.cabutchei.rsp.server.workspace.WorkspaceFolderChangeHandler;
+import com.github.cabutchei.rsp.server.workspace.WorkspaceEventsHandler;
 
 
 
@@ -117,6 +123,8 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	
 	private final IServerManagementModel managementModel;
 	private final RemoteEventManager remoteEventManager;
+	private final InitHandler initHandler;
+	private final WorkspaceEventsHandler workspaceEventsHandler;
 	private ServerManagementServerLauncher launcher;
 	
 	public ServerManagementServerImpl(ServerManagementServerLauncher launcher, 
@@ -124,6 +132,9 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		this.launcher = launcher;
 		this.managementModel = managementModel;
 		this.remoteEventManager = createRemoteEventManager();
+		IProjectsManager projectsManager = getProjectsManager();
+		this.initHandler = new InitHandler(managementModel, projectsManager);
+		this.workspaceEventsHandler = new WorkspaceEventsHandler(projectsManager);
 	}
 	
 	protected RemoteEventManager createRemoteEventManager() {
@@ -159,6 +170,10 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		this.launchers.remove(launcher);
 		this.managementModel.clientRemoved(launcher.getRemoteProxy());
 		this.clients.remove(launcher.getRemoteProxy());
+		IWorkspaceInitializationService initializationService = getWorkspaceInitializationService();
+		if (initializationService != null) {
+			initializationService.releaseInitialization(toClientId(launcher.getRemoteProxy()));
+		}
 		LOG.info("removeClient: now {} active launchers, {} clients", this.launchers.size(), this.clients.size());
 	}
 	
@@ -915,12 +930,41 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 				: null;
 	}
 
+	private IWorkspaceInitializationService getWorkspaceInitializationService() {
+		IWorkspaceModelCapability capability = getWorkspaceModelCapability();
+		return capability == null ? null : capability.getWorkspaceInitializationService();
+	}
+
+	private String toClientId(RSPWTPClient client) {
+		if (client == null) {
+			return null;
+		}
+		return "client-" + Integer.toHexString(System.identityHashCode(client));
+	}
+
+	@Override
+	public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
+		return createCompletableFuture(() -> initializeSync(params));
+	}
+
+	private InitializeResult initializeSync(InitializeParams params) {
+		InitializeResult result = initHandler.initialize(params);
+		notifyJdtlsJreContainers();
+		notifyJdtlsClasspathContainers();
+		return result;
+	}
+
 	@Override
 	public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params) {
 		WorkspaceFolderChangeHandler handler = new WorkspaceFolderChangeHandler(getProjectsManager());
 		handler.update(params);
 		notifyJdtlsJreContainers();
 		notifyJdtlsClasspathContainers();
+	}
+
+	@Override
+	public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
+		workspaceEventsHandler.didChangeWatchedFiles(params);
 	}
 
 	private void notifyJdtlsJreContainers() {

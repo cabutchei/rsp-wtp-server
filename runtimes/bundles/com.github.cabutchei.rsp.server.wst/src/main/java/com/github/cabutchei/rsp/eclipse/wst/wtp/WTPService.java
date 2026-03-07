@@ -32,6 +32,7 @@ import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.IModuleType;
 import org.eclipse.wst.server.core.ServerCore;
 import org.eclipse.wst.server.core.ServerUtil;
+import org.eclipse.wst.server.core.internal.ServerPreferences;
 
 import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
@@ -49,6 +50,9 @@ public class WTPService implements IWTPService {
 	private static final String KIND_FOLDER = "folder";
 	private static final String KIND_PROJECT = "project";
 	private static final String KIND_ARCHIVE = "archive";
+	private static final String PROP_AUTO_PUBLISH_SETTING = "auto-publish-setting";
+	private static final int AUTO_PUBLISH_DISABLE = 1;
+	private static final int AUTO_PUBLISH_RESOURCE = 2;
 
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
 
@@ -171,6 +175,39 @@ public class WTPService implements IWTPService {
 	@Override
 	public IStatus updateFacets(String projectName, List<String> add, List<String> remove) {
 		return errorStatus("Facet operations are not implemented", null);
+	}
+
+	@Override
+	public IStatus setGlobalAutoPublishing(boolean enabled) {
+		try {
+			if (ServerCore.isAutoPublishing() != enabled) {
+				ServerPreferences.getInstance().setAutoPublishing(enabled);
+			}
+			return okStatus();
+		} catch (Exception e) {
+			return errorStatus("Failed to set global auto-publishing", e);
+		}
+	}
+
+	@Override
+	public IStatus setAutoPublishingForAllServers(boolean enabled) {
+		int setting = enabled ? AUTO_PUBLISH_RESOURCE : AUTO_PUBLISH_DISABLE;
+		NullProgressMonitor monitor = new NullProgressMonitor();
+		for (org.eclipse.wst.server.core.IServer server : ServerCore.getServers()) {
+			if (server == null) {
+				continue;
+			}
+			try {
+				org.eclipse.wst.server.core.IServerWorkingCopy wc = server.createWorkingCopy();
+				if (wc.getAttribute(PROP_AUTO_PUBLISH_SETTING, AUTO_PUBLISH_RESOURCE) != setting) {
+					wc.setAttribute(PROP_AUTO_PUBLISH_SETTING, setting);
+					wc.save(false, monitor);
+				}
+			} catch (CoreException e) {
+				return errorStatus("Failed to set auto-publish setting for server " + server.getId(), e);
+			}
+		}
+		return okStatus();
 	}
 
 	private List<DeployableArtifact> listServerDeployables(ServerHandle server) {
@@ -605,6 +642,10 @@ public class WTPService implements IWTPService {
 
 	private IStatus errorStatus(String message, Throwable t) {
 		return new Status(IStatus.ERROR, BUNDLE_ID, message, t);
+	}
+
+	private IStatus okStatus() {
+		return new Status(IStatus.OK, BUNDLE_ID, "OK");
 	}
 
 	private IProject resolveProject(Path projectPath, String projectName) {

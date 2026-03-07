@@ -19,7 +19,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstRspMapper;
-import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerCore;
 import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandler;
 import com.github.cabutchei.rsp.eclipse.wst.api.WstServerTypeHandlerRegistry;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerAdapter;
@@ -33,8 +33,9 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 /**
  * Boundary for WST ServerCore server discovery/proxying and server creation.
  */
-public class WSTServerManager implements IWstServerManager {
-	private static final Logger LOG = LoggerFactory.getLogger(WSTServerManager.class);
+public class WSTServerCore implements IWstServerCore {
+	private static final Logger LOG = LoggerFactory.getLogger(WSTServerCore.class);
+	private static final String BUNDLE_ID = "com.github.cabutchei.rsp.server.wst";
 	private static final String PROP_AUTO_PUBLISH_SETTING = "auto-publish-setting";
 	private static final int AUTO_PUBLISH_DISABLE = 1;
 	private static final int AUTO_PUBLISH_RESOURCE = 2;
@@ -52,16 +53,22 @@ public class WSTServerManager implements IWstServerManager {
 	}
 
 	@Override
-	public void setGlobalAutoPublishing(boolean enabled) {
-		if (ServerCore.isAutoPublishing() != enabled) {
-			ServerPreferences.getInstance().setAutoPublishing(enabled);
+	public IStatus setGlobalAutoPublishing(boolean enabled) {
+		try {
+			if (ServerCore.isAutoPublishing() != enabled) {
+				ServerPreferences.getInstance().setAutoPublishing(enabled);
+			}
+			return Status.OK_STATUS;
+		} catch (Exception e) {
+			return new Status(IStatus.ERROR, BUNDLE_ID, "Failed to set global auto-publishing", e);
 		}
 	}
 
 	@Override
-	public void setAutoPublishingForAllServers(boolean enabled) {
+	public IStatus setAutoPublishingForAllServers(boolean enabled) {
 		int setting = enabled ? AUTO_PUBLISH_RESOURCE : AUTO_PUBLISH_DISABLE;
 		IProgressMonitor monitor = new NullProgressMonitor();
+		IStatus firstError = null;
 		for (org.eclipse.wst.server.core.IServer server : ServerCore.getServers()) {
 			if (server == null) {
 				continue;
@@ -74,8 +81,13 @@ public class WSTServerManager implements IWstServerManager {
 				}
 			} catch (org.eclipse.core.runtime.CoreException e) {
 				LOG.warn("Failed to set auto-publish setting for server {}", server.getId(), e);
+				if (firstError == null) {
+					firstError = new Status(IStatus.ERROR, BUNDLE_ID,
+							"Failed to set auto-publish setting for server " + server.getId(), e);
+				}
 			}
 		}
+		return firstError == null ? Status.OK_STATUS : firstError;
 	}
 
 	@Override

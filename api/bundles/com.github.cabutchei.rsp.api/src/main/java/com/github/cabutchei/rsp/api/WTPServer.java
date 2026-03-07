@@ -13,10 +13,13 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.services.JsonSegment;
+import com.github.cabutchei.rsp.api.dao.DidChangeWatchedFilesParams;
 import com.github.cabutchei.rsp.api.dao.DeploymentAssemblyRequest;
 import com.github.cabutchei.rsp.api.dao.DeploymentAssemblyResponse;
 import com.github.cabutchei.rsp.api.dao.DeploymentAssemblyUpdateRequest;
 import com.github.cabutchei.rsp.api.dao.DidChangeWorkspaceFoldersParams;
+import com.github.cabutchei.rsp.api.dao.InitializeParams;
+import com.github.cabutchei.rsp.api.dao.InitializeResult;
 import com.github.cabutchei.rsp.api.dao.ListDeployableResourcesResponse;
 import com.github.cabutchei.rsp.api.dao.ListWorkspaceProjectsResponse;
 import com.github.cabutchei.rsp.api.dao.ServerHandle;
@@ -24,6 +27,13 @@ import com.github.cabutchei.rsp.api.dao.Status;
 
 @JsonSegment("wtpServer")
 public interface WTPServer {
+	/**
+	 * The `workspace/initialize` request is sent by the client to
+	 * initialize workspace folders and bootstrap workspace-specific behavior.
+	 */
+	@JsonRequest
+	CompletableFuture<InitializeResult> initialize(InitializeParams params);
+
 	/**
 	 * The `workspace/getDeployableResources` request is sent by the client to
 	 * fetch a list of deployable resources from the current workspace.
@@ -73,4 +83,11 @@ public interface WTPServer {
 	 */
 	@JsonNotification
 	void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params);
+
+	/**
+	 * The `workspace/didChangeWatchedFiles` notification is sent by the client
+	 * to inform the server about watched-file changes.
+	 */
+	@JsonNotification
+	void didChangeWatchedFiles(DidChangeWatchedFilesParams params);
 }

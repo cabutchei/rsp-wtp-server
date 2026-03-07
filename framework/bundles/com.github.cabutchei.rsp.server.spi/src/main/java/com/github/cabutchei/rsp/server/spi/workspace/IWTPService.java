@@ -18,7 +18,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 /**
  * WTP-specific project/deployable operations.
  */
-public interface IWTPService {
+public interface IWTPService extends IWTPConfiguration {
 	/**
 	 * Set current workspace roots for filtering workspace-scoped results.
 	 */
@@ -37,4 +37,5 @@ public interface IWTPService {
 	IStatus ensureFacets(String projectName, List<String> facetIds);
 
 	IStatus updateFacets(String projectName, List<String> add, List<String> remove);
+
 }

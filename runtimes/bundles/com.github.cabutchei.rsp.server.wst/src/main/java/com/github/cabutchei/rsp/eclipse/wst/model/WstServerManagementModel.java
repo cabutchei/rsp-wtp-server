@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.Objects;
 
 import com.github.cabutchei.rsp.eclipse.workspace.ProjectsManager;
-import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerCore;
 import com.github.cabutchei.rsp.eclipse.wst.wtp.WTPService;
 import com.github.cabutchei.rsp.server.model.ServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.model.IDataStoreModel;
@@ -18,11 +18,11 @@ import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
 
 
 public class WstServerManagementModel extends ServerManagementModel implements IWorkspaceModelCapability {
-	private static final ThreadLocal<IWstServerManager> PENDING_SERVER_MANAGER = new ThreadLocal<>();
+	private static final ThreadLocal<IWstServerCore> PENDING_SERVER_MANAGER = new ThreadLocal<>();
 	private final IProjectsManager projectsManager;
 	private final IWorkspaceInitializationService workspaceInitializationService;
 
-	public WstServerManagementModel(IDataStoreModel dataLocation, IWstServerManager serverManager,
+	public WstServerManagementModel(IDataStoreModel dataLocation, IWstServerCore serverManager,
 			IWorkspaceService workspaceService, IWorkspaceInitializationService workspaceInitializationService) {
 		super(captureDependencies(dataLocation, Objects.requireNonNull(serverManager, "serverManager")));
 		PENDING_SERVER_MANAGER.remove();
@@ -38,7 +38,7 @@ public class WstServerManagementModel extends ServerManagementModel implements I
 
 	@Override
 	protected IServerModel createServerModel() {
-		IWstServerManager serverManager = PENDING_SERVER_MANAGER.get();
+		IWstServerCore serverManager = PENDING_SERVER_MANAGER.get();
 		if (serverManager == null) {
 			throw new IllegalStateException("WST dependencies must be provided before createServerModel()");
 		}
@@ -55,7 +55,7 @@ public class WstServerManagementModel extends ServerManagementModel implements I
 		return workspaceInitializationService;
 	}
 
-	private static IDataStoreModel captureDependencies(IDataStoreModel dataLocation, IWstServerManager serverManager) {
+	private static IDataStoreModel captureDependencies(IDataStoreModel dataLocation, IWstServerCore serverManager) {
 		PENDING_SERVER_MANAGER.set(Objects.requireNonNull(serverManager, "serverManager"));
 		return dataLocation;
 	}

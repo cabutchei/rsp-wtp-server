@@ -18,6 +18,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.IWorkspaceDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
@@ -50,10 +51,27 @@ public class ProjectsManager implements IProjectsManager {
 	private static final Logger LOG = LoggerFactory.getLogger(ProjectsManager.class);
 	private static final String BUNDLE_ID = "com.github.cabutchei.rsp.workspace.eclipse";
 	private static final String PROJECT_FILE = ".project";
+	private static final int FILE_CHANGE_CREATED = 1;
+	private static final int FILE_CHANGE_CHANGED = 2;
+	private static final int FILE_CHANGE_DELETED = 3;
+	private static final List<String> DEFAULT_WATCH_PATTERNS = Collections.unmodifiableList(Arrays.asList(
+			"**/.project",
+			"**/.classpath",
+			"**/.settings/org.eclipse.jdt.core.prefs",
+			"**/pom.xml",
+			"**/build.gradle",
+			"**/build.gradle.kts",
+			"**/settings.gradle",
+			"**/settings.gradle.kts",
+			"**/gradle.properties",
+			"**/META-INF/MANIFEST.MF",
+			"**/build.properties",
+			"**/*.java"));
 
 	private final IWorkspaceService workspaceService;
 	private final IWTPService wtpService;
 	private final List<IProjectImporter> projectImporters;
+	private final List<String> watchPatterns;
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
 	private boolean initialized;
 
@@ -65,6 +83,7 @@ public class ProjectsManager implements IProjectsManager {
 		this.workspaceService = workspaceService;
 		this.wtpService = wtpService;
 		this.projectImporters = projectImporters == null ? Collections.emptyList() : new ArrayList<>(projectImporters);
+		this.watchPatterns = new ArrayList<>(DEFAULT_WATCH_PATTERNS);
 	}
 
 	private IProject getProject(String projectName) {
@@ -158,8 +177,28 @@ public class ProjectsManager implements IProjectsManager {
 	}
 
 	@Override
+	public IStatus setAutoBuilding(boolean enabled) {
+		IWorkspace workspace = getWorkspace();
+		if (workspace == null) {
+			return Status.OK_STATUS;
+		}
+		try {
+			IWorkspaceDescription description = workspace.getDescription();
+			boolean changed = description.isAutoBuilding() != enabled;
+			if (changed) {
+				description.setAutoBuilding(enabled);
+				workspace.setDescription(description);
+			}
+			return Status.OK_STATUS;
+		} catch (CoreException ce) {
+			return errorStatus("Failed to set workspace auto-building", ce);
+		}
+	}
+
+	@Override
 	public void initializeProjects(Collection<Path> workspaceRoots) {
 		Collection<Path> normalizedRoots = normalizeRoots(workspaceRoots);
+		Collection<Path> previousRoots = getWorkspaceRootsSnapshot();
 		synchronized (this.workspaceRoots) {
 			this.workspaceRoots.clear();
 			this.workspaceRoots.addAll(normalizedRoots);
@@ -167,6 +206,7 @@ public class ProjectsManager implements IProjectsManager {
 		if (wtpService != null) {
 			wtpService.setWorkspaceRoots(normalizedRoots);
 		}
+		removeProjects(diff(previousRoots, normalizedRoots));
 		initialized = true;
 		IStatus importStatus = importProjects(discoverProjectsUnderRoots(normalizedRoots));
 		if (!importStatus.isOK()) {
@@ -276,6 +316,28 @@ public class ProjectsManager implements IProjectsManager {
 			}
 		}
 		return mappings;
+	}
+
+	@Override
+	public List<String> getWatchPatterns() {
+		return Collections.unmodifiableList(new ArrayList<>(watchPatterns));
+	}
+
+	@Override
+	public IStatus fileChanged(Path path, int changeType) {
+		if (path == null) {
+			return errorStatus("Changed path cannot be null", null);
+		}
+		Path normalized = path.toAbsolutePath().normalize();
+		if (PROJECT_FILE.equals(normalized.getFileName() == null ? null : normalized.getFileName().toString())
+				&& (changeType == FILE_CHANGE_CREATED || changeType == FILE_CHANGE_CHANGED)) {
+			return importAllWorkspaceProjects();
+		}
+		IProject project = findProjectForPath(normalized);
+		if (project == null || !project.exists()) {
+			return Status.OK_STATUS;
+		}
+		return refreshProject(project.getName());
 	}
 
 	@Override
@@ -505,6 +567,41 @@ public class ProjectsManager implements IProjectsManager {
 			}
 		}
 		return false;
+	}
+
+	private Collection<Path> diff(Collection<Path> source, Collection<Path> target) {
+		if (source == null || source.isEmpty()) {
+			return Collections.emptyList();
+		}
+		Set<Path> targetSet = target == null ? Collections.emptySet() : new HashSet<>(target);
+		List<Path> diff = new ArrayList<>();
+		for (Path sourcePath : source) {
+			if (sourcePath != null && !targetSet.contains(sourcePath)) {
+				diff.add(sourcePath);
+			}
+		}
+		return diff;
+	}
+
+	private IProject findProjectForPath(Path normalizedPath) {
+		IWorkspaceRoot root = getWorkspaceRoot();
+		if (root == null) {
+			return null;
+		}
+		for (IProject project : root.getProjects()) {
+			if (project == null || !project.exists()) {
+				continue;
+			}
+			IPath location = project.getLocation();
+			if (location == null) {
+				continue;
+			}
+			Path projectPath = location.toFile().toPath().toAbsolutePath().normalize();
+			if (normalizedPath.startsWith(projectPath)) {
+				return project;
+			}
+		}
+		return null;
 	}
 
 	private boolean isNonStandardJreContainer(IPath containerPath) {

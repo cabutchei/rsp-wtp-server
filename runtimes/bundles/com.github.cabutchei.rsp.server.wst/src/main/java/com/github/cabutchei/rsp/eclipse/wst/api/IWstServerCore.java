@@ -7,14 +7,13 @@ import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
+import com.github.cabutchei.rsp.server.spi.workspace.IWTPConfiguration;
 
-public interface IWstServerManager {
+public interface IWstServerCore extends IWTPConfiguration {
 	IServer[] loadServers(IServerManagementModel managementModel);
 
 	IServerWorkingCopy createServer(IServerType serverType, String id, Map<String, Object> attributes,
 			IServerManagementModel model) throws CoreException;
 
-	void setGlobalAutoPublishing(boolean enabled);
-	void setAutoPublishingForAllServers(boolean enabled);
 	default void updateServerStatus() {}
 }

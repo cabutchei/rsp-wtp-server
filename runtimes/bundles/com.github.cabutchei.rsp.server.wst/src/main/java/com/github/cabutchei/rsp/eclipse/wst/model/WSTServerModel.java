@@ -33,7 +33,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.MultiStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
-import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerManager;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerCore;
 import com.github.cabutchei.rsp.eclipse.wst.model.launch.ServerLaunchMonitor;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerAdapter;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerWorkingCopyAdapter;
@@ -63,7 +63,7 @@ public class WSTServerModel implements IServerModel {
 
 	private static final String SERVERS_DIRECTORY = "servers";
 
-	private final IWstServerManager wstServerManager;
+	private final IWstServerCore wstServerManager;
 	private final Map<String, IServerType> serverTypes;
 	private final Map<String, IServer> servers;
 	private final Map<String, IServerDelegate> serverDelegates;
@@ -71,13 +71,13 @@ public class WSTServerModel implements IServerModel {
 	private final Set<String> approvedAttributeTypes = new HashSet<>();
 	private final IServerManagementModel managementModel;
 
-	public WSTServerModel(IServerManagementModel managementModel, IWstServerManager wstServerManager) {
+	public WSTServerModel(IServerManagementModel managementModel, IWstServerCore wstServerManager) {
 		this(managementModel, wstServerManager, new HashMap<String, IServerType>(), new HashMap<String, IServer>(),
 				new HashMap<String, IServerDelegate>());
 	}
 
 	/** for testing purposes **/
-	protected WSTServerModel(IServerManagementModel managementModel, IWstServerManager wstServerManager,
+	protected WSTServerModel(IServerManagementModel managementModel, IWstServerCore wstServerManager,
 			Map<String, IServerType> serverTypes, Map<String, IServer> servers, Map<String, IServerDelegate> delegates) {
 		this.wstServerManager = Objects.requireNonNull(wstServerManager, "wstServerManager");
 		this.serverTypes = serverTypes;

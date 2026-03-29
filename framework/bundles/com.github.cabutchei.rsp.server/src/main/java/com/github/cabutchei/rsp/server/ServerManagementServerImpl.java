@@ -919,6 +919,13 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		return projectsManager == null ? null : projectsManager.getWTPService();
 	}
 
+	private void invalidateDeployableResourceCache(ServerHandle server) {
+		IWTPService wtpService = getWTPService(getProjectsManager());
+		if (wtpService != null) {
+			wtpService.invalidateDeployableResourceCache(server);
+		}
+	}
+
 	private IProjectsManager getProjectsManager() {
 		IWorkspaceModelCapability capability = getWorkspaceModelCapability();
 		return capability == null ? null : capability.getProjectsManager();
@@ -1141,6 +1148,9 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			return errorStatus( "Server " + serverId + " not found.");
 		}
 		IStatus stat = managementModel.getServerModel().addDeployable(server, req.getDeployableReference());
+		if (stat != null && stat.isOK()) {
+			invalidateDeployableResourceCache(req.getServer());
+		}
 		return StatusConverter.convert(stat);
 	}
 	
@@ -1159,6 +1169,9 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		}
 
 		IStatus stat = managementModel.getServerModel().removeDeployable(server, reference.getDeployableReference());
+		if (stat != null && stat.isOK()) {
+			invalidateDeployableResourceCache(reference.getServer());
+		}
 		return StatusConverter.convert(stat);
 	}
 

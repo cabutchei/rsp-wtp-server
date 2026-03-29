@@ -326,6 +326,9 @@ public class ProjectsManager implements IProjectsManager {
 		if (path == null) {
 			return errorStatus("Changed path cannot be null", null);
 		}
+		if (wtpService != null) {
+			wtpService.invalidateDeployableResourceCache();
+		}
 		Path normalized = path.toAbsolutePath().normalize();
 		if (PROJECT_FILE.equals(normalized.getFileName() == null ? null : normalized.getFileName().toString())
 				&& (changeType == FILE_CHANGE_CREATED || changeType == FILE_CHANGE_CHANGED)) {

@@ -24,6 +24,10 @@ public interface IWTPService extends IWTPConfiguration {
 	 */
 	void setWorkspaceRoots(Collection<Path> workspaceRoots);
 
+	void invalidateDeployableResourceCache();
+
+	void invalidateDeployableResourceCache(ServerHandle server);
+
 	List<DeployableArtifact> listDeployableResources(ServerHandle server);
 
 	List<WorkspaceProject> listDeploymentAssemblyProjects(Path projectPath, String projectName);

@@ -6,10 +6,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.core.resources.IProject;
@@ -55,6 +57,9 @@ public class WTPService implements IWTPService {
 	private static final int AUTO_PUBLISH_RESOURCE = 2;
 
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
+	private final Object deployableCacheLock = new Object();
+	private volatile List<DeployableArtifact> workspaceDeployablesCache;
+	private final Map<String, List<DeployableArtifact>> serverDeployablesCache = new ConcurrentHashMap<>();
 
 	public WTPService() {
 	}
@@ -66,6 +71,24 @@ public class WTPService implements IWTPService {
 			this.workspaceRoots.clear();
 			this.workspaceRoots.addAll(normalized);
 		}
+		invalidateDeployableResourceCache();
+	}
+
+	@Override
+	public void invalidateDeployableResourceCache() {
+		synchronized (deployableCacheLock) {
+			workspaceDeployablesCache = null;
+			serverDeployablesCache.clear();
+		}
+	}
+
+	@Override
+	public void invalidateDeployableResourceCache(ServerHandle server) {
+		if (server == null || server.getId() == null || server.getId().isBlank()) {
+			invalidateDeployableResourceCache();
+			return;
+		}
+		serverDeployablesCache.remove(server.getId());
 	}
 
 	@Override
@@ -214,6 +237,13 @@ public class WTPService implements IWTPService {
 		if (server == null) {
 			return Collections.emptyList();
 		}
+		String serverId = server.getId();
+		if (serverId != null) {
+			List<DeployableArtifact> cached = serverDeployablesCache.get(serverId);
+			if (cached != null) {
+				return cached;
+			}
+		}
 		org.eclipse.wst.server.core.IServer wstServer = ServerCore.findServer(server.getId());
 		if (wstServer == null || wstServer.getServerType() == null || wstServer.getServerType().getRuntimeType() == null) {
 			return Collections.emptyList();
@@ -270,7 +300,11 @@ public class WTPService implements IWTPService {
 			String typeId = module.getModuleType() == null ? null : module.getModuleType().getId();
 				results.add(new DeployableArtifact(moduleId, project.getName(), ServerUtil.getModuleDisplayName(module), deployPath, typeId));
 		}
-		return results;
+		List<DeployableArtifact> cached = Collections.unmodifiableList(new ArrayList<>(results));
+		if (serverId != null) {
+			serverDeployablesCache.put(serverId, cached);
+		}
+		return cached;
 	}
 
 	private List<IProject> listAvailableDeploymentAssemblyProjects(Path projectPath, String projectName) {
@@ -618,6 +652,10 @@ public class WTPService implements IWTPService {
 	}
 
 	private List<DeployableArtifact> listWorkspaceDeployables() {
+		List<DeployableArtifact> cached = workspaceDeployablesCache;
+		if (cached != null) {
+			return cached;
+		}
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
 		IProject[] projects = root.getProjects();
 		if (projects == null || projects.length == 0) {
@@ -637,7 +675,11 @@ public class WTPService implements IWTPService {
 				result.add(new DeployableArtifact(null, project.getName(), label, projectPath, typeId));
 			}
 		}
-		return Collections.unmodifiableList(result);
+		List<DeployableArtifact> resolved = Collections.unmodifiableList(result);
+		synchronized (deployableCacheLock) {
+			workspaceDeployablesCache = resolved;
+		}
+		return resolved;
 	}
 
 	private IStatus errorStatus(String message, Throwable t) {

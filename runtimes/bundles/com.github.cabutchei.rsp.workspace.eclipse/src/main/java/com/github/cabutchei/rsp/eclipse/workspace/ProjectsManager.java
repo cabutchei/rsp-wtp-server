@@ -16,6 +16,8 @@ import java.util.Set;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
+import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceDescription;
@@ -329,11 +331,11 @@ public class ProjectsManager implements IProjectsManager {
 				&& (changeType == FILE_CHANGE_CREATED || changeType == FILE_CHANGE_CHANGED)) {
 			return importAllWorkspaceProjects();
 		}
-		IProject project = findProjectForPath(normalized);
-		if (project == null || !project.exists()) {
-			return Status.OK_STATUS;
+		IStatus refreshStatus = refreshAffectedResource(normalized);
+		if (refreshStatus != null) {
+			return refreshStatus;
 		}
-		return refreshProject(project.getName());
+		return Status.OK_STATUS;
 	}
 
 	@Override
@@ -577,6 +579,87 @@ public class ProjectsManager implements IProjectsManager {
 			}
 		}
 		return diff;
+	}
+
+	private IStatus refreshAffectedResource(Path normalizedPath) {
+		IWorkspaceRoot root = getWorkspaceRoot();
+		if (root == null || normalizedPath == null) {
+			return Status.OK_STATUS;
+		}
+		List<IResource> matchingResources = findResourcesForPath(root, normalizedPath);
+		if (!matchingResources.isEmpty()) {
+			return refreshResources(matchingResources, IResource.DEPTH_ZERO, normalizedPath);
+		}
+		IContainer container = findNearestExistingContainer(root, normalizedPath);
+		if (container == null) {
+			return null;
+		}
+		return refreshResource(container, IResource.DEPTH_INFINITE, normalizedPath);
+	}
+
+	private List<IResource> findResourcesForPath(IWorkspaceRoot root, Path normalizedPath) {
+		if (root == null || normalizedPath == null) {
+			return Collections.emptyList();
+		}
+		Set<IResource> resources = new LinkedHashSet<>();
+		org.eclipse.core.runtime.Path eclipsePath = new org.eclipse.core.runtime.Path(normalizedPath.toString());
+		IFile file = root.getFileForLocation(eclipsePath);
+		if (file != null) {
+			resources.add(file);
+		}
+		IContainer container = root.getContainerForLocation(eclipsePath);
+		if (container != null) {
+			resources.add(container);
+		}
+		IFile[] files = root.findFilesForLocationURI(normalizedPath.toUri());
+		if (files != null) {
+			resources.addAll(Arrays.asList(files));
+		}
+		IContainer[] containers = root.findContainersForLocationURI(normalizedPath.toUri());
+		if (containers != null) {
+			resources.addAll(Arrays.asList(containers));
+		}
+		return new ArrayList<>(resources);
+	}
+
+	private IContainer findNearestExistingContainer(IWorkspaceRoot root, Path normalizedPath) {
+		Path current = normalizedPath.getParent();
+		while (current != null) {
+			List<IResource> resources = findResourcesForPath(root, current);
+			for (IResource resource : resources) {
+				if (resource instanceof IContainer) {
+					return (IContainer) resource;
+				}
+			}
+			current = current.getParent();
+		}
+		return null;
+	}
+
+	private IStatus refreshResources(Collection<? extends IResource> resources, int depth, Path changedPath) {
+		if (resources == null || resources.isEmpty()) {
+			return Status.OK_STATUS;
+		}
+		List<IStatus> failures = new ArrayList<>();
+		for (IResource resource : resources) {
+			IStatus status = refreshResource(resource, depth, changedPath);
+			if (status != null && !status.isOK()) {
+				failures.add(status);
+			}
+		}
+		return aggregateImportResults(failures);
+	}
+
+	private IStatus refreshResource(IResource resource, int depth, Path changedPath) {
+		if (resource == null) {
+			return Status.OK_STATUS;
+		}
+		try {
+			resource.refreshLocal(depth, new NullProgressMonitor());
+			return Status.OK_STATUS;
+		} catch (CoreException ce) {
+			return errorStatus("Failed to refresh workspace resource for " + changedPath, ce);
+		}
 	}
 
 	private IProject findProjectForPath(Path normalizedPath) {

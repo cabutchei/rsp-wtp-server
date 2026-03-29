@@ -91,7 +91,7 @@
 					<target>
 						<artifact>
 							<groupId>com.github.cabutchei.rsp</groupId>
-							<artifactId>_rsp-target</artifactId>
+							<artifactId>rsp-target</artifactId>
 							<version>${project.version}</version>
 						</artifact>
 					</target>

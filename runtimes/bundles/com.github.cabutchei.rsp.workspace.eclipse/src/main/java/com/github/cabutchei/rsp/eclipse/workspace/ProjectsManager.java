@@ -594,7 +594,7 @@ public class ProjectsManager implements IProjectsManager {
 		if (container == null) {
 			return null;
 		}
-		return refreshResource(container, IResource.DEPTH_INFINITE, normalizedPath);
+		return refreshResource(container, IResource.DEPTH_ONE, normalizedPath);
 	}
 
 	private List<IResource> findResourcesForPath(IWorkspaceRoot root, Path normalizedPath) {
@@ -660,27 +660,6 @@ public class ProjectsManager implements IProjectsManager {
 		} catch (CoreException ce) {
 			return errorStatus("Failed to refresh workspace resource for " + changedPath, ce);
 		}
-	}
-
-	private IProject findProjectForPath(Path normalizedPath) {
-		IWorkspaceRoot root = getWorkspaceRoot();
-		if (root == null) {
-			return null;
-		}
-		for (IProject project : root.getProjects()) {
-			if (project == null || !project.exists()) {
-				continue;
-			}
-			IPath location = project.getLocation();
-			if (location == null) {
-				continue;
-			}
-			Path projectPath = location.toFile().toPath().toAbsolutePath().normalize();
-			if (normalizedPath.startsWith(projectPath)) {
-				return project;
-			}
-		}
-		return null;
 	}
 
 	private boolean isNonStandardJreContainer(IPath containerPath) {

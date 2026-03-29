@@ -8,6 +8,6 @@
     <version>0.1.0-SNAPSHOT</version>
   </parent>
   <groupId>com.github.cabutchei.rsp</groupId>
-  <artifactId>_rsp-target</artifactId>
+  <artifactId>rsp-target</artifactId>
   <packaging>eclipse-target-definition</packaging>
 </project>

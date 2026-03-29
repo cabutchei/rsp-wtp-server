@@ -15,3 +15,5 @@ target/
 .sdkmanrc
 /distribution/distribution.liberty.custom
 /debug
+/launch
+**/DS_Store

@@ -1,32 +1,142 @@
-name: RSP CI
+name: Server CI
 
 on:
-  schedule:
-    - cron: '0 6 * * *'
-  push:
-    branches: [master]
   pull_request:
     branches: [master]
+  push:
+    branches: [master]
+    tags: ['v*']
   workflow_dispatch:
-  
+    inputs:
+      publish_release:
+        description: Publish a GitHub release with the packaged server bundle
+        required: true
+        type: boolean
+        default: true
+      update_latest:
+        description: Update the repository LATEST file on master
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }} # runs a test on Ubuntu, Windows and macOS
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        java: ["11"]
-      fail-fast: false
-
+  verify:
+    if: github.ref_type != 'tag'
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup Java ${{ matrix.java }}
-      uses: actions/setup-java@v1
-      with:
-        java-version: ${{ matrix.java }}
-        java-package: jdk # (jre, jdk, or jdk+fx) - defaults to jdk
-        architecture: x64
-    - name: Build & Verify using Maven
-      run: mvn clean verify -Pintegration-tests -U -fae -e -B
+      - uses: actions/checkout@v4
+      - name: Setup Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+          cache: maven
+      - name: Build and verify
+        run: mvn clean verify
+
+  package-server:
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      bundle_name: ${{ steps.meta.outputs.bundle_name }}
+      release_url: ${{ steps.meta.outputs.release_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+          cache: maven
+      - name: Build distribution
+        run: mvn -pl distribution/distribution -am clean package -DskipTests -B
+      - name: Compute release metadata
+        id: meta
+        run: |
+          RAW_VERSION="$(python3 .github/scripts/read_project_version.py pom.xml)"
+          VERSION="${RAW_VERSION%-SNAPSHOT}"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="v${VERSION}"
+          fi
+          BUNDLE_NAME="rsp-wtp-server-${VERSION}.zip"
+          RELEASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${BUNDLE_NAME}"
+          {
+            echo "version=${VERSION}"
+            echo "tag=${TAG}"
+            echo "bundle_name=${BUNDLE_NAME}"
+            echo "release_url=${RELEASE_URL}"
+          } >> "${GITHUB_OUTPUT}"
+      - name: Package connector server bundle
+        run: |
+          mkdir -p dist
+          python3 .github/scripts/package_server_bundle.py \
+            --version "${{ steps.meta.outputs.version }}" \
+            --output "dist/${{ steps.meta.outputs.bundle_name }}"
+      - name: Write LATEST
+        run: |
+          cat > dist/LATEST <<EOF
+          com.github.cabutchei.rsp.distribution.latest.version=${{ steps.meta.outputs.version }}
+          com.github.cabutchei.rsp.distribution.latest.url=${{ steps.meta.outputs.release_url }}
+          EOF
+      - name: Upload packaged bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsp-wtp-server-release
+          path: |
+            dist/${{ steps.meta.outputs.bundle_name }}
+            dist/LATEST
+          if-no-files-found: error
+
+  publish-release:
+    if: github.ref_type == 'tag' || inputs.publish_release == true
+    needs: package-server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download packaged bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: rsp-wtp-server-release
+          path: dist
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.package-server.outputs.tag }}
+          name: RSP-WTP Server ${{ needs.package-server.outputs.version }}
+          files: |
+            dist/${{ needs.package-server.outputs.bundle_name }}
+            dist/LATEST
+
+  update-latest:
+    if: github.ref_type == 'tag' || inputs.update_latest == true
+    needs: [package-server, publish-release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - name: Download LATEST
+        uses: actions/download-artifact@v4
+        with:
+          name: rsp-wtp-server-release
+          path: dist
+      - name: Update repository LATEST
+        run: |
+          cp dist/LATEST LATEST
+          if git diff --quiet -- LATEST; then
+            echo "LATEST already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add LATEST
+          git commit -m "Update LATEST for ${{ needs.package-server.outputs.version }}"
+          git push origin HEAD:master

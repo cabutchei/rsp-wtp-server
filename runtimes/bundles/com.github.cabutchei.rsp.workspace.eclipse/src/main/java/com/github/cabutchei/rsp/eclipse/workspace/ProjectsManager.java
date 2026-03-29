@@ -58,12 +58,8 @@ public class ProjectsManager implements IProjectsManager {
 			"**/.project",
 			"**/.classpath",
 			"**/.settings/org.eclipse.jdt.core.prefs",
+			"**/.settings/org.eclipse.wst.common.component",
 			"**/pom.xml",
-			"**/build.gradle",
-			"**/build.gradle.kts",
-			"**/settings.gradle",
-			"**/settings.gradle.kts",
-			"**/gradle.properties",
 			"**/META-INF/MANIFEST.MF",
 			"**/build.properties",
 			"**/*.java"));

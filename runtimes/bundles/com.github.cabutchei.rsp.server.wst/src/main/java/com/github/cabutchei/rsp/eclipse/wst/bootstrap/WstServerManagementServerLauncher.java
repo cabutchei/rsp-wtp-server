@@ -13,7 +13,6 @@ public class WstServerManagementServerLauncher extends ServerManagementServerLau
 	@Override
 	public void launch(int port) throws Exception {
 		startListening(port, serverImpl);
-		this.getModel().getServerModel().loadServers();
 	}
 
 	// protected createServerManagementModel()

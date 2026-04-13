@@ -89,6 +89,14 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 		return getWstDelegate(server).getBaseServerName();
 	}
 
+	public static String getServerAdminHostName(IServerAttributes server) throws CoreException {
+		return getWstDelegate(server).getServerAdminHostName();
+	}
+
+	public static int getServerAdminPortNum(IServerAttributes server) throws CoreException {
+		return getWstDelegate(server).getServerAdminPortNum();
+	}
+
 	public static String getServerXmlFilePath(IServerAttributes server) throws IOException, CoreException {
 		return createServerXmlFileHandler(server).getServerXMLFilePath();
 	}

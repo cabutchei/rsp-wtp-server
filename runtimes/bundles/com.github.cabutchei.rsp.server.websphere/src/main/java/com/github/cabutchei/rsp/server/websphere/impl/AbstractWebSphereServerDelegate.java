@@ -10,7 +10,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com.github.cabutchei.rsp.api.DefaultServerAttributes;
-import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.api.dao.CommandLineDetails;
 import com.github.cabutchei.rsp.api.dao.DeployableState;
 import com.github.cabutchei.rsp.api.dao.ListServerActionResponse;
@@ -35,8 +34,7 @@ import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
 import com.github.cabutchei.rsp.server.servertype.impl.IWebSphereServerAttributes;
 import com.github.cabutchei.rsp.server.websphere.servertype.actions.WebSphereEditJvmPropertiesActionHandler;
 import com.github.cabutchei.rsp.server.websphere.servertype.actions.WebSphereEditServerConfigurationActionHandler;
-import com.github.cabutchei.rsp.server.websphere.servertype.actions.WebSphereShowInBrowserActionHandler;
-import com.github.cabutchei.rsp.server.websphere.servertype.WebSphereServerType;
+import com.github.cabutchei.rsp.server.websphere.servertype.actions.WebSphereOpenAdminConsoleActionHandler;
 
 public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerDelegate implements IModuleStateProvider {
 	private static final long LAUNCH_WAIT_TIMEOUT_MS = 5000;
@@ -130,14 +128,9 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 		if (home == null) {
 			home = server.getAttribute(DefaultServerAttributes.SERVER_HOME_FILE, (String) null);
 		}
-		String profile = server.getAttribute(IWebSphereServerAttributes.WEBSPHERE_PROFILE, "");
-		String classpathAdditions = server.getAttribute(WebSphereServerType.ATTR_CLASSPATH_ADDITIONS, "");
-		int port = server.getAttribute(WebSphereServerType.ATTR_HTTP_PORT,
-				IWebSphereServerAttributes.LIBERTY_SERVER_PORT_DEFAULT);
+		String profile = server.getAttribute(IWebSphereServerAttributes.WEBSPHERE_PROFILE, "AppSrv01");
 		result = result.replace("${server.home.dir}", home == null ? "" : home);
 		result = result.replace("${server.websphere.profile}", profile == null ? "" : profile);
-		result = result.replace("${server.classpath.additions}", classpathAdditions == null ? "" : classpathAdditions);
-		result = result.replace("${server.http.port}", Integer.toString(port));
 		return result;
 	}
 
@@ -146,9 +139,6 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 		ListServerActionResponse ret = new ListServerActionResponse();
 		ret.setStatus(StatusConverter.convert(Status.OK_STATUS));
 		List<ServerActionWorkflow> workflows = new ArrayList<>();
-		if (getServerRunState() == ServerManagementAPIConstants.STATE_STARTED) {
-			workflows.add(new WebSphereShowInBrowserActionHandler(this).getInitialWorkflow());
-		}
 		ServerActionWorkflow edit = new WebSphereEditServerConfigurationActionHandler(this).getInitialWorkflow();
 		if (edit != null) {
 			workflows.add(edit);
@@ -156,6 +146,10 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 		ServerActionWorkflow jvmProps = new WebSphereEditJvmPropertiesActionHandler(this).getInitialWorkflow();
 		if (jvmProps != null) {
 			workflows.add(jvmProps);
+		}
+		ServerActionWorkflow adminConsole = new WebSphereOpenAdminConsoleActionHandler(this).getInitialWorkflow();
+		if (adminConsole != null) {
+			workflows.add(adminConsole);
 		}
 		ret.setWorkflows(workflows);
 		return ret;
@@ -166,24 +160,16 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 		if (req == null) {
 			return cancelWorkflowResponse();
 		}
-		if (WebSphereShowInBrowserActionHandler.ACTION_ID.equals(req.getActionId())) {
-			return new WebSphereShowInBrowserActionHandler(this).handle(req);
-		}
 		if (WebSphereEditServerConfigurationActionHandler.ACTION_ID.equals(req.getActionId())) {
 			return new WebSphereEditServerConfigurationActionHandler(this).handle(req);
 		}
 		if (WebSphereEditJvmPropertiesActionHandler.ACTION_ID.equals(req.getActionId())) {
 			return new WebSphereEditJvmPropertiesActionHandler(this).handle(req);
 		}
+		if (WebSphereOpenAdminConsoleActionHandler.ACTION_ID.equals(req.getActionId())) {
+			return new WebSphereOpenAdminConsoleActionHandler(this).handle(req);
+		}
 		return cancelWorkflowResponse();
-	}
-
-	public String getShowInBrowserBaseUrl() {
-		String host = getServer().getAttribute(IWebSphereServerAttributes.LIBERTY_SERVER_HOST,
-				IWebSphereServerAttributes.LIBERTY_SERVER_HOST_DEFAULT);
-		int port = getServer().getAttribute(WebSphereServerType.ATTR_HTTP_PORT,
-				IWebSphereServerAttributes.LIBERTY_SERVER_PORT_DEFAULT);
-		return "http://" + host + ":" + port;
 	}
 
 	public String[] getConfigurationFilePaths() {

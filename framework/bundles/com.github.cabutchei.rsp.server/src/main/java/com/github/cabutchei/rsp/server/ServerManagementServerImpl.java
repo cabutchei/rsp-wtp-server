@@ -982,6 +982,26 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	@Override
 	public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
 		workspaceEventsHandler.didChangeWatchedFiles(params);
+		if (containsClasspathChange(params)) {
+			notifyJdtlsJreContainers();
+			notifyJdtlsClasspathContainers();
+		}
+	}
+
+	private boolean containsClasspathChange(DidChangeWatchedFilesParams params) {
+		if (params == null || params.getChanges() == null) {
+			return false;
+		}
+		for (com.github.cabutchei.rsp.api.dao.FileEvent event : params.getChanges()) {
+			if (event == null) {
+				continue;
+			}
+			String uri = event.getUri();
+			if (uri != null && uri.endsWith("/.classpath")) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void notifyJdtlsJreContainers() {

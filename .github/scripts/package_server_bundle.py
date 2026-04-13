@@ -25,7 +25,7 @@ def main():
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[2]
-    default_zip = repo_root / 'distribution' / 'distribution' / 'target' / 'products' / 'com.github.cabutchei.rsp.server.product-macosx.cocoa.x86_64.zip'
+    default_zip = repo_root / 'distribution' / 'distribution' / 'target' / 'products' / 'com.github.cabutchei.rsp.server.product-win32.win32.x86_64.zip'
     product_zip = Path(args.product_zip) if args.product_zip else default_zip
     if not product_zip.exists():
         raise SystemExit(f'Product zip not found: {product_zip}')

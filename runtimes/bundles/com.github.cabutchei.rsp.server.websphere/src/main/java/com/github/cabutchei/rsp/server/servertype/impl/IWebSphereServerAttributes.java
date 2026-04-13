@@ -25,8 +25,8 @@ public interface IWebSphereServerAttributes extends DefaultServerAttributes {
 	/*
 	 * Optional attributes
 	 */
-	public static final String LIBERTY_SERVER_HOST = "liberty.server.host";
-	public static final String LIBERTY_SERVER_HOST_DEFAULT = "localhost";
-	public static final String LIBERTY_SERVER_PORT = "server.http.port";
-	public static final int LIBERTY_SERVER_PORT_DEFAULT = 9080;
+	public static final String WEBSPHERE_SERVER_HOST = "hostname";
+	public static final String WEBSPHERE_SERVER_HOST_DEFAULT = "localhost";
+	public static final String WEBSPHERE_SERVER_PORT = "server.http.port";
+	public static final int WEBSPHERE_SERVER_PORT_DEFAULT = 9080;
 }

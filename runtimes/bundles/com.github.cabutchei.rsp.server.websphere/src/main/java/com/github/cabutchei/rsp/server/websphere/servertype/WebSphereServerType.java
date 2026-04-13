@@ -14,7 +14,6 @@ import com.github.cabutchei.rsp.server.servertype.impl.IWebSphereServerAttribute
 import com.github.cabutchei.rsp.server.websphere.impl.WebSphereServerDelegate;
 
 public class WebSphereServerType extends AbstractServerType {
-	public static final String ATTR_HTTP_PORT = "server.http.port";
 
 	private Attributes required;
 	private Attributes optional;

@@ -28,7 +28,7 @@ Protocol docs in this repo:
 ### Prerequisites
 
 - Maven 3.x
-- JDK 11 (recommended for this build as currently configured)
+- JDK 21 (recommended for this build as currently configured)
 
 ### Full Build
 

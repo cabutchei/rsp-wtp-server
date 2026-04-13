@@ -15,7 +15,6 @@ import com.github.cabutchei.rsp.server.websphere.impl.WebSphereServerDelegate;
 
 public class WebSphereServerType extends AbstractServerType {
 	public static final String ATTR_HTTP_PORT = "server.http.port";
-	public static final String ATTR_CLASSPATH_ADDITIONS = "server.classpath.additions";
 
 	private Attributes required;
 	private Attributes optional;
@@ -43,7 +42,7 @@ public class WebSphereServerType extends AbstractServerType {
 			attrs.addAttribute(IWebSphereServerAttributes.WEBSPHERE_PROFILE,
 					ServerManagementAPIConstants.ATTR_TYPE_STRING,
 					"The server profile name",
-					null);
+					"AppSrv01");
 			required = attrs.toPojo();
 		}
 		return required;
@@ -53,10 +52,6 @@ public class WebSphereServerType extends AbstractServerType {
 	public Attributes getOptionalAttributes() {
 		if (optional == null) {
 			CreateServerAttributesUtility attrs = new CreateServerAttributesUtility();
-			attrs.addAttribute(ATTR_CLASSPATH_ADDITIONS,
-					ServerManagementAPIConstants.ATTR_TYPE_STRING,
-					"Additional classpath entries for the WebSphere server launch",
-					"");
 			attrs.addAttribute(DefaultServerAttributes.AUTOPUBLISH_ENABLEMENT,
 					ServerManagementAPIConstants.ATTR_TYPE_BOOL,
 					"Enable the autopublisher.",

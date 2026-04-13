@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: com.github.cabutchei.rsp.secure
 Bundle-SymbolicName: com.github.cabutchei.rsp.secure
 Automatic-Module-Name: com.github.cabutchei.rsp.secure
-Bundle-Version: 0.1.0.qualifier
+Bundle-Version: 0.2.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-Activator: com.github.cabutchei.rsp.secure.SecureActivator
 Bundle-ClassPath: .

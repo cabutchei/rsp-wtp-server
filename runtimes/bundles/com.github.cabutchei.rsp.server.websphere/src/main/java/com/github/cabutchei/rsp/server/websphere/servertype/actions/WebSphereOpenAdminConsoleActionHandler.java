@@ -55,7 +55,7 @@ public class WebSphereOpenAdminConsoleActionHandler {
 	private String getAdminConsoleUrl() {
 		try {
 			String host = WebSphereWstServerAccess.getServerAdminHostName(delegate.getServer());
-			int port = WebSphereWstServerAccess.getServerAdminPortNum(delegate.getServer());
+			int port = WebSphereWstServerAccess.getAdminConsolePortNum(delegate.getServer());
 			if (host == null || host.isEmpty() || port <= 0) {
 				return null;
 			}

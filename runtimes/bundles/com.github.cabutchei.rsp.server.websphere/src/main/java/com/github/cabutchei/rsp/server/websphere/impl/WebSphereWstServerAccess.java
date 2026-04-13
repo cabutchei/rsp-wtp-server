@@ -15,6 +15,7 @@ import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerDelegateAccess;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerAttributes;
 import com.ibm.ws.ast.st.v85.core.internal.WASServer;
 import com.ibm.ws.ast.st.v85.core.internal.util.ServerXmlFileHandler;
+import com.ibm.ws.ast.st.common.core.internal.AbstractWASServerBehaviour;
 import com.ibm.ws.ast.st.core.internal.util.IMemento;
 import com.ibm.ws.ast.st.core.internal.util.XMLMemento;
 
@@ -95,6 +96,10 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 
 	public static int getServerAdminPortNum(IServerAttributes server) throws CoreException {
 		return getWstDelegate(server).getServerAdminPortNum();
+	}
+
+	public static int getAdminConsolePortNum(IServerAttributes server) throws CoreException {
+		return server.getAdapter(AbstractWASServerBehaviour.class).getAdminConsolePortNum();
 	}
 
 	public static String getServerXmlFilePath(IServerAttributes server) throws IOException, CoreException {

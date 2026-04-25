@@ -23,10 +23,13 @@ final class LibertyServerTypeHandler implements WstServerTypeHandler {
 	}
 
 	@Override
-	public void configureServer(IServerWorkingCopy server,
-			IRuntimeWorkingCopy runtime,
-			Map<String, Object> attributes,
-			IProgressMonitor monitor) throws CoreException {
+	public void configureServer(IServerWorkingCopy server, IRuntimeWorkingCopy runtime, Map<String, Object> attributes, IProgressMonitor monitor) throws CoreException {
+		String profileName = (String) attributes.get(PROFILE_ATTRIBUTE);
+		server.setAttribute("serverName", profileName);
+	}
+
+	@Override
+	public void configureServer(com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy server, Map<String, Object> attributes) throws CoreException {
 		String profileName = (String) attributes.get(PROFILE_ATTRIBUTE);
 		server.setAttribute("serverName", profileName);
 	}

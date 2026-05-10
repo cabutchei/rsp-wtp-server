@@ -32,6 +32,8 @@ public interface IWstServerControl extends IServer {
 
 	int getServerPublishState();
 
+	int getEffectiveServerPublishState();
+
 	int getServerRunState();
 
 	List<DeployableState> getDeployableStates();

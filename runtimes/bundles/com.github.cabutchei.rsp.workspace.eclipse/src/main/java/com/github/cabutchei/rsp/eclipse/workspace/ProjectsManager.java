@@ -64,7 +64,8 @@ public class ProjectsManager implements IProjectsManager {
 			"**/pom.xml",
 			"**/META-INF/MANIFEST.MF",
 			"**/build.properties",
-			"**/*.java"));
+			"**/*.java",
+			"**/*.class"));
 
 	private final IWorkspaceService workspaceService;
 	private final IWTPService wtpService;

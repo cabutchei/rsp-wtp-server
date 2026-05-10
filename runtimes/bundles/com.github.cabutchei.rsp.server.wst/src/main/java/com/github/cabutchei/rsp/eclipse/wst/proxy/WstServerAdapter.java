@@ -515,6 +515,37 @@ public class WstServerAdapter implements IWstServerControl {
 		return WstRspMapper.toRspPublishState(wstServer.getModulePublishState(modulePath));
 	}
 
+	private int normalizeEffectivePublishState(int publishState) {
+		switch (publishState) {
+		case ServerManagementAPIConstants.PUBLISH_STATE_ADD:
+		case ServerManagementAPIConstants.PUBLISH_STATE_REMOVE:
+		case ServerManagementAPIConstants.PUBLISH_STATE_FULL:
+			return ServerManagementAPIConstants.PUBLISH_STATE_FULL;
+		case ServerManagementAPIConstants.PUBLISH_STATE_INCREMENTAL:
+			return ServerManagementAPIConstants.PUBLISH_STATE_INCREMENTAL;
+		case ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN:
+			return ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN;
+		default:
+			return ServerManagementAPIConstants.PUBLISH_STATE_NONE;
+		}
+	}
+
+	private int mergeEffectivePublishState(int current, int candidate) {
+		int normalized = normalizeEffectivePublishState(candidate);
+		if (normalized == ServerManagementAPIConstants.PUBLISH_STATE_FULL) {
+			return ServerManagementAPIConstants.PUBLISH_STATE_FULL;
+		}
+		if (normalized == ServerManagementAPIConstants.PUBLISH_STATE_INCREMENTAL
+				&& current != ServerManagementAPIConstants.PUBLISH_STATE_FULL) {
+			return ServerManagementAPIConstants.PUBLISH_STATE_INCREMENTAL;
+		}
+		if (normalized == ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN
+				&& current == ServerManagementAPIConstants.PUBLISH_STATE_NONE) {
+			return ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN;
+		}
+		return current;
+	}
+
 	private int getModuleRunState(IModule[] modulePath) {
 		if (modulePath == null || modulePath.length == 0) {
 			return ServerManagementAPIConstants.STATE_UNKNOWN;
@@ -674,9 +705,43 @@ public class WstServerAdapter implements IWstServerControl {
 		return WstRspMapper.toRspStatus(wstServer.canPublish());
 	}
 
+	private int getRawServerPublishState() {
+		return WstRspMapper.toRspPublishState(wstServer.getServerPublishState());
+	}
+
 	@Override
 	public int getServerPublishState() {
-		return WstRspMapper.toRspPublishState(wstServer.getServerPublishState());
+		return getRawServerPublishState();
+	}
+
+	@Override
+	public int getEffectiveServerPublishState() {
+		org.eclipse.wst.server.core.internal.Server internalServer =
+				wstServer instanceof org.eclipse.wst.server.core.internal.Server
+						? (org.eclipse.wst.server.core.internal.Server) wstServer
+						: null;
+		if (internalServer == null) {
+			return getServerPublishState();
+		}
+		if (internalServer.isPublishUnknown()) {
+			return ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN;
+		}
+		if (!internalServer.shouldPublish()) {
+			return ServerManagementAPIConstants.PUBLISH_STATE_NONE;
+		}
+
+		int effectiveState = normalizeEffectivePublishState(getRawServerPublishState());
+		for (DeployableState deployableState : getDeployableStates()) {
+			effectiveState = mergeEffectivePublishState(effectiveState, deployableState.getPublishState());
+		}
+		for (ModuleState moduleState : getModuleStates()) {
+			effectiveState = mergeEffectivePublishState(effectiveState, moduleState.getPublishState());
+		}
+		if (effectiveState == ServerManagementAPIConstants.PUBLISH_STATE_NONE
+				|| effectiveState == ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN) {
+			return ServerManagementAPIConstants.PUBLISH_STATE_INCREMENTAL;
+		}
+		return effectiveState;
 	}
 
 	@Override

@@ -91,10 +91,9 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 			int kind = event.getKind();
 			if ((kind & ServerEvent.PUBLISH_STATE_CHANGE) != 0
 					|| (kind & ServerEvent.MODULE_CHANGE) != 0) {
-				boolean deployableStatesChanged = synchronizeStatesFromControl();
 				int previousPublishState = getServerPublishState();
-				updateServerPublishStateFromDeployments(true);
-				if (deployableStatesChanged && previousPublishState == getServerPublishState()) {
+				boolean deployableStatesChanged = synchronizeStatesFromControl();
+				if (deployableStatesChanged || previousPublishState != getServerPublishState()) {
 					fireState();
 				}
 			}
@@ -150,7 +149,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 				addMissingState(reference);
 			}
 		}
-		updateServerPublishStateFromDeployments();
+		refreshServerPublishStateFromControl();
 		fireState();
 		registerAutoPublishConfigListener();
 		registerPublishStateListener();
@@ -166,6 +165,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	private boolean synchronizeStatesFromControl() {
 		IWstServerControl control = resolveWstServerControl();
 		if (control == null) {
+			refreshServerPublishStateFromControl();
 			return false;
 		}
 		List<DeployableState> fromControl = control.getDeployableStates();
@@ -202,7 +202,17 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		}
 		states.clear();
 		states.putAll(next);
+		refreshServerPublishStateFromControl();
 		return changed;
+	}
+
+	private void refreshServerPublishStateFromControl() {
+		IWstServerControl control = resolveWstServerControl();
+		if (control != null) {
+			setServerPublishState(control.getEffectiveServerPublishState(), false);
+			return;
+		}
+		updateServerPublishStateFromDeployments(false);
 	}
 
 	private boolean sameDeployableStates(Map<String, DeployableState> current, Map<String, DeployableState> next) {
@@ -361,7 +371,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 		if (!status.isOK()) {
 			return status;
 		}
-		updateServerPublishStateFromDeployments();
+		refreshServerPublishStateFromControl();
 		fireState();
 		launchOrUpdateAutopublishThread();
 		return Status.OK_STATUS;
@@ -411,7 +421,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 			unregisterFileWatcher(reference);
 			deployableRemoved(reference);
 		}
-		updateServerPublishStateFromDeployments();
+		refreshServerPublishStateFromControl();
 		fireState();
 		launchOrUpdateAutopublishThread();
 		return Status.OK_STATUS;
@@ -788,11 +798,12 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	}
 
 	private boolean isAutoPublisherSupported() {
-		if (delegate == null || delegate.getServer() == null) {
-			return true;
-		}
-		String typeId = delegate.getServer().getTypeId();
-		return typeId == null || !typeId.startsWith("com.ibm.ws.ast");
+		// if (delegate == null || delegate.getServer() == null) {
+		// 	return true;
+		// }
+		// String typeId = delegate.getServer().getTypeId();
+		// return typeId == null || !typeId.startsWith("com.ibm.ws.ast");
+		return true;
 	}
 	
 	protected int getInactivityTimeout() {
@@ -834,7 +845,7 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 			}
 		}
 		synchronizeStatesFromControl();
-		updateServerPublishStateFromDeployments();
+		refreshServerPublishStateFromControl();
 		fireState();
 	}
 

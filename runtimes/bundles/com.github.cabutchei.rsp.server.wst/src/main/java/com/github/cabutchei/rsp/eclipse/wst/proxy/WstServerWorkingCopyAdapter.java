@@ -327,6 +327,11 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
 	}
 
 	@Override
+	public int getEffectiveServerPublishState() {
+		return ServerManagementAPIConstants.PUBLISH_STATE_UNKNOWN;
+	}
+
+	@Override
 	public int getServerRunState() {
 		return ServerManagementAPIConstants.STATE_UNKNOWN;
 	}

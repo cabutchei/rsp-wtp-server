@@ -51,6 +51,10 @@ public class WebSphereServerType extends AbstractServerType {
 	public Attributes getOptionalAttributes() {
 		if (optional == null) {
 			CreateServerAttributesUtility attrs = new CreateServerAttributesUtility();
+			attrs.addAttribute(IWebSphereServerAttributes.WEBSPHERE_SERVER_HOST,
+					ServerManagementAPIConstants.ATTR_TYPE_STRING,
+					"The hostname used to reach the WebSphere server.",
+					IWebSphereServerAttributes.WEBSPHERE_SERVER_HOST_DEFAULT);
 			attrs.addAttribute(DefaultServerAttributes.AUTOPUBLISH_ENABLEMENT,
 					ServerManagementAPIConstants.ATTR_TYPE_BOOL,
 					"Enable the autopublisher.",

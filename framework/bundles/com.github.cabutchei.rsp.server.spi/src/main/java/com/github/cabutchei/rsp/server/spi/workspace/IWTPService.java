@@ -30,9 +30,13 @@ public interface IWTPService extends IWTPConfiguration {
 
 	List<DeployableArtifact> listDeployableResources(ServerHandle server);
 
+	List<WorkspaceProject> listEarProjects();
+
 	List<WorkspaceProject> listDeploymentAssemblyProjects(Path projectPath, String projectName);
 
 	List<DeploymentAssemblyEntry> getDeploymentAssembly(Path projectPath, String projectName);
+
+	IStatus exportEar(Path projectPath, String projectName, Path destinationPath, boolean exportSource);
 
 	IStatus addDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry);
 

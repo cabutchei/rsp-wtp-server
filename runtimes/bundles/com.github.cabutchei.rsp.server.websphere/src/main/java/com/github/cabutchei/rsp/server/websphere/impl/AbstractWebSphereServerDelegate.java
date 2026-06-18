@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com.github.cabutchei.rsp.api.DefaultServerAttributes;
+import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.api.dao.CommandLineDetails;
 import com.github.cabutchei.rsp.api.dao.DeployableState;
 import com.github.cabutchei.rsp.api.dao.ListServerActionResponse;
@@ -147,9 +148,11 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 		if (jvmProps != null) {
 			workflows.add(jvmProps);
 		}
-		ServerActionWorkflow adminConsole = new WebSphereOpenAdminConsoleActionHandler(this).getInitialWorkflow();
-		if (adminConsole != null) {
-			workflows.add(adminConsole);
+		if (getServerRunState() == ServerManagementAPIConstants.STATE_STARTED) {
+			ServerActionWorkflow adminConsole = new WebSphereOpenAdminConsoleActionHandler(this).getInitialWorkflow();
+			if (adminConsole != null) {
+				workflows.add(adminConsole);
+			}
 		}
 		ret.setWorkflows(workflows);
 		return ret;

@@ -7,7 +7,7 @@
 
 	<groupId>com.github.cabutchei.rsp</groupId>
 	<artifactId>parent</artifactId>
-	<version>0.3.0-SNAPSHOT</version>
+	<version>0.4.0.Final</version>
 
 	<packaging>pom</packaging>
 	<name>Runtime Server Protocol</name>
@@ -100,22 +100,22 @@
 							<requirement>
 								<type>p2-installable-unit</type>
 								<id>com.ibm.ws.ast.st.v85.core</id>
-								<versionRange>[1.0.401.v20251120_1402,1.0.401.v20251120_1402]</versionRange>
+								<versionRange>[1.0.401.v20260519_1347,1.0.401.v20260519_1347]</versionRange>
 							</requirement>
 							<requirement>
 								<type>p2-installable-unit</type>
 								<id>com.ibm.ws.ast.st.core</id>
-								<versionRange>[7.2.101.v20251120_1402,7.2.101.v20251120_1402]</versionRange>
+								<versionRange>[7.2.101.v20260519_1347,7.2.101.v20260519_1347]</versionRange>
 							</requirement>
 							<requirement>
 								<type>p2-installable-unit</type>
 								<id>com.ibm.websphere.v85.core</id>
-								<versionRange>[1.0.200.v20251120_1402,1.0.200.v20251120_1402]</versionRange>
+								<versionRange>[1.0.200.v20260519_1347,1.0.200.v20260519_1347]</versionRange>
 							</requirement>
 							<requirement>
 								<type>p2-installable-unit</type>
 								<id>com.ibm.websphere.v9.core</id>
-								<versionRange>[1.100.1.v20251120_1402,1.100.1.v20251120_1402]</versionRange>
+								<versionRange>[1.100.1.v20260519_1347,1.100.1.v20260519_1347]</versionRange>
 							</requirement>
 							<requirement>
 								<type>p2-installable-unit</type>

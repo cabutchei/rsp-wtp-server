@@ -48,6 +48,7 @@ import com.github.cabutchei.rsp.api.dao.DownloadRuntimeDescription;
 import com.github.cabutchei.rsp.api.dao.DownloadSingleRuntimeRequest;
 import com.github.cabutchei.rsp.api.dao.DidChangeWatchedFilesParams;
 import com.github.cabutchei.rsp.api.dao.DidChangeWorkspaceFoldersParams;
+import com.github.cabutchei.rsp.api.dao.ExportEarRequest;
 import com.github.cabutchei.rsp.api.dao.GetServerJsonResponse;
 import com.github.cabutchei.rsp.api.dao.InitializeParams;
 import com.github.cabutchei.rsp.api.dao.InitializeResult;
@@ -88,6 +89,7 @@ import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IPath;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.MultiStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Path;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
@@ -715,6 +717,21 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	}
 
 	@Override
+	public CompletableFuture<Status> refreshWorkspaceProjects() {
+		return createCompletableFuture(() -> refreshWorkspaceProjectsSync());
+	}
+
+	@Override
+	public CompletableFuture<ListWorkspaceProjectsResponse> listEarProjects() {
+		return createCompletableFuture(() -> listEarProjectsSync());
+	}
+
+	@Override
+	public CompletableFuture<Status> exportEar(ExportEarRequest request) {
+		return createCompletableFuture(() -> exportEarSync(request));
+	}
+
+	@Override
 	public CompletableFuture<ListWorkspaceProjectsResponse> listDeploymentAssemblyProjects(DeploymentAssemblyRequest request) {
 		return createCompletableFuture(() -> listDeploymentAssemblyProjectsSync(request));
 	}
@@ -770,6 +787,108 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		resp.setProjects(mapped);
 		resp.setStatus(StatusConverter.convert(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS));
 		return resp;
+	}
+
+	private Status refreshWorkspaceProjectsSync() {
+		IProjectsManager projectsManager = getProjectsManager();
+		if (projectsManager == null) {
+			return errorStatus("Projects manager unavailable");
+		}
+
+		List<IStatus> failures = new ArrayList<>();
+		IStatus importStatus = projectsManager.importAllWorkspaceProjects();
+		if (importStatus != null && !importStatus.isOK()) {
+			failures.add(importStatus);
+		}
+
+		List<com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject> projects = projectsManager.listWorkspaceProjects();
+		if (projects != null) {
+			for (com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject project : projects) {
+				if (project == null || project.getName() == null || project.getName().isEmpty()) {
+					continue;
+				}
+				IStatus refreshStatus = projectsManager.refreshProject(project.getName());
+				if (refreshStatus != null && !refreshStatus.isOK()) {
+					failures.add(refreshStatus);
+				}
+			}
+		}
+
+		if (failures.isEmpty()) {
+			return StatusConverter.convert(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS);
+		}
+		if (failures.size() == 1) {
+			return StatusConverter.convert(failures.get(0));
+		}
+		MultiStatus status = new MultiStatus(ServerCoreActivator.BUNDLE_ID, IStatus.ERROR,
+				failures.toArray(new IStatus[0]), "One or more workspace projects failed to refresh", null);
+		return StatusConverter.convert(status);
+	}
+
+	private ListWorkspaceProjectsResponse listEarProjectsSync() {
+		ListWorkspaceProjectsResponse resp = new ListWorkspaceProjectsResponse();
+		IProjectsManager projectsManager = getProjectsManager();
+		if (projectsManager == null) {
+			resp.setStatus(errorStatus("Projects manager unavailable"));
+			return resp;
+		}
+		IWTPService wtpService = getWTPService(projectsManager);
+		if (wtpService == null) {
+			resp.setStatus(errorStatus("WTP service unavailable"));
+			return resp;
+		}
+		List<com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject> projects = wtpService.listEarProjects();
+		List<WorkspaceProject> mapped = new ArrayList<>();
+		if (projects != null) {
+			mapped = projects.stream()
+					.filter(p -> p != null && p.getName() != null)
+					.map(p -> new WorkspaceProject(p.getName(),
+							p.getLocation() == null ? null : p.getLocation().toString(),
+							p.isOpen()))
+					.collect(Collectors.toList());
+		}
+		resp.setProjects(mapped);
+		resp.setStatus(StatusConverter.convert(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS));
+		return resp;
+	}
+
+	private Status exportEarSync(ExportEarRequest request) {
+		if (request == null) {
+			return invalidParameterStatus();
+		}
+		String pathString = request.getPath();
+		String projectName = request.getProjectName();
+		String destinationString = request.getDestinationPath();
+		if ((pathString == null || pathString.isEmpty()) && (projectName == null || projectName.isEmpty())) {
+			return invalidParameterStatus();
+		}
+		if (destinationString == null || destinationString.isBlank()) {
+			return invalidParameterStatus();
+		}
+		IProjectsManager projectsManager = getProjectsManager();
+		if (projectsManager == null) {
+			return errorStatus("Projects manager unavailable");
+		}
+		IWTPService wtpService = getWTPService(projectsManager);
+		if (wtpService == null) {
+			return errorStatus("WTP service unavailable");
+		}
+		java.nio.file.Path projectPath = null;
+		if (pathString != null && !pathString.isEmpty()) {
+			try {
+				projectPath = Paths.get(pathString).toAbsolutePath().normalize();
+			} catch (InvalidPathException ipe) {
+				return errorStatus("Invalid project path: " + pathString, ipe);
+			}
+		}
+		java.nio.file.Path destinationPath;
+		try {
+			destinationPath = Paths.get(destinationString).toAbsolutePath().normalize();
+		} catch (InvalidPathException ipe) {
+			return errorStatus("Invalid destination path: " + destinationString, ipe);
+		}
+		IStatus status = wtpService.exportEar(projectPath, projectName, destinationPath, request.isExportSource());
+		return StatusConverter.convert(status);
 	}
 
 	private ListWorkspaceProjectsResponse listDeploymentAssemblyProjectsSync(DeploymentAssemblyRequest request) {

@@ -11,8 +11,8 @@ import com.github.cabutchei.rsp.api.dao.WorkflowResponseItem;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
-import com.github.cabutchei.rsp.server.model.AbstractServerDelegate;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
+import com.github.cabutchei.rsp.server.spi.util.WorkflowUtility;
 import com.github.cabutchei.rsp.server.websphere.impl.AbstractWebSphereServerDelegate;
 import com.github.cabutchei.rsp.server.websphere.impl.Activator;
 import com.github.cabutchei.rsp.server.websphere.impl.WebSphereWstServerAccess;
@@ -31,24 +31,9 @@ public class WebSphereOpenAdminConsoleActionHandler {
 	public ServerActionWorkflow getInitialWorkflow() {
 		WorkflowResponse workflow = new WorkflowResponse();
 		ServerActionWorkflow action = new ServerActionWorkflow(ACTION_ID, ACTION_LABEL, workflow);
-		List<WorkflowResponseItem> items = new ArrayList<>();
-		workflow.setItems(items);
-
-		String adminConsoleUrl = getAdminConsoleUrl();
-		if (adminConsoleUrl == null || adminConsoleUrl.isEmpty()) {
-			workflow.setStatus(StatusConverter.convert(
-					new Status(IStatus.CANCEL, Activator.BUNDLE_ID, ACTION_LABEL)));
-			return action;
-		}
-
-		WorkflowResponseItem item = new WorkflowResponseItem();
-		item.setItemType(ServerManagementAPIConstants.WORKFLOW_TYPE_OPEN_BROWSER);
-		item.setId(ACTION_ID);
-		item.setLabel("Open the WebSphere admin console");
-		item.setContent(adminConsoleUrl);
-		items.add(item);
+		workflow.setItems(new ArrayList<>());
 		workflow.setStatus(StatusConverter.convert(
-				new Status(IStatus.OK, Activator.BUNDLE_ID, ACTION_LABEL)));
+				new Status(IStatus.INFO, Activator.BUNDLE_ID, ACTION_LABEL)));
 		return action;
 	}
 
@@ -60,15 +45,29 @@ public class WebSphereOpenAdminConsoleActionHandler {
 				return null;
 			}
 			return "http://" + host + ":" + port + ADMIN_CONSOLE_PATH;
-		} catch (CoreException e) {
+		} catch (CoreException | RuntimeException e) {
 			return null;
 		}
 	}
 
 	public WorkflowResponse handle(ServerActionRequest req) {
-		if (req == null || req.getData() == null) {
-			return AbstractServerDelegate.okWorkflowResponse();
+		String adminConsoleUrl = getAdminConsoleUrl();
+		if (adminConsoleUrl == null || adminConsoleUrl.isEmpty()) {
+			return WorkflowUtility.quickResponse(IStatus.ERROR,
+					"Admin console is only available while the server is running.", 0);
 		}
-		return AbstractServerDelegate.okWorkflowResponse();
+
+		WorkflowResponseItem item = new WorkflowResponseItem();
+		item.setItemType(ServerManagementAPIConstants.WORKFLOW_TYPE_OPEN_BROWSER);
+		item.setId(ACTION_ID);
+		item.setLabel("Open the WebSphere admin console");
+		item.setContent(adminConsoleUrl);
+
+		WorkflowResponse resp = new WorkflowResponse();
+		List<WorkflowResponseItem> items = new ArrayList<>();
+		items.add(item);
+		resp.setItems(items);
+		resp.setStatus(StatusConverter.convert(Status.OK_STATUS));
+		return resp;
 	}
 }

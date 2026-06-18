@@ -56,12 +56,14 @@ jobs:
           java-version: '11'
           cache: maven
       - name: Build distribution
-        run: mvn -pl distribution/distribution -am clean package -DskipTests -B
+        run: |
+          mvn clean package -DskipTests -B
       - name: Compute release metadata
         id: meta
         run: |
           RAW_VERSION="$(python3 .github/scripts/read_project_version.py pom.xml)"
           VERSION="${RAW_VERSION%-SNAPSHOT}"
+          VERSION="${VERSION%.Final}"
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             TAG="${GITHUB_REF_NAME}"
           else
@@ -75,19 +77,15 @@ jobs:
             echo "bundle_name=${BUNDLE_NAME}"
             echo "release_url=${RELEASE_URL}"
           } >> "${GITHUB_OUTPUT}"
-      - name: Package connector server bundle
-        run: |
-          mkdir -p dist
-          python3 .github/scripts/package_server_bundle.py \
-            --version "${{ steps.meta.outputs.version }}" \
-            --output "dist/${{ steps.meta.outputs.bundle_name }}"
       - name: Write LATEST
         run: |
+          mkdir -p dist
+          cp "distribution/distribution/target/${{ steps.meta.outputs.bundle_name }}" "dist/${{ steps.meta.outputs.bundle_name }}"
           cat > dist/LATEST <<EOF
           com.github.cabutchei.rsp.distribution.latest.version=${{ steps.meta.outputs.version }}
           com.github.cabutchei.rsp.distribution.latest.url=${{ steps.meta.outputs.release_url }}
           EOF
-      - name: Upload packaged bundle
+      - name: Upload assembled bundle
         uses: actions/upload-artifact@v4
         with:
           name: rsp-wtp-server-release

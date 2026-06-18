@@ -18,6 +18,7 @@ import com.github.cabutchei.rsp.api.dao.DeploymentAssemblyRequest;
 import com.github.cabutchei.rsp.api.dao.DeploymentAssemblyResponse;
 import com.github.cabutchei.rsp.api.dao.DeploymentAssemblyUpdateRequest;
 import com.github.cabutchei.rsp.api.dao.DidChangeWorkspaceFoldersParams;
+import com.github.cabutchei.rsp.api.dao.ExportEarRequest;
 import com.github.cabutchei.rsp.api.dao.InitializeParams;
 import com.github.cabutchei.rsp.api.dao.InitializeResult;
 import com.github.cabutchei.rsp.api.dao.ListDeployableResourcesResponse;
@@ -47,6 +48,27 @@ public interface WTPServer {
 	 */
 	@JsonRequest
 	CompletableFuture<ListWorkspaceProjectsResponse> listWorkspaceProjects();
+
+	/**
+	 * The `workspace/refreshWorkspaceProjects` request is sent by the client to
+	 * force a rescan/import of workspace projects and refresh them from disk.
+	 */
+	@JsonRequest
+	CompletableFuture<Status> refreshWorkspaceProjects();
+
+	/**
+	 * The `workspace/listEarProjects` request is sent by the client to fetch the
+	 * workspace projects that can be exported as EAR archives.
+	 */
+	@JsonRequest
+	CompletableFuture<ListWorkspaceProjectsResponse> listEarProjects();
+
+	/**
+	 * The `workspace/exportEar` request is sent by the client to materialize an EAR
+	 * archive for a workspace project.
+	 */
+	@JsonRequest
+	CompletableFuture<Status> exportEar(ExportEarRequest request);
 
 	/**
 	 * The `workspace/listDeploymentAssemblyProjects` request is sent by the client

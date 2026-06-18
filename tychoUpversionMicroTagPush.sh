@@ -1,323 +1,331 @@
-#!/bin/sh
-# Pass any argument to enable debug mode
-echo "This script performs the following: "
-echo "  1) upversions all bundles and tp to a .Final version"
-echo "  2) runs a build, commits, and pushes to master"
-echo "  3) Reminds you to wait for a green build"
-echo "  4) Runs mvn clean deploy to nexus, and instructs you to follow up immediately"
-echo "  5) creates a repo tag, and instructs you to do a release build on jenkins"
-echo "  6) Create a github release with changelog details, but asks you to attach the binary"
-echo "  7) Upversions to next-SNAPSHOT, and commits"
-echo "  8) Creates a milestone on github for next version"
+#!/usr/bin/env bash
 
-ghtoken=`cat ~/.keys/gh_access_token`
-argsPassed=$#
-echo "args: " $argsPassed
-if [ "$argsPassed" -eq 1 ]; then
-	debug=1
-	echo "YOU ARE IN DEBUG MODE. Changes will NOT be pushed upstream"
-else
-	echo "The script is live. All changes will be pushed, deployed, etc. Live."
-	debug=0
-fi
-read -p "Press enter to continue"
+set -euo pipefail
 
-apiStatus=`git status -s | wc -l`
-if [ $apiStatus -ne 0 ]; then
-   echo "This repository has changes and we won't be able to auto upversion. Please commit or stash your changes and try again"
-   exit 1
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}"
 
-echo "Your JAVA_HOME is $JAVA_HOME"
-if [[ -n "$JAVA_HOME" ]]; then
-  # Determine if a (working) JDK is available in JAVA_HOME
-  if [ -x "$(command -v "$JAVA_HOME"/bin/javac)" ]; then
-    JAVA_EXEC="$JAVA_HOME/bin/java"
-  else
-    echo "JAVA_HOME is set but does not seem to point to a valid Java JDK" 1>&2
-  fi
-fi
-read -p "Press enter to continue"
+DRY_RUN=0
+ASSUME_YES=0
+SKIP_BUILD=0
+ALLOW_NON_MASTER=0
 
+usage() {
+  cat <<'EOF'
+Usage: ./tychoUpversionMicroTagPush.sh [options]
 
-echo "Here are the commits since last release"
+Prepare and publish an rsp-wtp-server release using the current tag-driven
+GitHub Actions workflow, then bump to the next patch .Final version.
 
-commits=`git lg | grep -n -m 1 "Upversion to " |sed  's/\([0-9]*\).*/\1/' | tail -n 1`
-commitMsgs=`git log --color --pretty=format:'%h - %s' --abbrev-commit | head -n $commits`
-echo "$commitMsgs"
-read -p "Press enter to continue"
+Options:
+  --dry-run           Print actions without editing files, committing, tagging, or pushing.
+  --yes               Skip interactive confirmation prompts.
+  --skip-build        Skip local Maven validation builds.
+  --allow-non-master  Allow releasing from a branch other than master.
+  --help, -h          Show this help text.
 
+Prerequisites:
+  - Clean tracked git worktree
+  - Authenticated GitHub CLI (`gh auth login`)
+  - Current project version should be an unreleased version
+  - The server release workflow in .github/workflows/gh-actions.yml remains tag-driven
+EOF
+}
 
-
-oldverRaw=`cat pom.xml  | grep "version" | head -n 2 | tail -n 1 | cut -f 2 -d ">" | cut -f 1 -d "<" |  awk '{$1=$1};1'`
-oldver=`echo $oldverRaw | sed 's/\.Final//g' | sed 's/-SNAPSHOT//g'`
-oldverHasSnapshot=`cat pom.xml  | grep "version" | head -n 2 | tail -n 1 | cut -f 2 -d ">" | cut -f 1 -d "<" | grep -i snapshot | awk '{$1=$1};1' | wc -c`
-
-
-if [ "$oldverHasSnapshot" -eq 0 ]; then
-	newLastSegment=`echo $oldver | cut -f 3 -d "." | awk '{ print $0 + 1;}' | bc`
-	newverPrefix=`echo $oldver | cut -f 1,2 -d "."`
-	newver=$newverPrefix.$newLastSegment
-else 
-	newver=$oldver
-fi
-newverFinal=$newver.Final
-
-echo "Old version is $oldverRaw"
-echo "New version is $newverFinal"
-echo "Updating pom.xml and target platform with new version"
-read -p "Press enter to continue"
-mvn org.eclipse.tycho:tycho-versions-plugin:1.3.0:set-version -DnewVersion=$newverFinal
-
-# Handle target platform
-tpFile=`ls -1 targetplatform | grep target`
-cat targetplatform/$tpFile | sed "s/-target-$oldverRaw/-target-$newverFinal/g" > targetplatform/$tpFile.bak
-mv targetplatform/$tpFile.bak targetplatform/$tpFile
-
-echo "Running a quick build to make sure everything's ok..."
-read -p "Press enter to continue"
-mvn clean install -DskipTests
-
-echo "Did it succeed?"
-read -p "Press enter to continue"
-
-curBranch=`git rev-parse --abbrev-ref HEAD`
-echo "Committing and pushing to $curBranch"
-git commit -a -m "Upversion to $newver for release" --signoff
-if [ "$debug" -eq 0 ]; then
-	git push origin $curBranch
-else 
-	echo git push origin $curBranch
-fi
-
-
-echo "Go kick a build at https://github.com/redhat-developer/rsp-server/actions/workflows/gh-actions.yml"
-read -p "Press enter to continue"
-
-
-echo "Are you absolutely sure you are ready to tag?"
-read -p "Press enter to continue"
-
-newVerUnderscore=`echo $newver | sed 's/\./_/g'`
-git tag tp$newVerUnderscore
-if [ "$debug" -eq 0 ]; then
-	git push origin tp$newVerUnderscore
-else 
-	echo git push origin tp$newVerUnderscore
-fi
-
-git tag v$newVerUnderscore
-if [ "$debug" -eq 0 ]; then
-	git push origin v$newVerUnderscore
-else 
-	echo git push origin v$newVerUnderscore
-fi
-
-echo "Time to make the release on github..."
-echo "Let's start with the target platform"
-read -p "Press enter to continue"
-
-
-jbang repoflattener.java site
-echo "Did jbang work? If not, cancel, debug, and start over."
-read -p "Press enter to continue"
-
-
-echo -e "\nMaking a release on github for $newverFinal TargetPlatform"
-createReleasePayload="{\"tag_name\":\"tp$newVerUnderscore\",\"target_commitish\":\"master\",\"name\":\"$newverFinal.targetplatform\",\"body\":\"Release of target platform for $newverFinal\",\"draft\":false,\"prerelease\":false,\"generate_release_notes\":false}"
-
-
-	echo curl -L \
-	  -X POST \
-	  -H "Accept: application/vnd.github+json" \
-	  -H "Authorization: Bearer $ghtoken"\
-	  -H "X-GitHub-Api-Version: 2022-11-28" \
-	  https://api.github.com/repos/redhat-developer/rsp-server/releases \
-	  -d "$createReleasePayload"
-
-if [ "$debug" -eq 0 ]; then
-	curl -L \
-	  -X POST \
-	  -H "Accept: application/vnd.github+json" \
-	  -H "Authorization: Bearer $ghtoken"\
-	  -H "X-GitHub-Api-Version: 2022-11-28" \
-	  https://api.github.com/repos/redhat-developer/rsp-server/releases \
-	  -d "$createReleasePayload" | tee createReleaseResponse.json
-fi
-echo "Please go verify the target platform release looks correct. We will add the asset next"
-read -p "Press enter to continue"
-
-assetUrl=`cat createReleaseResponse.json | grep assets_url | cut -c 1-17 --complement | rev | cut -c3- | rev | sed 's/api.github.com/uploads.github.com/g'`
-rm createReleaseResponse.json
-for filename in site/target/flat-repository/*; do
-  nameOnly=`echo $filename | rev | cut -f 1 -d "/" | rev`
-  echo -e "\n\n$nameOnly\n"
-  if [ "$debug" -eq 0 ]; then
-	curl -L \
-	  -X POST \
-	  -H "Accept: application/vnd.github+json" \
-	  -H "Authorization: Bearer $ghtoken"\
-	  -H "X-GitHub-Api-Version: 2022-11-28" \
-	  -H "Content-Type: application/octet-stream" \
-	  $assetUrl?name=$nameOnly \
-	  --data-binary "@$filename"
- else 
-	echo curl -L \
-	  -X POST \
-	  -H "Accept: application/vnd.github+json" \
-	  -H "Authorization: Bearer $ghtoken"\
-	  -H "X-GitHub-Api-Version: 2022-11-28" \
-	  -H "Content-Type: application/octet-stream" \
-	  $assetUrl?name=$nameOnly \
-	  --data-binary "@$filename"
- fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=1
+      ;;
+    --yes)
+      ASSUME_YES=1
+      ;;
+    --skip-build)
+      SKIP_BUILD=1
+      ;;
+    --allow-non-master)
+      ALLOW_NON_MASTER=1
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+  shift
 done
 
+run() {
+  echo "+ $*"
+  if [[ ${DRY_RUN} -eq 0 ]]; then
+    "$@"
+  fi
+}
 
+confirm() {
+  local prompt="$1"
+  if [[ ${ASSUME_YES} -eq 1 ]]; then
+    return 0
+  fi
 
+  local answer
+  read -r -p "${prompt} [y/N] " answer
+  case "${answer}" in
+    y|Y|yes|YES)
+      return 0
+      ;;
+    *)
+      echo "Aborted."
+      exit 1
+      ;;
+  esac
+}
 
-echo "\n\nMaking a release on github for $newverFinal"
-read -p "Press enter to continue"
-commitMsgsClean=`git log --color --pretty=format:'%s' --abbrev-commit | head -n $commits | awk '{ print " * " $0;}' | awk '{printf "%s\\\\n", $0}' | sed 's/"/\\\"/g'`
-createReleasePayload="{\"tag_name\":\"v$newVerUnderscore\",\"target_commitish\":\"master\",\"name\":\"v$newverFinal\",\"body\":\"Release of $newverFinal:\n\n$commitMsgsClean\",\"draft\":false,\"prerelease\":false,\"generate_release_notes\":false}"
-  
-  
-  	echo curl -L \
-	  -X POST \
-	  -H "Accept: application/vnd.github+json" \
-	  -H "Authorization: Bearer $ghtoken"\
-	  -H "X-GitHub-Api-Version: 2022-11-28" \
-	  https://api.github.com/repos/redhat-developer/rsp-server/releases \
-	  -d "$createReleasePayload"
-	  
-if [ "$debug" -eq 0 ]; then
-	curl -L \
-	  -X POST \
-	  -H "Accept: application/vnd.github+json" \
-	  -H "Authorization: Bearer $ghtoken"\
-	  -H "X-GitHub-Api-Version: 2022-11-28" \
-	  https://api.github.com/repos/redhat-developer/rsp-server/releases \
-	  -d "$createReleasePayload" | tee createReleaseResponse.json
+require_command() {
+  local cmd="$1"
+  if ! command -v "${cmd}" >/dev/null 2>&1; then
+    echo "Required command not found: ${cmd}" >&2
+    exit 1
+  fi
+}
+
+parse_repo_slug() {
+  local remote_url="$1"
+  case "${remote_url}" in
+    git@github.com:*.git)
+      echo "${remote_url#git@github.com:}" | sed 's/\.git$//'
+      ;;
+    https://github.com/*.git)
+      echo "${remote_url#https://github.com/}" | sed 's/\.git$//'
+      ;;
+    https://github.com/*)
+      echo "${remote_url#https://github.com/}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+current_version() {
+  python3 .github/scripts/read_project_version.py pom.xml
+}
+
+public_version_from() {
+  local version="$1"
+  echo "${version%.Final}"
+}
+
+next_patch_final_from() {
+  local public_version="$1"
+  python3 - "${public_version}" <<'EOF'
+import sys
+
+version = sys.argv[1]
+parts = version.split(".")
+if len(parts) != 3:
+    raise SystemExit(f"Unsupported version: {version}")
+major, minor, patch = parts
+print(f"{major}.{minor}.{int(patch) + 1}.Final")
+EOF
+}
+
+latest_release_tag() {
+  git tag --sort=-creatordate | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true
+}
+
+update_target_definition_name() {
+  local version="$1"
+  local target_file="targetplatform/rsp-target.target"
+  if [[ ! -f "${target_file}" ]]; then
+    return 0
+  fi
+
+  if [[ ${DRY_RUN} -eq 0 ]]; then
+    perl -0pi -e "s/name=\"rsp-target-[^\"]+\"/name=\"rsp-target-${version}\"/" "${target_file}"
+  else
+    echo "+ perl -0pi -e s/name=\\\"rsp-target-[^\\\"]+\\\"/name=\\\"rsp-target-${version}\\\"/ ${target_file}"
+  fi
+}
+
+set_project_version() {
+  local version="$1"
+  run mvn org.eclipse.tycho:tycho-versions-plugin:1.3.0:set-version "-DnewVersion=${version}" -B
+  update_target_definition_name "${version}"
+}
+
+validate_release_build() {
+  local release_version="$1"
+
+  run mvn -pl targetplatform -am install -DskipTests -B
+  run mvn -pl distribution/distribution -am clean package -DskipTests -B
+
+  local artifact="distribution/distribution/target/rsp-wtp-server-${release_version}.zip"
+  if [[ ${DRY_RUN} -eq 0 && ! -f "${artifact}" ]]; then
+    echo "Expected release artifact not found: ${artifact}" >&2
+    exit 1
+  fi
+}
+
+validate_snapshot_build() {
+  run mvn clean verify -DskipTests -B
+}
+
+build_release_notes() {
+  local previous_tag="$1"
+  local output_file="$2"
+  local version="$3"
+  local branch="$4"
+
+  {
+    echo "Release ${version}"
+    echo
+    echo "Branch: ${branch}"
+    echo
+    echo "Changes:"
+    if [[ -n "${previous_tag}" ]]; then
+      git log --pretty=format:'- %s' "${previous_tag}..HEAD"
+    else
+      git log --pretty=format:'- %s'
+    fi
+  } > "${output_file}"
+}
+
+require_command git
+require_command python3
+require_command mvn
+require_command gh
+require_command perl
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "This repository has tracked changes. Commit or stash them before releasing." >&2
+  exit 1
 fi
 
-
-
-echo "Please go verify the release looks correct. We will add the asset next"
-read -p "Press enter to continue"
-
-assetUrl=`cat createReleaseResponse.json | grep assets_url | cut -c 1-17 --complement | rev | cut -c3- | rev | sed 's/api.github.com/uploads.github.com/g'`
-rm createReleaseResponse.json
-zipFileName=`ls -1 distribution/distribution/target/ | grep zip`
-if [ "$debug" -eq 0 ]; then
-	curl -L \
-	  -X POST \
-	  -H "Accept: application/vnd.github+json" \
-	  -H "Authorization: Bearer $ghtoken"\
-	  -H "X-GitHub-Api-Version: 2022-11-28" \
-	  -H "Content-Type: application/octet-stream" \
-	  $assetUrl?name=$zipFileName \
-	  --data-binary "@distribution/distribution/target/$zipFileName"
-else 
-	echo curl -L \
-	  -X POST \
-	  -H "Accept: application/vnd.github+json" \
-	  -H "Authorization: Bearer $ghtoken"\
-	  -H "X-GitHub-Api-Version: 2022-11-28" \
-	  -H "Content-Type: application/octet-stream" \
-	  $assetUrl?name=$zipFileName \
-	  --data-binary "@distribution/distribution/target/$zipFileName"
+UNTRACKED_FILES="$(git ls-files --others --exclude-standard)"
+if [[ -n "${UNTRACKED_FILES}" ]]; then
+  echo "Warning: untracked files are present and will not be included in the release commit:"
+  echo "${UNTRACKED_FILES}" | sed -n '1,20p'
+  if [[ "$(echo "${UNTRACKED_FILES}" | wc -l | awk '{print $1}')" -gt 20 ]]; then
+    echo "... additional untracked files omitted"
+  fi
 fi
 
-
-zipFileNameWFly=`ls -1 distribution/distribution.wildfly/target/ | grep zip`
-if [ "$debug" -eq 0 ]; then
-	curl -L \
-	  -X POST \
-	  -H "Accept: application/vnd.github+json" \
-	  -H "Authorization: Bearer $ghtoken"\
-	  -H "X-GitHub-Api-Version: 2022-11-28" \
-	  -H "Content-Type: application/octet-stream" \
-	  $assetUrl?name=$zipFileNameWFly \
-	  --data-binary "@distribution/distribution.wildfly/target/$zipFileNameWFly"
-else 
-	echo curl -L \
-	  -X POST \
-	  -H "Accept: application/vnd.github+json" \
-	  -H "Authorization: Bearer $ghtoken"\
-	  -H "X-GitHub-Api-Version: 2022-11-28" \
-	  -H "Content-Type: application/octet-stream" \
-	  $assetUrl?name=$zipFileNameWFly \
-	  --data-binary "@distribution/distribution.wildfly/target/$zipFileNameWFly"
+if [[ ${DRY_RUN} -eq 0 ]]; then
+  gh auth status >/dev/null
 fi
 
-echo "Please go verify the release looks correct and the distribution was added correctly."
-read -p "Press enter to continue"
-
-echo "Need to update the LATEST file"
-newLatestContent="org.jboss.tools.rsp.distribution.latest.version=$newverFinal\norg.jboss.tools.rsp.distribution.latest.url=https://github.com/redhat-developer/rsp-server/releases/download/v$newVerUnderscore/$zipFileNameWFly"
-echo -e $newLatestContent > LATEST
-echo "Updating LATEST release to $newverFinal"
-git commit -a -m "Updating LATEST release to $newverFinal" --signoff
-read -p "Press enter to continue"
-
-echo "We are released. It's time to move the repo to next-SNAPSHOT"
-read -p "Press enter to continue"
-
-
-nextLastSegment=`echo $newver | cut -f 3 -d "." | awk '{ print $0 + 1;}' | bc`
-nextverPrefix=`echo $newver | cut -f 1,2 -d "."`
-nextver=$nextverPrefix.$nextLastSegment
-nextverWithSnapshot=$nextver-SNAPSHOT
-
-echo "New version is $newver"
-echo "Next version is $nextver"
-echo "Updating pom.xml and target platform with next version snapshot. Ready?"
-read -p "Press enter to continue"
-mvn org.eclipse.tycho:tycho-versions-plugin:1.3.0:set-version -DnewVersion=$nextverWithSnapshot
-
-# Handle target platform
-tpFile=`ls -1 targetplatform | grep target`
-cat targetplatform/$tpFile | sed "s/-target-$newver.Final/-target-$nextverWithSnapshot/g" > targetplatform/$tpFile.bak
-mv targetplatform/$tpFile.bak targetplatform/$tpFile
-
-
-echo "Running a quick build to make sure everything's ok..."
-read -p "Press enter to continue"
-mvn clean install -DskipTests
-
-echo "Did it succeed?"
-read -p "Press enter to continue"
-
-curBranch=`git rev-parse --abbrev-ref HEAD`
-echo "Committing and pushing to $curBranch"
-git commit -a -m "Move to $nextverWithSnapshot" --signoff
-if [ "$debug" -eq 0 ]; then
-	git push origin $curBranch
-else 
-	echo git push origin $curBranch
+BRANCH="$(git branch --show-current)"
+if [[ "${BRANCH}" != "master" && ${ALLOW_NON_MASTER} -eq 0 ]]; then
+  echo "Releases should be cut from master because the workflow updates LATEST on master." >&2
+  echo "Re-run with --allow-non-master only if you intentionally want to release from ${BRANCH}." >&2
+  exit 1
 fi
 
+REMOTE_URL="$(git remote get-url origin)"
+REPO_SLUG="$(parse_repo_slug "${REMOTE_URL}")" || {
+  echo "Unsupported origin remote URL: ${REMOTE_URL}" >&2
+  exit 1
+}
 
+CURRENT_VERSION="$(current_version)"
+PUBLIC_RELEASE_VERSION="$(public_version_from "${CURRENT_VERSION}")"
+NEXT_FINAL_VERSION="$(next_patch_final_from "${PUBLIC_RELEASE_VERSION}")"
+if [[ "${CURRENT_VERSION}" == *.Final ]]; then
+  EFFECTIVE_RELEASE_VERSION="${CURRENT_VERSION}"
+else
+  EFFECTIVE_RELEASE_VERSION="${PUBLIC_RELEASE_VERSION}.Final"
+fi
+TAG="v${PUBLIC_RELEASE_VERSION}"
+PREVIOUS_TAG="$(latest_release_tag)"
+ARTIFACT_PATH="distribution/distribution/target/rsp-wtp-server-${PUBLIC_RELEASE_VERSION}.zip"
 
-echo "Creating a milestone on gh for $nextver. Ready?"
-read -p "Press enter to continue"
-createMilestonePayload="{\"title\":\"v$nextver\",\"state\":\"open\",\"description\":\"Tracking milestone for version $nextver\"}"
-if [ "$debug" -eq 0 ]; then
-	curl -L \
-	  -X POST \
-	  -H "Accept: application/vnd.github+json" \
-	  -H "Authorization: Bearer $ghtoken"\
-	  -H "X-GitHub-Api-Version: 2022-11-28" \
-	  https://api.github.com/repos/redhat-developer/rsp-server/milestones \
-	  -d "$createMilestonePayload"
-else 
-	echo curl -L \
-  -X POST \
-  -H "Accept: application/vnd.github+json" \
-  -H "Authorization: Bearer $ghtoken"\
-  -H "X-GitHub-Api-Version: 2022-11-28" \
-  https://api.github.com/repos/redhat-developer/rsp-server/milestones \
-  -d "$createMilestonePayload"
+if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+  echo "Tag ${TAG} already exists. Bump the project version before releasing again." >&2
+  exit 1
 fi
 
+echo "Repository: ${REPO_SLUG}"
+echo "Branch: ${BRANCH}"
+echo "Current version: ${CURRENT_VERSION}"
+echo "Public release version: ${PUBLIC_RELEASE_VERSION}"
+echo "Maven release version: ${EFFECTIVE_RELEASE_VERSION}"
+echo "Next development version: ${NEXT_FINAL_VERSION}"
+echo "Release tag: ${TAG}"
+echo "Expected artifact: ${ARTIFACT_PATH}"
+if [[ -n "${PREVIOUS_TAG}" ]]; then
+  echo "Previous release tag: ${PREVIOUS_TAG}"
+fi
+if [[ ${DRY_RUN} -eq 1 ]]; then
+  echo "Mode: dry-run"
+fi
 
+confirm "Proceed with the server release flow?"
+
+NOTES_FILE="$(mktemp)"
+trap 'rm -f "${NOTES_FILE}"' EXIT
+build_release_notes "${PREVIOUS_TAG}" "${NOTES_FILE}" "${PUBLIC_RELEASE_VERSION}" "${BRANCH}"
+
+if [[ "${CURRENT_VERSION}" != *.Final ]]; then
+  echo "Setting project version to release version ${EFFECTIVE_RELEASE_VERSION}."
+  set_project_version "${EFFECTIVE_RELEASE_VERSION}"
+else
+  echo "Project is already on a .Final version; using ${CURRENT_VERSION} as-is."
+fi
+
+if [[ ${SKIP_BUILD} -eq 0 ]]; then
+  echo "Running release validation build."
+  validate_release_build "${PUBLIC_RELEASE_VERSION}"
+else
+  echo "Skipping release validation build."
+fi
+
+if [[ "${CURRENT_VERSION}" != *.Final ]]; then
+  run git add -u
+  run git commit -m "Prepare release ${EFFECTIVE_RELEASE_VERSION}" --signoff
+  run git push origin "${BRANCH}"
+fi
+
+echo
+echo "Release notes preview:"
+sed -n '1,40p' "${NOTES_FILE}"
+echo
+
+confirm "Create and push tag ${TAG}? This will trigger the server GitHub Actions release workflow."
+
+run git tag -a "${TAG}" -m "Release ${TAG}"
+run git push origin "${TAG}"
+
+echo
+echo "Tag pushed. The workflow at .github/workflows/gh-actions.yml will:"
+echo "  - build distribution/distribution/target/rsp-wtp-server-${PUBLIC_RELEASE_VERSION}.zip"
+echo "  - publish the GitHub release"
+echo "  - update LATEST on master"
+echo
+echo "Expected release URL:"
+echo "  https://github.com/${REPO_SLUG}/releases/tag/${TAG}"
+echo
+
+confirm "Continue to bump the repository to ${NEXT_FINAL_VERSION}?"
+
+set_project_version "${NEXT_FINAL_VERSION}"
+
+if [[ ${SKIP_BUILD} -eq 0 ]]; then
+  echo "Running next-version validation build."
+  validate_snapshot_build
+else
+  echo "Skipping next-version validation build."
+fi
+
+run git add -u
+run git commit -m "Move to ${NEXT_FINAL_VERSION}" --signoff
+run git push origin "${BRANCH}"
+
+echo
+echo "Release preparation complete."
+echo "Published tag: ${TAG}"
+echo "Next development version: ${NEXT_FINAL_VERSION}"

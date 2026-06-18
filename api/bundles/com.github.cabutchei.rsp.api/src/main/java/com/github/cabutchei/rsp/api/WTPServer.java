@@ -49,6 +49,13 @@ public interface WTPServer {
 	CompletableFuture<ListWorkspaceProjectsResponse> listWorkspaceProjects();
 
 	/**
+	 * The `workspace/refreshWorkspaceProjects` request is sent by the client to
+	 * force a rescan/import of workspace projects and refresh them from disk.
+	 */
+	@JsonRequest
+	CompletableFuture<Status> refreshWorkspaceProjects();
+
+	/**
 	 * The `workspace/listDeploymentAssemblyProjects` request is sent by the client
 	 * to fetch a filtered list of projects that can be added to a deployment
 	 * assembly.

@@ -88,6 +88,7 @@ import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IPath;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.MultiStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Path;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
@@ -715,6 +716,11 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	}
 
 	@Override
+	public CompletableFuture<Status> refreshWorkspaceProjects() {
+		return createCompletableFuture(() -> refreshWorkspaceProjectsSync());
+	}
+
+	@Override
 	public CompletableFuture<ListWorkspaceProjectsResponse> listDeploymentAssemblyProjects(DeploymentAssemblyRequest request) {
 		return createCompletableFuture(() -> listDeploymentAssemblyProjectsSync(request));
 	}
@@ -770,6 +776,42 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		resp.setProjects(mapped);
 		resp.setStatus(StatusConverter.convert(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS));
 		return resp;
+	}
+
+	private Status refreshWorkspaceProjectsSync() {
+		IProjectsManager projectsManager = getProjectsManager();
+		if (projectsManager == null) {
+			return errorStatus("Projects manager unavailable");
+		}
+
+		List<IStatus> failures = new ArrayList<>();
+		IStatus importStatus = projectsManager.importAllWorkspaceProjects();
+		if (importStatus != null && !importStatus.isOK()) {
+			failures.add(importStatus);
+		}
+
+		List<com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject> projects = projectsManager.listWorkspaceProjects();
+		if (projects != null) {
+			for (com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject project : projects) {
+				if (project == null || project.getName() == null || project.getName().isEmpty()) {
+					continue;
+				}
+				IStatus refreshStatus = projectsManager.refreshProject(project.getName());
+				if (refreshStatus != null && !refreshStatus.isOK()) {
+					failures.add(refreshStatus);
+				}
+			}
+		}
+
+		if (failures.isEmpty()) {
+			return StatusConverter.convert(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS);
+		}
+		if (failures.size() == 1) {
+			return StatusConverter.convert(failures.get(0));
+		}
+		MultiStatus status = new MultiStatus(ServerCoreActivator.BUNDLE_ID, IStatus.ERROR,
+				failures.toArray(new IStatus[0]), "One or more workspace projects failed to refresh", null);
+		return StatusConverter.convert(status);
 	}
 
 	private ListWorkspaceProjectsResponse listDeploymentAssemblyProjectsSync(DeploymentAssemblyRequest request) {

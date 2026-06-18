@@ -148,6 +148,35 @@ public class WTPService implements IWTPService {
 	}
 
 	@Override
+	public List<WorkspaceProject> listEarProjects() {
+		IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+		if (projects == null || projects.length == 0) {
+			return Collections.emptyList();
+		}
+		Collection<Path> roots = getWorkspaceRootsSnapshot();
+		List<WorkspaceProject> mapped = new ArrayList<>();
+		for (IProject project : projects) {
+			if (project == null || !project.exists() || !project.isOpen()) {
+				continue;
+			}
+			IPath location = project.getLocation();
+			Path projectPath = location == null ? null : location.toFile().toPath();
+			if (projectPath == null) {
+				continue;
+			}
+			Path normalized = projectPath.toAbsolutePath().normalize();
+			if (!roots.isEmpty() && !isContainedInAny(normalized, roots)) {
+				continue;
+			}
+			if (!isEarProject(project)) {
+				continue;
+			}
+			mapped.add(new WorkspaceProject(project.getName(), normalized, project.isOpen()));
+		}
+		return mapped;
+	}
+
+	@Override
 	public List<DeploymentAssemblyEntry> getDeploymentAssembly(Path projectPath, String projectName) {
 		IProject project = resolveProject(projectPath, projectName);
 		if (project == null || !project.exists()) {

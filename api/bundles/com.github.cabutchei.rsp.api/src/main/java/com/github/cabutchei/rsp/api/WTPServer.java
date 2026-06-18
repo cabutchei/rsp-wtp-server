@@ -57,6 +57,13 @@ public interface WTPServer {
 	CompletableFuture<Status> refreshWorkspaceProjects();
 
 	/**
+	 * The `workspace/listEarProjects` request is sent by the client to fetch the
+	 * workspace projects that can be exported as EAR archives.
+	 */
+	@JsonRequest
+	CompletableFuture<ListWorkspaceProjectsResponse> listEarProjects();
+
+	/**
 	 * The `workspace/exportEar` request is sent by the client to materialize an EAR
 	 * archive for a workspace project.
 	 */

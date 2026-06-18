@@ -722,6 +722,11 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	}
 
 	@Override
+	public CompletableFuture<ListWorkspaceProjectsResponse> listEarProjects() {
+		return createCompletableFuture(() -> listEarProjectsSync());
+	}
+
+	@Override
 	public CompletableFuture<Status> exportEar(ExportEarRequest request) {
 		return createCompletableFuture(() -> exportEarSync(request));
 	}
@@ -818,6 +823,33 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		MultiStatus status = new MultiStatus(ServerCoreActivator.BUNDLE_ID, IStatus.ERROR,
 				failures.toArray(new IStatus[0]), "One or more workspace projects failed to refresh", null);
 		return StatusConverter.convert(status);
+	}
+
+	private ListWorkspaceProjectsResponse listEarProjectsSync() {
+		ListWorkspaceProjectsResponse resp = new ListWorkspaceProjectsResponse();
+		IProjectsManager projectsManager = getProjectsManager();
+		if (projectsManager == null) {
+			resp.setStatus(errorStatus("Projects manager unavailable"));
+			return resp;
+		}
+		IWTPService wtpService = getWTPService(projectsManager);
+		if (wtpService == null) {
+			resp.setStatus(errorStatus("WTP service unavailable"));
+			return resp;
+		}
+		List<com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject> projects = wtpService.listEarProjects();
+		List<WorkspaceProject> mapped = new ArrayList<>();
+		if (projects != null) {
+			mapped = projects.stream()
+					.filter(p -> p != null && p.getName() != null)
+					.map(p -> new WorkspaceProject(p.getName(),
+							p.getLocation() == null ? null : p.getLocation().toString(),
+							p.isOpen()))
+					.collect(Collectors.toList());
+		}
+		resp.setProjects(mapped);
+		resp.setStatus(StatusConverter.convert(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS));
+		return resp;
 	}
 
 	private Status exportEarSync(ExportEarRequest request) {

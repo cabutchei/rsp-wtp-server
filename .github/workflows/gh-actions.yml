@@ -64,6 +64,7 @@ jobs:
         run: |
           RAW_VERSION="$(python3 .github/scripts/read_project_version.py pom.xml)"
           VERSION="${RAW_VERSION%-SNAPSHOT}"
+          VERSION="${VERSION%.Final}"
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             TAG="${GITHUB_REF_NAME}"
           else

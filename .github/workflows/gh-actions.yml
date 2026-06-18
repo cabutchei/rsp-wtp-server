@@ -57,8 +57,7 @@ jobs:
           cache: maven
       - name: Build distribution
         run: |
-          mvn -pl targetplatform -am install -DskipTests -B
-          mvn -pl distribution/distribution -am clean package -DskipTests -B
+          mvn clean package -DskipTests -B
       - name: Compute release metadata
         id: meta
         run: |

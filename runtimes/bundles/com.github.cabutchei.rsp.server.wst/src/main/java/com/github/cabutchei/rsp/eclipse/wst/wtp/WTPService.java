@@ -1,6 +1,8 @@
 package com.github.cabutchei.rsp.eclipse.wst.wtp;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,6 +22,8 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jst.j2ee.application.internal.operations.EARComponentExportDataModelProvider;
+import org.eclipse.jst.j2ee.datamodel.properties.IJ2EEComponentExportDataModelProperties;
 import org.eclipse.jst.j2ee.internal.componentcore.JavaEEModuleHandler;
 import org.eclipse.wst.common.componentcore.ComponentCore;
 import org.eclipse.wst.common.componentcore.internal.ComponentResource;
@@ -30,6 +34,8 @@ import org.eclipse.wst.common.componentcore.internal.resources.VirtualArchiveCom
 import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
 import org.eclipse.wst.common.componentcore.resources.IVirtualFolder;
 import org.eclipse.wst.common.componentcore.resources.IVirtualReference;
+import org.eclipse.wst.common.frameworks.datamodel.DataModelFactory;
+import org.eclipse.wst.common.frameworks.datamodel.IDataModel;
 import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.IModuleType;
 import org.eclipse.wst.server.core.ServerCore;
@@ -156,6 +162,48 @@ public class WTPService implements IWTPService {
 		}
 		List<DeploymentAssemblyEntry> entries = readDeploymentAssembly(project);
 		return entries == null ? null : Collections.unmodifiableList(entries);
+	}
+
+	@Override
+	public IStatus exportEar(Path projectPath, String projectName, Path destinationPath, boolean exportSource) {
+		IProject project = resolveProject(projectPath, projectName);
+		if (project == null || !project.exists()) {
+			return errorStatus("Project not found", null);
+		}
+		if (destinationPath == null) {
+			return errorStatus("Destination path is required", null);
+		}
+		try {
+			if (!project.isOpen()) {
+				project.open(new NullProgressMonitor());
+			}
+		} catch (CoreException ce) {
+			return errorStatus("Failed to open project " + project.getName(), ce);
+		}
+		if (!isEarProject(project)) {
+			return errorStatus("Project " + project.getName() + " is not an EAR project", null);
+		}
+		try {
+			Path normalizedDestination = destinationPath.toAbsolutePath().normalize();
+			Path parent = normalizedDestination.getParent();
+			if (parent != null) {
+				Files.createDirectories(parent);
+			}
+			IDataModel model = DataModelFactory.createDataModel(new EARComponentExportDataModelProvider());
+			model.setBooleanProperty(IJ2EEComponentExportDataModelProperties.RUN_BUILD, false);
+			model.setProperty(IJ2EEComponentExportDataModelProperties.PROJECT_NAME, project.getName());
+			model.setProperty(IJ2EEComponentExportDataModelProperties.ARCHIVE_DESTINATION, normalizedDestination.toString());
+			model.setBooleanProperty(IJ2EEComponentExportDataModelProperties.OVERWRITE_EXISTING, true);
+			model.setBooleanProperty(IJ2EEComponentExportDataModelProperties.EXPORT_SOURCE_FILES, exportSource);
+			org.eclipse.core.runtime.IStatus status = model.getDefaultOperation().execute(new NullProgressMonitor(), null);
+			return status == null || status.isOK()
+					? okStatus()
+					: new Status(status.getSeverity(), BUNDLE_ID, status.getMessage(), status.getException());
+		} catch (IOException ioe) {
+			return errorStatus("Failed to create destination directory for " + destinationPath, ioe);
+		} catch (Exception e) {
+			return errorStatus("Failed to export EAR for project " + project.getName(), e);
+		}
 	}
 
 	@Override
@@ -340,6 +388,22 @@ public class WTPService implements IWTPService {
 		addComponentResourceMappings(project, entries);
 		addComponentReferences(project, entries);
 		return entries;
+	}
+
+	private boolean isEarProject(IProject project) {
+		IModule[] modules = ServerUtil.getModules(project);
+		if (modules == null || modules.length == 0) {
+			return false;
+		}
+		for (IModule module : modules) {
+			if (module == null || module.getModuleType() == null) {
+				continue;
+			}
+			if ("jst.ear".equals(module.getModuleType().getId())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void addComponentResourceMappings(IProject project, List<DeploymentAssemblyEntry> entries) {

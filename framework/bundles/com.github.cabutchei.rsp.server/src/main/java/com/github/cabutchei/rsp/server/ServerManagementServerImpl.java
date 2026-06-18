@@ -48,6 +48,7 @@ import com.github.cabutchei.rsp.api.dao.DownloadRuntimeDescription;
 import com.github.cabutchei.rsp.api.dao.DownloadSingleRuntimeRequest;
 import com.github.cabutchei.rsp.api.dao.DidChangeWatchedFilesParams;
 import com.github.cabutchei.rsp.api.dao.DidChangeWorkspaceFoldersParams;
+import com.github.cabutchei.rsp.api.dao.ExportEarRequest;
 import com.github.cabutchei.rsp.api.dao.GetServerJsonResponse;
 import com.github.cabutchei.rsp.api.dao.InitializeParams;
 import com.github.cabutchei.rsp.api.dao.InitializeResult;
@@ -721,6 +722,11 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	}
 
 	@Override
+	public CompletableFuture<Status> exportEar(ExportEarRequest request) {
+		return createCompletableFuture(() -> exportEarSync(request));
+	}
+
+	@Override
 	public CompletableFuture<ListWorkspaceProjectsResponse> listDeploymentAssemblyProjects(DeploymentAssemblyRequest request) {
 		return createCompletableFuture(() -> listDeploymentAssemblyProjectsSync(request));
 	}
@@ -811,6 +817,45 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		}
 		MultiStatus status = new MultiStatus(ServerCoreActivator.BUNDLE_ID, IStatus.ERROR,
 				failures.toArray(new IStatus[0]), "One or more workspace projects failed to refresh", null);
+		return StatusConverter.convert(status);
+	}
+
+	private Status exportEarSync(ExportEarRequest request) {
+		if (request == null) {
+			return invalidParameterStatus();
+		}
+		String pathString = request.getPath();
+		String projectName = request.getProjectName();
+		String destinationString = request.getDestinationPath();
+		if ((pathString == null || pathString.isEmpty()) && (projectName == null || projectName.isEmpty())) {
+			return invalidParameterStatus();
+		}
+		if (destinationString == null || destinationString.isBlank()) {
+			return invalidParameterStatus();
+		}
+		IProjectsManager projectsManager = getProjectsManager();
+		if (projectsManager == null) {
+			return errorStatus("Projects manager unavailable");
+		}
+		IWTPService wtpService = getWTPService(projectsManager);
+		if (wtpService == null) {
+			return errorStatus("WTP service unavailable");
+		}
+		java.nio.file.Path projectPath = null;
+		if (pathString != null && !pathString.isEmpty()) {
+			try {
+				projectPath = Paths.get(pathString).toAbsolutePath().normalize();
+			} catch (InvalidPathException ipe) {
+				return errorStatus("Invalid project path: " + pathString, ipe);
+			}
+		}
+		java.nio.file.Path destinationPath;
+		try {
+			destinationPath = Paths.get(destinationString).toAbsolutePath().normalize();
+		} catch (InvalidPathException ipe) {
+			return errorStatus("Invalid destination path: " + destinationString, ipe);
+		}
+		IStatus status = wtpService.exportEar(projectPath, projectName, destinationPath, request.isExportSource());
 		return StatusConverter.convert(status);
 	}
 
